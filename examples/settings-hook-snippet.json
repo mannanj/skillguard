@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /absolute/path/to/skillguard/hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}

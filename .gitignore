@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.DS_Store
+.claude/session-memory/
+.claude/handoff/
+demo/*.mp4
+demo/*.webm
+landing/demo.mp4
+landing/og.png
+demo/fixture-home/.claude/skillguard-cache/

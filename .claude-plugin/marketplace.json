@@ -1,0 +1,17 @@
+{
+  "name": "skillguard",
+  "owner": {
+    "name": "Mannan Javid"
+  },
+  "plugins": [
+    {
+      "name": "skillguard",
+      "source": "./",
+      "description": "Scan Claude Code skills for malicious code — before Claude runs them. Blocks unscanned skills via a PreToolUse hook.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Mannan Javid"
+      }
+    }
+  ]
+}
