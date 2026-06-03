@@ -5,7 +5,9 @@
   "compatibility_date": "2026-06-03",
   "assets": {
     "directory": "./public",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // Invoke the worker before the asset layer so the www→apex 301 fires on "/"
+    "run_worker_first": true
   },
   "routes": [
     { "pattern": "skillguard.sh", "custom_domain": true },
