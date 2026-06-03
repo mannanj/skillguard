@@ -1,8 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "skillguard",
+  "main": "src/index.js",
   "compatibility_date": "2026-06-03",
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "routes": [
+    { "pattern": "skillguard.sh", "custom_domain": true },
+    { "pattern": "www.skillguard.sh", "custom_domain": true }
+  ]
 }

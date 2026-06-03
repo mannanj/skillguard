@@ -10,6 +10,8 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 
+**[skillguard.sh](https://skillguard.sh)**
+
 <img src="demo/demo.gif" alt="SkillGuard blocking a malicious skill at PreToolUse" width="700">
 
 </div>
@@ -44,7 +46,7 @@ From now on, every skill invocation shows a one-line verdict — and unscanned s
 |---|---|---|
 | **Claude Code plugin** (recommended) | `/plugin marketplace add mannanj/skillguard` then `/plugin install skillguard@skillguard` | Hook auto-registers on enable |
 | pip / pipx | `pip install -e .` from a clone | `skillguard` + `skillguard-hook` entry points |
-| curl installer | `curl -fsSL https://raw.githubusercontent.com/mannanj/skillguard/main/install.sh \| sh` | Copies files + patches `settings.json` (backed up first) — [read it](install.sh) before piping |
+| curl installer | `curl -fsSL https://skillguard.sh/install \| sh` | Copies files + patches `settings.json` (backed up first) — [read it](install.sh) before piping |
 | Manual | clone + add [examples/settings-hook-snippet.json](examples/settings-hook-snippet.json) to `~/.claude/settings.json` | Full control |
 
 Optional engines: `pip install "skillguard[cisco]"` for the Cisco engine; set `SNYK_TOKEN` (+ [uv](https://docs.astral.sh/uv/)) for Snyk; SkillAudit needs nothing but network.
