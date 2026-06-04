@@ -3,6 +3,8 @@
   "name": "skillguard",
   "main": "src/index.js",
   "compatibility_date": "2026-06-03",
+  // Keep the workers.dev URL alive alongside the custom domains
+  "workers_dev": true,
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
