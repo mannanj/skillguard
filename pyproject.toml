@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Scan Claude Code skills for malicious code — before Claude runs them."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = "AGPL-3.0-only OR LicenseRef-Commercial"
+license-files = ["LICENSE", "LICENSE-COMMERCIAL.md", "NOTICE"]
 authors = [{ name = "Mannan Javid" }]
 keywords = [
     "claude",

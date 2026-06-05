@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial
+# Copyright (C) 2026 Mannan Javid — SkillGuard <https://github.com/mannanj/skillguard>
 """
 PreToolUse hook for SkillGuard.
 

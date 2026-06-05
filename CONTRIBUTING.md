@@ -38,3 +38,20 @@ No required runtime dependencies — the core scanner is stdlib-only by design. 
 - [ ] New patterns ship with a malicious fixture **and** a false-positive guard
 - [ ] No new required dependencies
 - [ ] `CHANGELOG.md` entry under *Unreleased*
+
+## Licensing of contributions
+
+SkillGuard is dual-licensed: [AGPL-3.0-only](LICENSE) plus a
+[commercial license](LICENSE-COMMERCIAL.md) sold by the maintainer. For the
+dual-licensing model to work, the maintainer must hold sufficient rights to
+every line in the repo.
+
+By submitting a contribution you agree that:
+
+1. Your contribution is licensed to the project under **AGPL-3.0-only**, and
+2. You grant Mannan Javid a perpetual, worldwide, non-exclusive, royalty-free
+   right to relicense your contribution as part of SkillGuard under other
+   terms, including commercial licenses.
+
+You retain copyright in your contribution. If you can't agree to this (e.g.
+your employer owns your work), please say so in the PR instead of submitting.

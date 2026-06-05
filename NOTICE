@@ -1,0 +1,22 @@
+SkillGuard
+Copyright (C) 2026 Mannan Javid
+
+https://github.com/mannanj/skillguard
+https://skillguard.sh
+
+SkillGuard is dual-licensed:
+
+  1. GNU Affero General Public License v3.0 only (AGPL-3.0-only) — see LICENSE.
+     Free for everyone, including commercial use, provided you comply with the
+     AGPL: any work based on SkillGuard, including software that incorporates
+     it or exposes it over a network, must be released under the AGPL with
+     complete corresponding source code.
+
+  2. Commercial license — for organizations that want to build on SkillGuard
+     without the AGPL's source-disclosure obligations. See LICENSE-COMMERCIAL.md
+     or contact hello@mannan.is.
+
+Attribution: redistributions, forks, and derivative works must retain this
+NOTICE file, the copyright notice above, and a reference to SkillGuard and the
+original repository (https://github.com/mannanj/skillguard), as required by
+sections 4, 5, and 7(b) of the AGPL.

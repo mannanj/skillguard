@@ -158,7 +158,7 @@ Two-phase, deliberately:
 
 ### Repo structure & files
 
-- **License: Apache-2.0** — explicit patent grant, enterprise default for security tools (trivy). MIT acceptable if matching CC-ecosystem norm matters more. Avoid AGPL.
+- **License: AGPL-3.0-only + commercial dual license** *(decision changed 2026-06-05; originally Apache-2.0)* — stays genuinely open source, forces forks/derived products to publish source and retain attribution, and monetizes commercial use via a separate commercial license (Grafana/Qt model) instead of permitting it freely. Trade-off accepted: some enterprises ban AGPL dependencies — those are exactly the commercial-license leads. See `LICENSE`, `LICENSE-COMMERCIAL.md`, `NOTICE`.
 - `SECURITY.md` — private disclosure path (GitHub private advisories + contact). Non-negotiable for a security tool.
 - `CONTRIBUTING.md` — geared at **detection-rule contributions** (pattern + test fixture); community rules are how gitleaks/semgrep/trufflehog compound.
 - `CODE_OF_CONDUCT.md`, `CHANGELOG.md`/tagged releases.
@@ -309,7 +309,7 @@ From the codebase audit — what must change before the repo goes public:
 - [ ] Cache-write lock (race if two scans hit the same skill).
 - [ ] Document `uv` as a prerequisite for the Snyk engine; make SkillAudit endpoint + rate limit configurable.
 
-**Repo hygiene:** LICENSE (Apache-2.0), SECURITY.md, CONTRIBUTING.md (rule contributions), CODE_OF_CONDUCT.md, CI workflow + badge, CHANGELOG/tagged releases, demo `.tape` file in repo.
+**Repo hygiene:** LICENSE (AGPL-3.0-only + commercial dual), SECURITY.md, CONTRIBUTING.md (rule contributions), CODE_OF_CONDUCT.md, CI workflow + badge, CHANGELOG/tagged releases, demo `.tape` file in repo.
 
 ---
 

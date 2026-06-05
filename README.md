@@ -7,7 +7,7 @@
 *Four detection engines — zero-dep local patterns, Cisco, Snyk, SkillAudit — orchestrated behind a PreToolUse hook that blocks anything unscanned. Prompt injection, credential theft, reverse shells, data exfiltration: caught at the gate.*
 
 [![CI](https://github.com/mannanj/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/mannanj/skillguard/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 
 **[skillguard.sh](https://skillguard.sh)**
@@ -163,4 +163,9 @@ The highest-value contribution is a **new detection pattern with a malicious fix
 
 ## License
 
-[Apache-2.0](LICENSE)
+Copyright (C) 2026 Mannan Javid. SkillGuard is dual-licensed:
+
+- **[AGPL-3.0-only](LICENSE)** — free for everyone, including commercial use. Any work based on SkillGuard (including software that exposes it over a network) must be released under the AGPL with full source, and must retain the [NOTICE](NOTICE) attribution to SkillGuard and [this repository](https://github.com/mannanj/skillguard).
+- **[Commercial license](LICENSE-COMMERCIAL.md)** — for building on SkillGuard without AGPL obligations. Contact hello@mannan.is.
+
+Just *running* the unmodified scanner — personally or at work — never requires the commercial license.
