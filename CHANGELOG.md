@@ -4,13 +4,16 @@ All notable changes to SkillGuard are documented here. Format: [Keep a Changelog
 
 ## [Unreleased]
 
-### Changed
-- **License: relicensed from Apache-2.0 to dual AGPL-3.0-only + commercial** (2026-06-05). Sole-author relicense; no external contributors at the time of change. Forks and derivative works must remain open source under the AGPL and retain the `NOTICE` attribution to SkillGuard and the original repository; commercial use without AGPL obligations requires a commercial license (`LICENSE-COMMERCIAL.md`). Versions up to and including 0.1.0 remain available under Apache-2.0.
-
 ### Planned
 - Allowlist/baseline file (gitleaks-style) for accepted findings
 - Plugin-namespaced skill resolution for the TOCTOU mtime guard
-- PyPI release (`uvx skillguard`)
+
+## [0.2.0] — 2026-06-05
+
+First PyPI release — `pip install skillguard` / `uvx skillguard`.
+
+### Changed
+- **License: relicensed from Apache-2.0 to dual AGPL-3.0-only + commercial** (2026-06-05). Sole-author relicense; no external contributors at the time of change. Forks and derivative works must remain open source under the AGPL and retain the `NOTICE` attribution to SkillGuard and the original repository; commercial use without AGPL obligations requires a commercial license (`LICENSE-COMMERCIAL.md`). Versions up to and including 0.1.0 remain available under Apache-2.0.
 
 ## [0.1.0] — 2026-06-03
 
