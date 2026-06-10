@@ -1,22 +1,27 @@
-# Task: Publish skillguard 0.2.0 to PyPI
+# Task: Publish skillguard to PyPI
 
 **Status:** blocked on a PyPI API token — everything else is done and verified.
-**Created:** 2026-06-05
+**Created:** 2026-06-05 · **Updated:** 2026-06-10 (mannan: no PyPI push yet, parked for later)
 
 ## Goal
 
 First PyPI release so `pip install skillguard` and `uvx skillguard` work.
+Until this ships, the `CHANGELOG.md` `[0.2.0]` header line "First PyPI release —
+`pip install skillguard` / `uvx skillguard`" is **not yet true** (package 404s on PyPI).
 
-## Already done (verified 2026-06-05)
+## Already done (verified 2026-06-05; test count re-verified 2026-06-10)
 
 - [x] PyPI name `skillguard` confirmed free (`https://pypi.org/pypi/skillguard/json` → 404)
-- [x] Version bumped to 0.2.0 (`pyproject.toml`, `skillguard/cli.py` `__version__`)
+- [x] Version bumped to 0.2.0 (`pyproject.toml`, `skillguard/cli.py` `__version__`,
+      `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`)
 - [x] `CHANGELOG.md`: 0.2.0 section dated 2026-06-05 (first PyPI release + AGPL relicense)
 - [x] License metadata correct: PEP 639 expression `AGPL-3.0-only OR LicenseRef-Commercial`,
       license-files LICENSE / LICENSE-COMMERCIAL.md / NOTICE all land in the sdist+wheel
-- [x] Tests: 37/37 pass (`uv run --extra dev pytest -q`)
-- [x] Distributions built: `dist/skillguard-0.2.0.tar.gz` + `.whl`
-      (dist/ is gitignored — rebuild with `uv build` if missing)
+- [x] Tests: 57/57 pass (`uv run --extra dev pytest -q`)
+- [x] Distributions built: `dist/skillguard-0.2.0.tar.gz` + `.whl` — **STALE, rebuild before
+      publishing**: built 2026-06-05, before the FP-triage feature and the SkillAudit
+      parser fix (both currently in CHANGELOG `[Unreleased]`). Before publishing, fold
+      `[Unreleased]` into the release section (or bump the version) and `uv build` fresh
 
 ## Remaining steps
 
