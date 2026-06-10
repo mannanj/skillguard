@@ -241,7 +241,7 @@
        flagged, and dropped. Pure CSS; static tableau under reduced motion. */
     .gate {
       max-width: 860px;
-      margin: 56px auto 0;
+      margin: 0 auto 48px;
     }
     .gate-labels {
       display: flex;
@@ -302,13 +302,13 @@
       white-space: nowrap;
       opacity: 0;
       will-change: left, opacity;
-      animation: gate-pass 20s linear infinite;
+      animation: gate-pass 12s linear infinite;
       animation-delay: var(--d);
     }
     .chip-mark { font-weight: 700; opacity: 0; }
     .chip-clean .chip-mark {
       color: var(--accent);
-      animation: gate-mark 20s linear infinite;
+      animation: gate-mark 12s linear infinite;
       animation-delay: var(--d);
     }
     .chip-bad {
@@ -316,7 +316,7 @@
     }
     .chip-bad .chip-mark {
       color: var(--red);
-      animation: gate-badmark 20s linear infinite;
+      animation: gate-badmark 12s linear infinite;
       animation-delay: var(--d);
     }
     .chip-tag {
@@ -332,7 +332,7 @@
       padding: 1px 8px;
       white-space: nowrap;
       opacity: 0;
-      animation: gate-badmark 20s linear infinite;
+      animation: gate-badmark 12s linear infinite;
       animation-delay: var(--d);
     }
 
@@ -580,7 +580,7 @@
       .verify-links { margin-left: 0; width: 100%; }
       .codebox pre { font-size: 13.5px; }
       .transcript { font-size: 12.5px; }
-      .gate { margin-top: 44px; }
+      .gate { margin-bottom: 36px; }
       .gate-track { height: 84px; }
       .chip { font-size: 11px; padding: 6px 9px; }
       .chip-tag { font-size: 10px; }
@@ -622,6 +622,35 @@
     <!-- HERO -->
     <section class="hero" aria-labelledby="hero-heading">
       <div class="container">
+        <!-- Gate animation: clean skills pass, the malicious one is refused -->
+        <div class="gate" role="img" aria-label="Animation: community skills move toward the SkillGuard gate. Clean skills turn green and continue to Claude Code; pretty-formatter is stopped at the gate and flagged for a reverse shell.">
+          <div class="gate-labels" aria-hidden="true">
+            <span>community skills</span>
+            <span>cleared for Claude</span>
+          </div>
+          <div class="gate-track" aria-hidden="true">
+            <div class="gate-post">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </div>
+            <div class="chip chip-clean c1" style="--d: 0s;">
+              <span class="chip-name">pdf-tools</span><span class="chip-mark">&#10003;</span>
+            </div>
+            <div class="chip chip-bad cb" style="--d: 3s;">
+              <span class="chip-name">pretty-formatter</span><span class="chip-mark">&#10007;</span>
+              <span class="chip-tag">reverse shell</span>
+            </div>
+            <div class="chip chip-clean c2" style="--d: 6s;">
+              <span class="chip-name">git-helper</span><span class="chip-mark">&#10003;</span>
+            </div>
+            <div class="chip chip-clean c3" style="--d: 9s;">
+              <span class="chip-name">web-search</span><span class="chip-mark">&#10003;</span>
+            </div>
+          </div>
+        </div>
+
         <h1 id="hero-heading">Scan every skill. <span class="em">Block what's unscanned.</span></h1>
         <p class="subhead">
           An open-source scanner that catches prompt injection, credential theft, and reverse shells in Claude Code skills — and a <strong>PreToolUse hook that won't run what hasn't been scanned</strong>. Local by default.
@@ -645,35 +674,6 @@
               <a href="https://github.com/mannanj/skillguard" rel="noopener">View source</a>
             </span>
           </p>
-        </div>
-
-        <!-- Gate animation: clean skills pass, the malicious one is refused -->
-        <div class="gate" role="img" aria-label="Animation: community skills move toward the SkillGuard gate. Clean skills turn green and continue to Claude Code; pretty-formatter is stopped at the gate and flagged for a reverse shell.">
-          <div class="gate-labels" aria-hidden="true">
-            <span>community skills</span>
-            <span>cleared for Claude</span>
-          </div>
-          <div class="gate-track" aria-hidden="true">
-            <div class="gate-post">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
-                <path d="m9 12 2 2 4-4" />
-              </svg>
-            </div>
-            <div class="chip chip-clean c1" style="--d: 0s;">
-              <span class="chip-name">pdf-tools</span><span class="chip-mark">&#10003;</span>
-            </div>
-            <div class="chip chip-bad cb" style="--d: 5s;">
-              <span class="chip-name">pretty-formatter</span><span class="chip-mark">&#10007;</span>
-              <span class="chip-tag">reverse shell</span>
-            </div>
-            <div class="chip chip-clean c2" style="--d: 10s;">
-              <span class="chip-name">git-helper</span><span class="chip-mark">&#10003;</span>
-            </div>
-            <div class="chip chip-clean c3" style="--d: 15s;">
-              <span class="chip-name">web-search</span><span class="chip-mark">&#10003;</span>
-            </div>
-          </div>
         </div>
       </div>
     </section>
