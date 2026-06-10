@@ -1,0 +1,71 @@
+#!/bin/sh
+# SkillGuard dev hook — enable once per clone:  git config core.hooksPath .githooks
+#
+# Two jobs:
+#   1) GUARD: refuse a push to main when plugin-runtime files changed but the
+#      plugin version didn't. `claude plugin update` only refreshes the installed
+#      copy on a version bump, so an un-bumped runtime change would silently
+#      never reach live installs. Bypass deliberately with --no-verify.
+#   2) SYNC: once the push lands on origin/main, refresh the locally-installed
+#      Claude Code plugin (claude plugin update skillguard@skillguard) in the
+#      background, so the live hook tracks the repo. Applies to new sessions.
+#
+# Log: ~/.claude/logs/skillguard-plugin-autoupdate.log
+
+remote="$1"
+log="$HOME/.claude/logs/skillguard-plugin-autoupdate.log"
+mkdir -p "$HOME/.claude/logs" 2>/dev/null
+
+claude_bin=$(command -v claude 2>/dev/null)
+if [ -z "$claude_bin" ]; then
+  for c in "$HOME/.local/bin/claude" /usr/local/bin/claude /opt/homebrew/bin/claude; do
+    if [ -x "$c" ]; then claude_bin="$c"; break; fi
+  done
+fi
+
+zero="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$remote_ref" = "refs/heads/main" ] || continue
+
+  # ── 1) version-bump guard (skip on branch create/delete) ──
+  if [ "$local_sha" != "$zero" ] && [ "$remote_sha" != "$zero" ]; then
+    runtime_changed=$(git diff --name-only "$remote_sha" "$local_sha" -- \
+      skillguard/ hooks/ .claude-plugin/ install.sh 2>/dev/null)
+    if [ -n "$runtime_changed" ]; then
+      old_v=$(git show "$remote_sha:.claude-plugin/plugin.json" 2>/dev/null \
+        | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p')
+      new_v=$(git show "$local_sha:.claude-plugin/plugin.json" 2>/dev/null \
+        | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p')
+      if [ -n "$old_v" ] && [ "$old_v" = "$new_v" ]; then
+        echo "pre-push: plugin runtime files changed but plugin version is still $new_v:" >&2
+        echo "$runtime_changed" | sed 's/^/    /' >&2
+        echo "Installed plugins only refresh on a version bump — bump the version" >&2
+        echo "(pyproject.toml, skillguard/cli.py, .claude-plugin/*.json; tests enforce sync)" >&2
+        echo "or push with --no-verify if this truly shouldn't ship to installs." >&2
+        exit 1
+      fi
+    fi
+  fi
+
+  # ── 2) background plugin refresh once the push is visible on origin ──
+  [ -n "$claude_bin" ] || continue
+  (
+    i=0
+    while [ "$i" -lt 30 ]; do
+      sleep 2
+      landed=$(git ls-remote origin refs/heads/main 2>/dev/null | cut -f1)
+      if [ "$landed" = "$local_sha" ]; then
+        printf '%s push %.9s: ' "$(date '+%Y-%m-%d %H:%M:%S')" "$local_sha" >>"$log"
+        "$claude_bin" plugin update "skillguard@skillguard" >>"$log" 2>&1
+        printf '\n' >>"$log"
+        exit 0
+      fi
+      i=$((i + 1))
+    done
+    printf '%s push %.9s never observed on origin/main; plugin update skipped\n' \
+      "$(date '+%Y-%m-%d %H:%M:%S')" "$local_sha" >>"$log"
+  ) </dev/null >/dev/null 2>&1 &
+done
+
+exit 0

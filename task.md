@@ -19,9 +19,8 @@ Until this ships, the `CHANGELOG.md` `[0.2.0]` header line "First PyPI release â
       license-files LICENSE / LICENSE-COMMERCIAL.md / NOTICE all land in the sdist+wheel
 - [x] Tests: 57/57 pass (`uv run --extra dev pytest -q`)
 - [x] Distributions built: `dist/skillguard-0.2.0.tar.gz` + `.whl` â€” **STALE, rebuild before
-      publishing**: built 2026-06-05, before the FP-triage feature and the SkillAudit
-      parser fix (both currently in CHANGELOG `[Unreleased]`). Before publishing, fold
-      `[Unreleased]` into the release section (or bump the version) and `uv build` fresh
+      publishing**: version is now 0.2.1 (2026-06-10; triage + SkillAudit fix folded into
+      CHANGELOG `[0.2.1]`). Run `uv build` fresh and publish 0.2.1 as the first release
 
 ## Remaining steps
 
@@ -36,12 +35,12 @@ Until this ships, the `CHANGELOG.md` `[0.2.0]` header line "First PyPI release â
    ```
 3. Verify from the live index:
    ```bash
-   uvx skillguard@0.2.0 --version   # expect: skillguard 0.2.0
+   uvx skillguard@0.2.1 --version   # expect: skillguard 0.2.1
    curl -s https://pypi.org/pypi/skillguard/json | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['info']['version'], d['info']['license_expression'])"
    ```
 4. Tag and push the release:
    ```bash
-   git tag v0.2.0 && git push origin v0.2.0
+   git tag v0.2.1 && git push origin v0.2.1
    ```
 5. Aftercare:
    - Replace the account-scoped token with a project-scoped one (or set up
@@ -53,6 +52,6 @@ Until this ships, the `CHANGELOG.md` `[0.2.0]` header line "First PyPI release â
 
 ## Gotchas
 
-- If publish happens on a later date, update the `## [0.2.0] â€” 2026-06-05` date in CHANGELOG.md
+- If publish happens on a later date, update the `## [0.2.1] â€” 2026-06-10` date in CHANGELOG.md
 - `uv run` creates a `uv.lock` â€” the project doesn't track one; delete it after test runs
 - Core package is intentionally zero-dependency; don't add runtime deps as part of release

@@ -37,7 +37,7 @@ from typing import Optional
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 CACHE_DIR = Path.home() / ".claude" / "skillguard-cache"
 GLOBAL_SKILLS_DIR = Path.home() / ".claude" / "skills"

@@ -28,7 +28,17 @@ git clone https://github.com/mannanj/skillguard
 cd skillguard
 pip install -e ".[dev]"
 pytest
+git config core.hooksPath .githooks   # enable repo git hooks (recommended)
 ```
+
+The `.githooks/pre-push` hook keeps live installs honest: it refuses a push to
+main that changes plugin-runtime files (`skillguard/`, `hooks/`,
+`.claude-plugin/`, `install.sh`) without a version bump — installed Claude Code
+plugins only refresh on a bump — and, after a push lands, auto-runs
+`claude plugin update skillguard@skillguard` so a locally-installed plugin
+tracks the repo (log: `~/.claude/logs/skillguard-plugin-autoupdate.log`).
+`tests/test_version_sync.py` enforces that all four version declarations move
+together.
 
 No required runtime dependencies — the core scanner is stdlib-only by design. Keep it that way; optional engines belong behind `[project.optional-dependencies]` extras and graceful availability checks.
 
