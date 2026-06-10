@@ -138,7 +138,19 @@ Formats: `--format table` (default, colored), `--format json`, `--format markdow
 | `SKILLGUARD_SKILLAUDIT_DELAY` | `2.1` | Seconds between SkillAudit calls (30 req/min limit) |
 | `SNYK_TOKEN` | — | Enables the Snyk engine |
 
-To stop the hook blocking a skill you've decided to trust without scanning: `skillguard --skip NAME` — it allows the skill but shows a reminder on every use. (A proper allowlist/baseline file is on the [roadmap](CHANGELOG.md).)
+To stop the hook blocking a skill you've decided to trust without scanning: `skillguard --skip NAME` — it allows the skill but shows a reminder on every use.
+
+## Triaging false positives
+
+Skills that *document* attack patterns (security guides, prompt-engineering references, vendor docs full of `curl | sh` examples) light up scanners without being malicious. After you've reviewed a skill's findings and judged them benign:
+
+```bash
+skillguard --mark-fp NAME      # suppress all of the skill's current non-info findings
+skillguard --unmark-fp NAME    # undo — restores the original verdict
+```
+
+Marks live in `~/.claude/skillguard-cache/_triage.json` and **persist across re-scans**: the skill's cache verdict becomes `clean (N triaged FP)` and stays that way until a scan surfaces something *new*. A finding's identity is its engine + category + file + message — line numbers are ignored (doc edits shift lines), but any genuinely new finding, or a changed message, escapes the suppression and counts again. `info`-level advisories (engine errors, policy notes) are never suppressed.
+
 
 ## Security considerations
 

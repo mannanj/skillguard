@@ -119,13 +119,15 @@ def main() -> None:
     # Scanned — show one-liner status
     max_sev = cache.get("max_severity", "clean")
     finding_count = cache.get("finding_count", 0)
+    triaged = cache.get("triaged_fp_count", 0)
+    fp_note = f" ({triaged} triaged FP)" if triaged else ""
 
     if max_sev == "clean":
-        print(f"✓ SkillGuard: {skill_name} — clean | scanned {date_str}")
+        print(f"✓ SkillGuard: {skill_name} — clean{fp_note} | scanned {date_str}")
     else:
         print(
             f"✓ SkillGuard: {skill_name} — {finding_count} finding(s), "
-            f"max: {max_sev} | scanned {date_str}"
+            f"max: {max_sev}{fp_note} | scanned {date_str}"
         )
     sys.exit(0)
 

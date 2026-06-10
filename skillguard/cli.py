@@ -58,6 +58,7 @@ class Finding:
     file: str = ""
     line: int = 0
     context: str = ""
+    triaged_fp: bool = False
 
     def sort_key(self) -> tuple:
         return (SEVERITY_ORDER.get(self.severity, 99), self.engine, self.category)
@@ -72,10 +73,15 @@ class SkillInfo:
     findings: list[Finding] = field(default_factory=list)
 
     @property
+    def active_findings(self) -> list[Finding]:
+        return [f for f in self.findings if not f.triaged_fp]
+
+    @property
     def max_severity(self) -> str:
-        if not self.findings:
+        active = self.active_findings
+        if not active:
             return "clean"
-        return min(self.findings, key=lambda f: f.sort_key()).severity
+        return min(active, key=lambda f: f.sort_key()).severity
 
     @property
     def mtime_epoch(self) -> float:
@@ -473,11 +479,130 @@ class SnykEngine:
         return findings
 
 
+# ─── Triage (false-positive suppression) ────────────────────────────────────
+
+def triage_path() -> Path:
+    # Computed per-call (not module-level) so tests that repoint CACHE_DIR work.
+    return CACHE_DIR / "_triage.json"
+
+
+def finding_fingerprint(skill_name: str, finding: Finding) -> str:
+    # Line numbers are deliberately excluded: doc edits shift lines, and the
+    # same pattern in the same file deserves the same verdict either way.
+    return "|".join([skill_name, finding.engine, finding.category, finding.file, finding.message])
+
+
+def load_triage() -> dict:
+    try:
+        data = json.loads(triage_path().read_text())
+        if isinstance(data, dict) and isinstance(data.get("false_positives"), dict):
+            return data
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {"version": 1, "false_positives": {}}
+
+
+def save_triage(data: dict) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    _atomic_write_json(triage_path(), data)
+
+
+def apply_triage(skill: SkillInfo, triage: Optional[dict] = None) -> None:
+    """Flag findings previously marked false-positive so they stop counting."""
+    fps = (triage if triage is not None else load_triage())["false_positives"]
+    for f in skill.findings:
+        if finding_fingerprint(skill.name, f) in fps:
+            f.triaged_fp = True
+
+
+def _rewrite_cache_verdict(cache_file: Path, cache: dict, findings: list[Finding]) -> None:
+    """Recompute verdict fields from triaged findings, preserving scan metadata."""
+    active = [f for f in findings if not f.triaged_fp]
+    cache["max_severity"] = min(active, key=lambda f: f.sort_key()).severity if active else "clean"
+    cache["finding_count"] = len(active)
+    cache["triaged_fp_count"] = len(findings) - len(active)
+    cache["findings_summary"] = [
+        f"[{f.engine}/{f.severity}] {f.message} in {f.file}:{f.line}"
+        for f in sorted(active, key=lambda x: x.sort_key())[:10]
+    ]
+    cache["findings"] = [asdict(f) for f in sorted(findings, key=lambda x: x.sort_key())]
+    _atomic_write_json(cache_file, cache)
+
+
+def mark_fp_command(skill_name: str) -> None:
+    """Mark all of a skill's current non-info findings as triaged false positives."""
+    cache_file = CACHE_DIR / f"{skill_name}.json"
+    if not cache_file.exists():
+        print(f"No scan on record for '{skill_name}'. Scan first: skillguard --skill {skill_name}", file=sys.stderr)
+        sys.exit(1)
+    cache = json.loads(cache_file.read_text())
+    raw = cache.get("findings")
+    if raw is None:
+        print(f"Cache for '{skill_name}' predates triage support. Re-scan first: skillguard --skill {skill_name}", file=sys.stderr)
+        sys.exit(1)
+
+    findings = [Finding(**f) for f in raw]
+    triage = load_triage()
+    marked_at = datetime.now(timezone.utc).isoformat()
+    marked = 0
+    for f in findings:
+        # info entries are advisories (engine errors, policy notes), not
+        # security findings — suppressing them would hide real signal.
+        if f.severity == "info" or f.triaged_fp:
+            continue
+        triage["false_positives"][finding_fingerprint(skill_name, f)] = {
+            "skill": skill_name,
+            "engine": f.engine,
+            "severity": f.severity,
+            "category": f.category,
+            "file": f.file,
+            "message": f.message,
+            "marked_at": marked_at,
+        }
+        f.triaged_fp = True
+        marked += 1
+
+    if not marked:
+        print(f"'{skill_name}' has no unmarked non-info findings.")
+        return
+    save_triage(triage)
+    _rewrite_cache_verdict(cache_file, cache, findings)
+    remaining = sum(1 for f in findings if not f.triaged_fp)
+    print(f"Marked {marked} finding(s) in '{skill_name}' as false positives ({remaining} remain active).")
+    print(f"Marks persist across re-scans. Undo with: skillguard --unmark-fp {skill_name}")
+
+
+def unmark_fp_command(skill_name: str) -> None:
+    """Remove all false-positive marks for a skill and restore its cached verdict."""
+    triage = load_triage()
+    fps = triage["false_positives"]
+    keys = [k for k, v in fps.items() if v.get("skill") == skill_name]
+    if not keys:
+        print(f"No false-positive marks recorded for '{skill_name}'.")
+        return
+    for k in keys:
+        del fps[k]
+    save_triage(triage)
+
+    cache_file = CACHE_DIR / f"{skill_name}.json"
+    if cache_file.exists():
+        try:
+            cache = json.loads(cache_file.read_text())
+            raw = cache.get("findings")
+            if raw is not None:
+                findings = [Finding(**{**f, "triaged_fp": False}) for f in raw]
+                _rewrite_cache_verdict(cache_file, cache, findings)
+        except (OSError, json.JSONDecodeError):
+            pass
+    print(f"Removed {len(keys)} false-positive mark(s) for '{skill_name}'.")
+
+
 # ─── Cache ───────────────────────────────────────────────────────────────────
 
 def write_cache(skill: SkillInfo, engines_used: list[str], skipped: bool = False) -> None:
     """Write scan results to cache for hook lookups."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    active = [] if skipped else skill.active_findings
     cache_data = {
         "skill_name": skill.name,
         "scanned_at": datetime.now(timezone.utc).isoformat(),
@@ -485,11 +610,13 @@ def write_cache(skill: SkillInfo, engines_used: list[str], skipped: bool = False
         "engines_used": engines_used,
         "skipped": skipped,
         "max_severity": "skipped" if skipped else skill.max_severity,
-        "finding_count": 0 if skipped else len(skill.findings),
-        "findings_summary": [] if skipped else [
+        "finding_count": len(active),
+        "triaged_fp_count": 0 if skipped else len(skill.findings) - len(active),
+        "findings_summary": [
             f"[{f.engine}/{f.severity}] {f.message} in {f.file}:{f.line}"
-            for f in sorted(skill.findings, key=lambda x: x.sort_key())[:10]
+            for f in sorted(active, key=lambda x: x.sort_key())[:10]
         ],
+        "findings": [] if skipped else [asdict(f) for f in sorted(skill.findings, key=lambda x: x.sort_key())],
     }
     _atomic_write_json(CACHE_DIR / f"{skill.name}.json", cache_data)
 
@@ -512,7 +639,9 @@ def write_skip_cache(skill_name: str) -> None:
         "skipped": True,
         "max_severity": "skipped",
         "finding_count": 0,
+        "triaged_fp_count": 0,
         "findings_summary": [],
+        "findings": [],
     }
     _atomic_write_json(CACHE_DIR / f"{skill_name}.json", cache_data)
 
@@ -531,18 +660,19 @@ DIM = "\033[2m"
 
 def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: str) -> None:
     """Print a formatted table report to stdout."""
-    # Count findings by engine and severity
+    # Count findings by engine and severity (triaged FPs excluded)
     engine_counts: dict[str, dict[str, int]] = {e: {s: 0 for s in SEVERITY_ORDER} for e in engines_used}
     for skill in skills:
-        for f in skill.findings:
+        for f in skill.active_findings:
             if f.engine in engine_counts and f.severity in engine_counts[f.engine]:
                 engine_counts[f.engine][f.severity] += 1
 
     # Scope breakdown
     global_count = sum(1 for s in skills if s.scope == "global")
     local_count = sum(1 for s in skills if s.scope == "local")
-    total_findings = sum(len(s.findings) for s in skills)
-    clean_count = sum(1 for s in skills if not s.findings)
+    total_findings = sum(len(s.active_findings) for s in skills)
+    triaged_total = sum(1 for s in skills for f in s.findings if f.triaged_fp)
+    clean_count = sum(1 for s in skills if not s.active_findings)
 
     print(f"\n{BOLD}SkillGuard Scan Results{RESET} — {scan_time}")
     print("=" * 60)
@@ -564,6 +694,8 @@ def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: st
         color = severity_color(sev) if row_total > 0 else DIM
         cells = "".join(f"{engine_counts[e][sev]:>10}" for e in engines_used)
         print(f"  {color}{sev:<10}{cells}{row_total:>10}{RESET}")
+    if triaged_total:
+        print(f"  {DIM}({triaged_total} finding(s) suppressed as triaged false positives){RESET}")
     print()
 
     # Findings by skill (high+ only in table mode)
@@ -571,7 +703,7 @@ def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: st
     if high_skills:
         print(f"{BOLD}FINDINGS (HIGH+){RESET}")
         for skill in high_skills:
-            high_findings = [f for f in skill.findings if f.severity in ("critical", "high")]
+            high_findings = [f for f in skill.active_findings if f.severity in ("critical", "high")]
             for f in sorted(high_findings, key=lambda x: x.sort_key()):
                 color = severity_color(f.severity)
                 print(f"  {color}{f.severity.upper():<9}{RESET} {skill.name} ({skill.scope}) — [{f.engine}] {f.message}")
@@ -581,11 +713,11 @@ def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: st
 
     # Medium findings (compact)
     med_skills = [s for s in skills if s.max_severity == "medium" and s.max_severity not in ("critical", "high")]
-    med_findings_total = sum(len([f for f in s.findings if f.severity == "medium"]) for s in skills)
+    med_findings_total = sum(len([f for f in s.active_findings if f.severity == "medium"]) for s in skills)
     if med_findings_total > 0:
         print(f"{BOLD}MEDIUM FINDINGS{RESET} ({med_findings_total} total)")
         for skill in skills:
-            med_f = [f for f in skill.findings if f.severity == "medium"]
+            med_f = [f for f in skill.active_findings if f.severity == "medium"]
             if med_f:
                 for f in sorted(med_f, key=lambda x: x.sort_key()):
                     print(f"  {severity_color('medium')}MEDIUM{RESET}   {skill.name} — [{f.engine}] {f.message}")
@@ -607,7 +739,7 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
     # Build structured output
     engine_counts: dict[str, dict[str, int]] = {e: {s: 0 for s in SEVERITY_ORDER} for e in engines_used}
     for skill in skills:
-        for f in skill.findings:
+        for f in skill.active_findings:
             if f.engine in engine_counts and f.severity in engine_counts[f.engine]:
                 engine_counts[f.engine][f.severity] += 1
 
@@ -624,6 +756,7 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
             "high": sum(engine_counts[e]["high"] for e in engines_used),
             "medium": sum(engine_counts[e]["medium"] for e in engines_used),
             "low": sum(engine_counts[e]["low"] for e in engines_used),
+            "triaged_fp": sum(1 for s in skills for f in s.findings if f.triaged_fp),
         },
         "by_scope": {
             "global": {
@@ -639,7 +772,7 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
     }
 
     for skill in skills:
-        for f in skill.findings:
+        for f in skill.active_findings:
             scope_data = output["by_scope"][skill.scope]["findings_by_engine"]
             if f.engine in scope_data and f.severity in scope_data[f.engine]:
                 scope_data[f.engine][f.severity] += 1
@@ -649,6 +782,7 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
             "scope": skill.scope,
             "path": str(skill.path),
             "max_severity": skill.max_severity,
+            "triaged_fp_count": sum(1 for f in skill.findings if f.triaged_fp),
             "findings": [asdict(f) for f in sorted(skill.findings, key=lambda x: x.sort_key())],
         }
         output["skills"].append(skill_data)
@@ -658,7 +792,8 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
 
 def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time: str) -> None:
     """Print markdown report to stdout."""
-    total_findings = sum(len(s.findings) for s in skills)
+    total_findings = sum(len(s.active_findings) for s in skills)
+    triaged_total = sum(1 for s in skills for f in s.findings if f.triaged_fp)
     global_count = sum(1 for s in skills if s.scope == "global")
     local_count = sum(1 for s in skills if s.scope == "local")
 
@@ -667,6 +802,8 @@ def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time:
     print(f"**Engines:** {', '.join(engines_used)}")
     print(f"**Skills:** {len(skills)} total ({global_count} global, {local_count} local)")
     print(f"**Findings:** {total_findings}")
+    if triaged_total:
+        print(f"**Triaged false positives:** {triaged_total}")
     print()
 
     # Summary table
@@ -680,14 +817,14 @@ def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time:
     for sev in ["critical", "high", "medium", "low"]:
         cells = []
         for e in engines_used:
-            count = sum(1 for s in skills for f in s.findings if f.engine == e and f.severity == sev)
+            count = sum(1 for s in skills for f in s.active_findings if f.engine == e and f.severity == sev)
             cells.append(f" {count} ")
-        total = sum(1 for s in skills for f in s.findings if f.severity == sev)
+        total = sum(1 for s in skills for f in s.active_findings if f.severity == sev)
         print(f"| {sev} |" + "|".join(cells) + f"| {total} |")
     print()
 
     # Detailed findings
-    flagged = [s for s in skills if s.findings]
+    flagged = [s for s in skills if s.active_findings]
     if flagged:
         print("## Findings by Skill")
         print()
@@ -695,7 +832,7 @@ def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time:
             sev = skill.max_severity.upper()
             print(f"### {skill.name} ({skill.scope}) — {sev}")
             print()
-            for f in sorted(skill.findings, key=lambda x: x.sort_key()):
+            for f in sorted(skill.active_findings, key=lambda x: x.sort_key()):
                 loc = f" `{f.file}:{f.line}`" if f.file else ""
                 print(f"- **[{f.engine}/{f.severity}]** {f.message}{loc}")
             print()
@@ -712,7 +849,7 @@ def report_quiet(skills: list[SkillInfo]) -> None:
         print(f"⚠ SkillGuard: {flagged}/{total} skill(s) have HIGH+ findings")
         for s in skills:
             if s.max_severity in ("critical", "high"):
-                top = sorted(s.findings, key=lambda f: f.sort_key())[0]
+                top = sorted(s.active_findings, key=lambda f: f.sort_key())[0]
                 print(f"  - {s.name}: {top.message}")
     else:
         print(f"SkillGuard: {total} skills scanned, all clean")
@@ -735,6 +872,10 @@ def main() -> None:
                         help="Output format (default: table)")
     parser.add_argument("--skip", metavar="NAME",
                         help="Mark a skill as skipped (stops hook blocking, shows reminder instead)")
+    parser.add_argument("--mark-fp", metavar="NAME", dest="mark_fp",
+                        help="Mark all of a skill's current non-info findings as triaged false positives (persists across re-scans)")
+    parser.add_argument("--unmark-fp", metavar="NAME", dest="unmark_fp",
+                        help="Remove all false-positive marks for a skill")
     parser.add_argument("--quiet", action="store_true",
                         help="Minimal output (for hooks/scripts)")
     parser.add_argument("-v", "--verbose", action="store_true",
@@ -747,6 +888,14 @@ def main() -> None:
         write_skip_cache(args.skip)
         print(f"Marked '{args.skip}' as skipped. Hook will show a reminder on each use.")
         print(f"To scan it properly: skillguard --skill {args.skip}")
+        sys.exit(0)
+
+    if args.mark_fp:
+        mark_fp_command(args.mark_fp)
+        sys.exit(0)
+
+    if args.unmark_fp:
+        unmark_fp_command(args.unmark_fp)
         sys.exit(0)
 
     # Resolve project directory (cwd or git root)
@@ -806,6 +955,7 @@ def main() -> None:
     # Scan
     scan_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     total = len(skills)
+    triage = load_triage()
 
     for i, skill in enumerate(skills):
         if not args.quiet and args.format == "table":
@@ -819,7 +969,7 @@ def main() -> None:
             if engine.name == "skillaudit" and i < total - 1:
                 time.sleep(SKILLAUDIT_DELAY)
 
-        # Write cache for this skill
+        apply_triage(skill, triage)
         write_cache(skill, engine_names_used)
 
     if not args.quiet and args.format == "table":

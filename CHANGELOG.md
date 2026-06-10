@@ -4,8 +4,11 @@ All notable changes to SkillGuard are documented here. Format: [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- **False-positive triage**: `skillguard --mark-fp NAME` suppresses all of a skill's current non-info findings; `--unmark-fp NAME` undoes it. Marks persist across re-scans in `~/.claude/skillguard-cache/_triage.json`, keyed by engine + category + file + message (line numbers ignored, so doc edits don't invalidate marks — but new findings always count). The hook status line shows `clean (N triaged FP)`, and table/JSON/markdown reports exclude triaged findings from verdicts while keeping them in the JSON for full fidelity
+- Cache entries now store structured `findings` (full finding objects) and `triaged_fp_count` alongside the existing summary fields
+
 ### Planned
-- Allowlist/baseline file (gitleaks-style) for accepted findings
 - Plugin-namespaced skill resolution for the TOCTOU mtime guard
 
 ## [0.2.0] — 2026-06-05
