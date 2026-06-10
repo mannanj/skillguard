@@ -42,6 +42,22 @@ together.
 
 No required runtime dependencies — the core scanner is stdlib-only by design. Keep it that way; optional engines belong behind `[project.optional-dependencies]` extras and graceful availability checks.
 
+## Shipping changes
+
+How a change reaches users, by channel:
+
+- **Claude Code plugin** (live installs): bump the version in all four places —
+  `pyproject.toml`, `skillguard/cli.py` `__version__`, `.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json` (`tests/test_version_sync.py` enforces lockstep) —
+  then commit and `git push`. Installed plugins only refresh on a version bump; the
+  pre-push hook refuses runtime changes without one and auto-refreshes your local
+  install once the push lands. Other users pick it up via `/plugin update skillguard`.
+- **Landing site** (skillguard.sh): `cd landing && wrangler deploy` —
+  see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- **PyPI**: not yet published — tracked in [task.md](task.md).
+
+Changes outside the runtime paths (docs, `landing/`, `tests/`) push without a bump.
+
 ## Pull request checklist
 
 - [ ] Tests pass (`pytest`)
