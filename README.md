@@ -38,6 +38,8 @@ Then scan everything once:
 skillguard --engines local        # instant, zero dependencies
 ```
 
+Installed as a plugin only? `skillguard` isn't on your PATH — when the hook first blocks a skill, it prints the exact `python3 .../cli.py` command to run instead.
+
 From now on, every skill invocation shows a one-line verdict — and unscanned skills are blocked until you scan (or explicitly skip) them.
 
 ## Install
@@ -71,7 +73,7 @@ The scanner walks every `.md/.py/.sh/.js/.ts/.yaml/.json` file in each skill, ru
 
 | Engine | What it brings | Requires |
 |---|---|---|
-| **local** | 50+ compiled regex patterns, 13 threat categories. Deterministic, offline, instant. | Nothing — stdlib only |
+| **local** | 60+ compiled regex patterns, 12 threat categories. Deterministic, offline, instant. | Nothing — stdlib only |
 | **cisco** | [Cisco AI Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner): YARA + YAML rules, AST behavioral analysis | `pip install "skillguard[cisco]"` |
 | **skillaudit** | [SkillAudit](https://skillaudit.vercel.app) REST API: 401 patterns, cross-file analysis | Network |
 | **snyk** | [Snyk agent-scan](https://github.com/snyk/agent-scan): LLM-powered semantic detection | `SNYK_TOKEN` + [uv](https://docs.astral.sh/uv/) |

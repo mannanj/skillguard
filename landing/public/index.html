@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SkillGuard — scan Claude Code skills before Claude runs them</title>
-  <meta name="description" content="Open-source security scanner that catches prompt injection, credential theft, and reverse shells in Claude Code skills before Claude ever executes them. Local-only, no cloud upload." />
+  <meta name="description" content="Open-source scanner for Claude Code skills — catches prompt injection, credential theft, and reverse shells, and blocks unscanned skills with a PreToolUse hook. Local by default." />
+  <link rel="canonical" href="https://skillguard.sh/" />
 
   <!-- Favicon: inline SVG shield-with-check -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233DDC97' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E" />
@@ -12,12 +13,12 @@
   <!-- Open Graph / Twitter -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="SkillGuard — scan Claude Code skills before Claude runs them" />
-  <meta property="og:description" content="Open-source scanner that catches prompt injection, credential theft, and reverse shells in community skills — before Claude ever executes them. Local-only. No cloud upload." />
+  <meta property="og:description" content="Open-source scanner for Claude Code skills — catches prompt injection, credential theft, and reverse shells, and blocks unscanned skills with a PreToolUse hook. Local by default." />
   <meta property="og:image" content="https://skillguard.sh/og.png" />
   <meta property="og:url" content="https://skillguard.sh/" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="SkillGuard — scan Claude Code skills before Claude runs them" />
-  <meta name="twitter:description" content="Open-source scanner that catches prompt injection, credential theft, and reverse shells in community skills — before Claude ever executes them. Local-only. No cloud upload." />
+  <meta name="twitter:description" content="Open-source scanner for Claude Code skills — catches prompt injection, credential theft, and reverse shells, and blocks unscanned skills with a PreToolUse hook. Local by default." />
   <meta name="twitter:image" content="https://skillguard.sh/og.png" />
 
   <!-- Fonts -->
@@ -234,6 +235,155 @@
     .verify-links { display: flex; gap: 16px; margin-left: auto; }
     .verify-links a { font-size: 14px; font-weight: 500; }
 
+    /* ---------- Gate animation ----------
+       Skill chips ride a conveyor toward the SkillGuard gate: clean skills
+       turn green and pass through to Claude; the malicious one is stopped,
+       flagged, and dropped. Pure CSS; static tableau under reduced motion. */
+    .gate {
+      max-width: 860px;
+      margin: 56px auto 0;
+    }
+    .gate-labels {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 6px;
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .gate-track {
+      position: relative;
+      height: 96px;
+      overflow: hidden;
+    }
+    .gate-track::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
+    }
+    .gate-post {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      background: var(--panel-2);
+      border: 1px solid rgba(61, 220, 151, 0.45);
+      border-radius: 50%;
+      box-shadow: 0 0 26px rgba(61, 220, 151, 0.22);
+    }
+    .chip {
+      position: absolute;
+      top: 50%;
+      left: -14%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 7px 12px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text);
+      white-space: nowrap;
+      opacity: 0;
+      will-change: left, opacity;
+      animation: gate-pass 20s linear infinite;
+      animation-delay: var(--d);
+    }
+    .chip-mark { font-weight: 700; opacity: 0; }
+    .chip-clean .chip-mark {
+      color: var(--accent);
+      animation: gate-mark 20s linear infinite;
+      animation-delay: var(--d);
+    }
+    .chip-bad {
+      animation-name: gate-blocked;
+    }
+    .chip-bad .chip-mark {
+      color: var(--red);
+      animation: gate-badmark 20s linear infinite;
+      animation-delay: var(--d);
+    }
+    .chip-tag {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--red);
+      background: rgba(255, 92, 92, 0.08);
+      border: 1px solid rgba(255, 92, 92, 0.35);
+      border-radius: 6px;
+      padding: 1px 8px;
+      white-space: nowrap;
+      opacity: 0;
+      animation: gate-badmark 20s linear infinite;
+      animation-delay: var(--d);
+    }
+
+    /* Clean chip: enter left, turn green at the gate, exit right. */
+    @keyframes gate-pass {
+      0%   { left: -14%; opacity: 0; border-color: var(--border); }
+      2%   { opacity: 1; }
+      21%  { border-color: var(--border); }
+      24%  { border-color: var(--accent); }
+      43%  { opacity: 1; }
+      45%  { left: 114%; opacity: 0; border-color: var(--accent); }
+      100% { left: 114%; opacity: 0; }
+    }
+    @keyframes gate-mark {
+      0%, 21%   { opacity: 0; }
+      24%, 43%  { opacity: 1; }
+      45%, 100% { opacity: 0; }
+    }
+    /* Malicious chip: stopped just shy of the gate, shaken, flagged, dropped.
+       Right-edge anchored (translateX(-100%)) so it never slides under the post. */
+    @keyframes gate-blocked {
+      0%    { left: -14%; top: 50%; opacity: 0; border-color: var(--border); transform: translate(-100%, -50%); }
+      2%    { opacity: 1; }
+      19.5% { left: calc(50% - 30px); top: 50%; border-color: var(--border); transform: translate(-100%, -50%); }
+      20.5% { border-color: var(--red); }
+      21.5% { transform: translate(-100%, -50%) translateX(-4px); }
+      23%   { transform: translate(-100%, -50%) translateX(4px); }
+      24.5% { transform: translate(-100%, -50%) translateX(-2px); }
+      26%   { transform: translate(-100%, -50%) translateX(0); }
+      34%   { left: calc(50% - 30px); top: 50%; opacity: 1; transform: translate(-100%, -50%); }
+      42%   { left: calc(50% - 30px); top: 88%; opacity: 0; border-color: var(--red); transform: translate(-100%, -50%); }
+      100%  { left: calc(50% - 30px); top: 88%; opacity: 0; transform: translate(-100%, -50%); }
+    }
+    @keyframes gate-badmark {
+      0%, 20%   { opacity: 0; }
+      22%, 36%  { opacity: 1; }
+      42%, 100% { opacity: 0; }
+    }
+
+    /* Reduced motion: freeze the story as a static tableau. */
+    @media (prefers-reduced-motion: reduce) {
+      .chip, .chip-mark, .chip-tag { animation: none !important; }
+      .chip { opacity: 1; }
+      .chip.c1 { left: 72%; border-color: var(--accent); }
+      .chip.c1 .chip-mark { opacity: 1; }
+      .chip.cb { left: 36%; border-color: var(--red); }
+      .chip.cb .chip-mark, .chip.cb .chip-tag { opacity: 1; }
+      .chip.c2 { left: 10%; }
+      .chip.c3 { display: none; }
+    }
+
     /* ---------- Section scaffolding ---------- */
     section { padding: 72px 0; }
     .section-label {
@@ -348,6 +498,14 @@
     }
 
     /* ---------- What it catches ---------- */
+    .evidence {
+      max-width: 720px;
+      margin: -26px auto 46px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 16.5px;
+    }
+    .evidence strong { color: var(--text); font-weight: 600; }
     .catches {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -370,6 +528,12 @@
     /* ---------- Second CTA ---------- */
     .cta-section { text-align: center; }
     .cta-section .install { margin-top: 8px; }
+    .license-line {
+      margin: 20px auto 0;
+      max-width: 660px;
+      font-size: 14.5px;
+      color: var(--muted);
+    }
 
     /* ---------- Footer ---------- */
     footer {
@@ -416,6 +580,14 @@
       .verify-links { margin-left: 0; width: 100%; }
       .codebox pre { font-size: 13.5px; }
       .transcript { font-size: 12.5px; }
+      .gate { margin-top: 44px; }
+      .gate-track { height: 84px; }
+      .chip { font-size: 11px; padding: 6px 9px; }
+      .chip-tag { font-size: 10px; }
+      .gate-labels { font-size: 10px; }
+      /* Chips are proportionally wider on a narrow track: run three instead
+         of four so the trailer never catches the chip parked at the gate. */
+      .chip.c2 { display: none; }
     }
     @media (max-width: 380px) {
       .container { padding: 0 16px; }
@@ -438,7 +610,7 @@
         <span>SkillGuard</span>
       </a>
       <nav class="nav-links" aria-label="Primary">
-        <a href="https://github.com/mannanj/skillguard#install" rel="noopener">Docs</a>
+        <a href="https://github.com/mannanj/skillguard#install" rel="noopener">Install</a>
         <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
       </nav>
     </div>
@@ -450,9 +622,9 @@
     <!-- HERO -->
     <section class="hero" aria-labelledby="hero-heading">
       <div class="container">
-        <h1 id="hero-heading">Nobody checks what's inside the skills Claude Code runs. <span class="em">SkillGuard does.</span></h1>
+        <h1 id="hero-heading">Scan every skill. <span class="em">Block what's unscanned.</span></h1>
         <p class="subhead">
-          Open-source scanner that catches prompt injection, credential theft, and reverse shells in community skills — <strong>before Claude ever executes them.</strong> Local-only. No cloud upload.
+          An open-source scanner that catches prompt injection, credential theft, and reverse shells in Claude Code skills — and a <strong>PreToolUse hook that won't run what hasn't been scanned</strong>. Local by default.
         </p>
 
         <div class="install">
@@ -474,6 +646,35 @@
             </span>
           </p>
         </div>
+
+        <!-- Gate animation: clean skills pass, the malicious one is refused -->
+        <div class="gate" role="img" aria-label="Animation: community skills move toward the SkillGuard gate. Clean skills turn green and continue to Claude Code; pretty-formatter is stopped at the gate and flagged for a reverse shell.">
+          <div class="gate-labels" aria-hidden="true">
+            <span>community skills</span>
+            <span>cleared for Claude</span>
+          </div>
+          <div class="gate-track" aria-hidden="true">
+            <div class="gate-post">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </div>
+            <div class="chip chip-clean c1" style="--d: 0s;">
+              <span class="chip-name">pdf-tools</span><span class="chip-mark">&#10003;</span>
+            </div>
+            <div class="chip chip-bad cb" style="--d: 5s;">
+              <span class="chip-name">pretty-formatter</span><span class="chip-mark">&#10007;</span>
+              <span class="chip-tag">reverse shell</span>
+            </div>
+            <div class="chip chip-clean c2" style="--d: 10s;">
+              <span class="chip-name">git-helper</span><span class="chip-mark">&#10003;</span>
+            </div>
+            <div class="chip chip-clean c3" style="--d: 15s;">
+              <span class="chip-name">web-search</span><span class="chip-mark">&#10003;</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -491,7 +692,6 @@
             <span class="terminal-title">skillguard — scan</span>
           </div>
 
-          <!-- Swap src to the R2 URL on launch: src="demo.mp4" -->
           <video
             id="demo-video"
             src="demo.mp4"
@@ -516,50 +716,14 @@
       </div>
     </section>
 
-    <!-- HOW IT WORKS -->
-    <section aria-labelledby="how-heading">
-      <div class="container">
-        <p class="section-label">How it works</p>
-        <h2 id="how-heading">Three ideas, no magic</h2>
-
-        <div class="pillars">
-          <article class="pillar">
-            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-              <path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-              <path d="M8 12h8M8 16h6" />
-            </svg>
-            <h3>Scans every file in every skill</h3>
-            <p>Four engines run in concert: a local zero-dependency pattern engine, plus Cisco, Snyk, and SkillAudit when you want them.</p>
-          </article>
-
-          <article class="pillar">
-            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-              <path d="M12 15v2" />
-            </svg>
-            <h3>Blocks via PreToolUse hook</h3>
-            <p>An unscanned skill never executes. The hook intercepts the invocation and refuses anything it hasn't cleared.</p>
-          </article>
-
-          <article class="pillar">
-            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            <h3>Rules you can read</h3>
-            <p>No cloud upload, no opaque scores. Every detection is a pattern you can open, audit, and understand for yourself.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
     <!-- WHAT IT CATCHES -->
     <section aria-labelledby="catches-heading">
       <div class="container">
         <p class="section-label">What it catches</p>
-        <h2 id="catches-heading">The threats hiding in community skills</h2>
+        <h2 id="catches-heading">Found in the wild</h2>
+        <p class="evidence">
+          When Koi Security audited ClawHub, it found <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting" rel="noopener">341 malicious skills</a> — typosquats shipping infostealers. <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/" rel="noopener">Snyk's ToxicSkills study</a> of the same registry found a critical issue in <strong>13.4% of all skills</strong>. Claude Code skills share the same trust model: files you probably never read, running with your permissions.
+        </p>
 
         <ul class="catches" role="list">
           <li class="catch">
@@ -590,6 +754,45 @@
       </div>
     </section>
 
+    <!-- HOW IT WORKS -->
+    <section aria-labelledby="how-heading">
+      <div class="container">
+        <p class="section-label">How it works</p>
+        <h2 id="how-heading">A scanner, a gate, and rules you can read</h2>
+
+        <div class="pillars">
+          <article class="pillar">
+            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+              <path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+              <path d="M8 12h8M8 16h6" />
+            </svg>
+            <h3>Scans every file in every skill</h3>
+            <p>A zero-dependency local engine checks 60+ readable patterns across 12 threat categories. Optional Cisco, Snyk, and SkillAudit engines add second opinions when you want them.</p>
+          </article>
+
+          <article class="pillar">
+            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+              <path d="M12 15v2" />
+            </svg>
+            <h3>Blocks via PreToolUse hook</h3>
+            <p>Unscanned skills are refused before they run, and a skill modified after its last scan is blocked until you re-scan. Skipping is possible — but it's an explicit choice, never the default.</p>
+          </article>
+
+          <article class="pillar">
+            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <h3>Rules you can read</h3>
+            <p>Local by default — file contents leave your machine only if you enable a cloud engine. Every local detection is a pattern you can open and audit, and false positives are one <code>--mark-fp</code> away.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- SECOND INSTALL CTA -->
     <section class="cta-section" aria-labelledby="cta-heading">
       <div class="container">
@@ -606,12 +809,8 @@
             <pre><code><span class="prompt">&gt; </span>/plugin marketplace add mannanj/skillguard
 <span class="prompt">&gt; </span>/plugin install skillguard@skillguard</code></pre>
           </div>
-          <p class="verify">
-            <span><span class="check">&#10003;</span> Verify: SkillGuard status line appears on your next skill use</span>
-            <span class="verify-links">
-              <a href="https://github.com/mannanj/skillguard#install" rel="noopener">More install methods &rarr;</a>
-              <a href="https://github.com/mannanj/skillguard" rel="noopener">View source</a>
-            </span>
+          <p class="license-line">
+            Open source under <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>. Need it without copyleft obligations? <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">Commercial licenses</a> available.
           </p>
         </div>
       </div>
@@ -632,6 +831,8 @@
         <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
         <span class="sep" aria-hidden="true">·</span>
         <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0 License</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">Commercial license</a>
         <span class="sep" aria-hidden="true">·</span>
         <span class="footer-note">Built for the Claude Code community</span>
       </nav>
