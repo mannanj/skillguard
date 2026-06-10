@@ -366,9 +366,19 @@ class SkillAuditEngine:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode())
 
-            # Parse findings from response
-            for f in data.get("findings", []):
-                severity = f.get("severity", f.get("level", "medium")).lower()
+            # Parse findings from response. /scan/files nests them under
+            # files[].topFindings ({severity, name, rule, line}); accept a
+            # top-level findings list too for older response shapes.
+            raw_findings: list[dict] = list(data.get("findings", []))
+            for file_entry in data.get("files", []):
+                file_name = file_entry.get("file", "")
+                for nested in file_entry.get("topFindings", []):
+                    entry = dict(nested)
+                    entry.setdefault("file", file_name)
+                    raw_findings.append(entry)
+
+            for f in raw_findings:
+                severity = str(f.get("severity", f.get("level", "medium"))).lower()
                 if severity not in SEVERITY_ORDER:
                     # Map SkillAudit risk levels
                     risk_map = {"clean": "info", "moderate": "medium"}
@@ -378,10 +388,25 @@ class SkillAuditEngine:
                     engine="skillaudit",
                     severity=severity,
                     category=f.get("category", f.get("rule", f.get("ruleId", "unknown"))),
-                    message=f.get("message", f.get("description", str(f))),
+                    message=f.get("message", f.get("description", f.get("name", str(f)))),
                     file=f.get("file", ""),
                     line=f.get("line", 0),
                     context=f.get("context", f.get("evidence", ""))[:120],
+                ))
+
+            # topFindings is capped per file: never let a truncated list
+            # read as the complete report.
+            total = data.get("totalFindings", 0)
+            if isinstance(total, int) and total > len(raw_findings):
+                findings.append(Finding(
+                    engine="skillaudit",
+                    severity="info",
+                    category="truncated",
+                    message=(
+                        f"SkillAudit reported {total} finding(s), "
+                        f"{len(raw_findings)} returned in topFindings; "
+                        "see the per-file SkillAudit report for the rest."
+                    ),
                 ))
 
         except urllib.error.HTTPError as e:

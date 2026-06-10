@@ -4,6 +4,9 @@ All notable changes to SkillGuard are documented here. Format: [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- **SkillAudit engine parsed zero findings** after the `/scan/files` API moved results from a top-level `findings` list to `files[].topFindings` — every scan via this engine reported clean, including known-malicious skills. The parser now reads the nested shape (legacy top-level lists still parse), and when the API's `totalFindings` exceeds what `topFindings` returns, an info-level note flags the truncation instead of silently under-reporting
+
 ### Added
 - **False-positive triage**: `skillguard --mark-fp NAME` suppresses all of a skill's current non-info findings; `--unmark-fp NAME` undoes it. Marks persist across re-scans in `~/.claude/skillguard-cache/_triage.json`, keyed by engine + category + file + message (line numbers ignored, so doc edits don't invalidate marks — but new findings always count). The hook status line shows `clean (N triaged FP)`, and table/JSON/markdown reports exclude triaged findings from verdicts while keeping them in the JSON for full fidelity
 - Cache entries now store structured `findings` (full finding objects) and `triaged_fp_count` alongside the existing summary fields
