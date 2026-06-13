@@ -202,3 +202,127 @@ def test_empty_skill_value_allows(hook_path, tmp_path):
     _cache_dir(tmp_path)
     result = _run_hook(hook_path, tmp_path, json.dumps({"tool_input": {"skill": ""}}))
     assert result.returncode == 0
+
+
+# ══ MCP tool gating ═══════════════════════════════════════════════════════════
+#
+# The hook also fires on mcp__<server>__<tool> calls, governed by mcp_policy
+# (off | warn | enforce). Policy is supplied here via the SKILLGUARD_MCP_POLICY
+# env var, which config.mcp_policy honors over the persisted setting.
+
+
+def _mcp_dir(tmp_home: Path) -> Path:
+    d = tmp_home / ".claude" / "skillguard-cache" / "mcps"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _write_mcp_verdict(tmp_home, name, *, max_severity="clean", finding_count=0,
+                       skipped=False, match_tokens=None) -> Path:
+    d = _mcp_dir(tmp_home)
+    data = {
+        "skill_name": name, "target_name": name, "kind": "mcp", "scope": "global",
+        "scanned_at": "2026-06-11T12:00:00+00:00", "skill_mtime_epoch": 0,
+        "engines_used": ["local", "mcp"], "skipped": skipped,
+        "max_severity": "skipped" if skipped else max_severity,
+        "finding_count": finding_count, "triaged_fp_count": 0,
+        "findings_summary": [], "findings": [], "match_tokens": match_tokens or [name],
+    }
+    p = d / f"{name}.json"
+    p.write_text(json.dumps(data))
+    return p
+
+
+def _mcp_event(tool_name: str) -> str:
+    return json.dumps({"tool_name": tool_name, "tool_input": {}})
+
+
+def _run_hook_mcp(hook_path, tmp_home, stdin_text, policy=None):
+    env = dict(os.environ)
+    env["HOME"] = str(tmp_home)
+    env.pop("SKILLGUARD_ACTIVITY_LOG", None)
+    if policy:
+        env["SKILLGUARD_MCP_POLICY"] = policy
+    else:
+        env.pop("SKILLGUARD_MCP_POLICY", None)
+    return subprocess.run(
+        [sys.executable, str(hook_path)], input=stdin_text,
+        capture_output=True, text=True, env=env,
+    )
+
+
+def test_mcp_unscanned_warn_allows_with_nudge(hook_path, tmp_path):
+    _mcp_dir(tmp_path)  # no verdict for this server
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__ghost__do"), policy="warn")
+    assert r.returncode == 0
+    assert "unscanned" in r.stdout.lower()
+
+
+def test_mcp_unscanned_warn_nudges_only_once(hook_path, tmp_path):
+    _mcp_dir(tmp_path)
+    first = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__ghost__do"), policy="warn")
+    second = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__ghost__do"), policy="warn")
+    assert "unscanned" in first.stdout.lower()
+    assert second.stdout.strip() == ""  # gentle: silent on the second call
+    assert second.returncode == 0
+
+
+def test_mcp_unscanned_enforce_blocks(hook_path, tmp_path):
+    _mcp_dir(tmp_path)
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__ghost__do"), policy="enforce")
+    assert r.returncode == 2
+    assert "not been scanned" in r.stderr.lower()
+
+
+def test_mcp_policy_off_ignores(hook_path, tmp_path):
+    _mcp_dir(tmp_path)
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__ghost__do"), policy="off")
+    assert r.returncode == 0
+    assert r.stdout.strip() == "" and r.stderr.strip() == ""
+
+
+def test_mcp_scanned_clean_allows_silently(hook_path, tmp_path):
+    _write_mcp_verdict(tmp_path, "weather", max_severity="clean")
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__weather__forecast"), policy="warn")
+    assert r.returncode == 0
+    # Scanned-clean MCP allows are silent on stdout (MCP tools fire often).
+    assert r.stdout.strip() == ""
+
+
+def test_mcp_scanned_bad_enforce_blocks(hook_path, tmp_path):
+    _write_mcp_verdict(tmp_path, "evil", max_severity="high", finding_count=3)
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__evil__run"), policy="enforce")
+    assert r.returncode == 2
+    assert "finding(s)" in r.stderr
+
+
+def test_mcp_scanned_bad_warn_allows(hook_path, tmp_path):
+    _write_mcp_verdict(tmp_path, "evil", max_severity="high", finding_count=3)
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__evil__run"), policy="warn")
+    assert r.returncode == 0  # warn never blocks
+
+
+def test_mcp_skipped_shows_reminder(hook_path, tmp_path):
+    _write_mcp_verdict(tmp_path, "lazy", skipped=True)
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__lazy__x"), policy="enforce")
+    assert r.returncode == 0  # skipped allows even under enforce
+    assert "SKIPPED" in r.stdout
+
+
+def test_mcp_token_prefix_match_resolves_verdict(hook_path, tmp_path):
+    """A tool name mcp__sun-signal__get_sun_data must map to the 'sun-signal'
+    verdict via its match tokens, not be treated as unscanned."""
+    _write_mcp_verdict(tmp_path, "sun-signal", max_severity="clean",
+                       match_tokens=["sun-signal", "sun_signal"])
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__sun-signal__get_sun_data"), policy="warn")
+    assert r.returncode == 0
+    assert "unscanned" not in r.stdout.lower()  # proves the verdict was matched
+
+
+def test_mcp_corrupted_verdict_enforce_blocks(hook_path, tmp_path):
+    """An unreadable MCP verdict can't be matched → treated as unscanned →
+    enforce blocks (fails toward safety)."""
+    d = _mcp_dir(tmp_path)
+    (d / "broken.json").write_text("{ not json :::")
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__broken__x"), policy="enforce")
+    assert r.returncode == 2

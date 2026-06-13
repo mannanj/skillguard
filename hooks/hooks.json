@@ -1,9 +1,18 @@
 {
-  "description": "SkillGuard — scan skills before Claude runs them; block anything unscanned, corrupted, or modified since its last scan.",
+  "description": "SkillGuard — scan skills and MCP servers before Claude runs them; block anything unscanned, corrupted, or modified since its last scan.",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/skillguard/hook.py"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
         "hooks": [
           {
             "type": "command",

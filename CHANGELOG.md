@@ -6,6 +6,28 @@ All notable changes to SkillGuard are documented here. Format: [Keep a Changelog
 
 ### Planned
 - Plugin-namespaced skill resolution for the TOCTOU mtime guard
+- Exact MCP tool-name prefix reconstruction for plugin-namespaced servers (hook enforce-mode matching is best-effort today)
+
+## [0.3.0] — 2026-06-13
+
+Scans MCP servers as well as skills, and remembers everything it does.
+
+### Added
+- **MCP server scanning** (`--target mcps`, `--mcp NAME`; `--target all` is the default and scans both). SkillGuard discovers every MCP server Claude Code would load — `~/.claude.json` (global + per-project), `~/.claude/mcp.json`, and plugin `.mcp.json` files — and scans each one. A server's scannable surface (a **redacted** config, the launch command, the endpoint URL + header names, and env-var names) is materialized to `~/.claude/skillguard-cache/mcps/<name>/surface/` so every existing engine scans it unchanged, and a new structural **`mcp` engine** adds MCP-specific findings: `curl|sh` / inline `eval` / base64 launch (high), git-source and unpinned-`npx`/`uvx`/`docker` runtimes (medium/low), insecure `http://` and raw-IP endpoints (medium/low), known exfiltration endpoints (critical), and **inline plaintext secrets** in `env`/`headers` (high — flagged by *name*, never by value)
+- **Opt-in live introspection** (`--mcp-introspect`): launches a server, performs the MCP handshake, and scans its tool descriptions and server instructions for prompt injection — the model-facing surface a static config scan can't see. Off by default because it **executes the server**; only use it for servers you trust
+- **Durable history + activity store** (SQLite, stdlib-only, at `~/.claude/skillguard-cache/skillguard.db`). Every scan of every target (skill or MCP) is appended and **never overwritten**, so the full history is preserved: `skillguard --history`, `skillguard --show NAME` (one target's timeline with findings), and `--format json` for all of it. A separate **activity log** records what SkillGuard does and how you interact with it — scans, `--skip`/`--mark-fp` overrides, and every PreToolUse hook decision (allow/warn/block) with its outcome: `skillguard --activity`
+- **Activity-logging toggle** (default **on**): `skillguard --set-activity-logging off` (or env `SKILLGUARD_ACTIVITY_LOG=off`) stops the activity log. Scan history is always recorded regardless — the toggle only affects the activity audit log
+- **MCP tool gating in the hook**, governed by `mcp_policy` (`skillguard --set-mcp-policy …` or env `SKILLGUARD_MCP_POLICY`): `off` ignores MCP tools, **`warn`** (default) never blocks but nudges once per unscanned server and logs every call, `enforce` blocks unscanned servers and critical/high verdicts (symmetric with skills). `--skip-mcp NAME` allows a server under `enforce`
+- `-v/--verbose` now lists low/info advisories (the MCP supply-chain inventory: what a server runs, what env it can read), and JSON reports split `skills` / `mcps` / `targets`
+
+### Security
+- **Secrets never persist.** Env and header *values* are read in memory only, to decide whether an inline literal credential is present; they are never written to a materialized surface, a finding message, the cache, or the history DB. Only variable/header names ever leave the scanner — verified against real configs on every run
+- Static scanning **never launches a server**; introspection (which does) is strictly opt-in and clearly labeled
+- The hook's package integration is import-guarded: if SkillGuard isn't importable, the hook still performs its core blocking duty with a default `warn` policy and no logging — it never crashes a tool call. Activity logging from the hook is best-effort and can never block or fail a tool call
+- MCP verdicts carry a config-file mtime for the TOCTOU guard, so editing a server's config requires a re-scan
+
+### Fixed
+- **curl-installer parity with the plugin.** The remote `install.sh` path now fetches every package module (`config.py`/`model.py`/`store.py`/`mcp.py`), not just `cli.py`/`hook.py`/`__init__.py` — without them the new scanner can't import. The installer also registers **both** PreToolUse matchers (`Skill` *and* `mcp__.*`), matching the plugin's `hooks.json`, so curl-installed setups gate MCP tools too; re-running the installer self-heals an older single-`Skill` registration. A new `tests/test_install_sync.py` fails CI if `install.sh` ever drifts from the package modules or the plugin's matcher set
 
 ## [0.2.1] — 2026-06-10
 

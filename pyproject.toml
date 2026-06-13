@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skillguard"
-version = "0.2.1"
-description = "Scan Claude Code skills for malicious code — before Claude runs them."
+version = "0.3.0"
+description = "Scan Claude Code skills and MCP servers for malicious code — before Claude runs them."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "AGPL-3.0-only OR LicenseRef-Commercial"

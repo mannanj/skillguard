@@ -22,8 +22,10 @@ if [ -d "${SKILLGUARD_SRC:-}" ]; then
     # Local install (from a cloned repo): SKILLGUARD_SRC=. sh install.sh
     cp "$SKILLGUARD_SRC"/skillguard/*.py "$DEST/"
 else
-    # Remote install: fetch the two package files from the main branch
-    for f in cli.py hook.py __init__.py; do
+    # Remote install: fetch every package module from the main branch. cli.py
+    # imports config/mcp/model/store at top level, so all must be present or the
+    # scanner won't import. Keep this list in sync with skillguard/*.py.
+    for f in __init__.py cli.py hook.py config.py model.py store.py mcp.py; do
         python3 -c "
 import urllib.request
 url = '$REPO/raw/main/skillguard/$f'
@@ -50,17 +52,22 @@ if settings_path.exists():
 hooks = settings.setdefault("hooks", {})
 pre = hooks.setdefault("PreToolUse", [])
 
-# Idempotent: skip if a skillguard hook is already registered
-for entry in pre:
-    for h in entry.get("hooks", []):
-        if "skillguard" in h.get("command", "") and "hook.py" in h.get("command", ""):
-            print("  hook already registered — nothing to do")
-            sys.exit(0)
+# Idempotent and self-healing: drop any prior skillguard entries, then add the
+# current matcher set. This keeps the curl install in sync with the plugin's
+# hooks.json (which gates BOTH `Skill` and `mcp__.*`) even on re-run/upgrade —
+# an older install that registered only `Skill` gains MCP gating here.
+def _is_ours(entry):
+    return any(
+        "skillguard" in h.get("command", "") and "hook.py" in h.get("command", "")
+        for h in entry.get("hooks", [])
+    )
 
-pre.append({
-    "matcher": "Skill",
-    "hooks": [{"type": "command", "command": hook_cmd}],
-})
+pre[:] = [e for e in pre if not _is_ours(e)]
+for matcher in ("Skill", "mcp__.*"):
+    pre.append({
+        "matcher": matcher,
+        "hooks": [{"type": "command", "command": hook_cmd}],
+    })
 
 settings_path.parent.mkdir(parents=True, exist_ok=True)
 tmp = settings_path.with_suffix(f".tmp.{os.getpid()}")
