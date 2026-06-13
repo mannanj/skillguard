@@ -9,6 +9,7 @@ venv/
 .DS_Store
 .claude/session-memory/
 .claude/handoff/
+task-brand-names.md
 demo/*.mp4
 demo/*.webm
 landing/demo.mp4
