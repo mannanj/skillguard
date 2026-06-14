@@ -10,6 +10,7 @@ never touch the network.
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -135,3 +136,37 @@ def test_skillaudit_risk_levels_map_to_severities(monkeypatch, skill):
 def test_clean_response_yields_no_findings(monkeypatch, skill):
     payload = {"totalFindings": 0, "files": [{"file": "SKILL.md", "topFindings": []}]}
     assert _scan_with(monkeypatch, skill, payload) == []
+
+
+def test_http_429_yields_rate_limited_info(monkeypatch, skill):
+    """A 429 from the API must degrade to a single info/rate_limited note, never
+    crash the scan."""
+    def raise_429(req, timeout=30):
+        raise urllib.error.HTTPError(
+            "https://skillaudit.example/scan/files", 429,
+            "Too Many Requests", hdrs=None, fp=None,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", raise_429)
+    findings = SkillAuditEngine().scan(skill)
+
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].category == "rate_limited"
+
+
+def test_http_500_yields_engine_error_info(monkeypatch, skill):
+    """Any non-429 HTTP error degrades to an info/engine_error note (not a crash)."""
+    def raise_500(req, timeout=30):
+        raise urllib.error.HTTPError(
+            "https://skillaudit.example/scan/files", 500,
+            "Internal Server Error", hdrs=None, fp=None,
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", raise_500)
+    findings = SkillAuditEngine().scan(skill)
+
+    assert len(findings) == 1
+    assert findings[0].severity == "info"
+    assert findings[0].category == "engine_error"
+    assert "500" in findings[0].message
