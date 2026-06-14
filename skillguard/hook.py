@@ -32,7 +32,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# CACHE_DIR / DB_NAME mirror skillguard.branding.CACHE_DIR_NAME / DB_NAME as inline
+# literals: this hook runs as a standalone script (see install.sh) and must resolve
+# its cache path even when the skillguard package can't be imported, so it cannot
+# import branding. tests/test_branding.py::test_hook_mirrors_branding pins them so
+# a rename can't let them silently drift from the package's naming authority.
 CACHE_DIR = Path.home() / ".claude" / "skillguard-cache"
+DB_NAME = "skillguard.db"
 GLOBAL_SKILLS_DIR = Path.home() / ".claude" / "skills"
 MCP_CACHE_DIR = CACHE_DIR / "mcps"
 NUDGE_DIR = MCP_CACHE_DIR / "_nudged"
@@ -85,7 +91,7 @@ def _log(action: str, **kw) -> None:
         if not _config.activity_logging_enabled(CACHE_DIR):
             return
         _store.log_activity_safe(
-            CACHE_DIR / "skillguard.db", actor="hook", action=action, source="hook", **kw
+            CACHE_DIR / DB_NAME, actor="hook", action=action, source="hook", **kw
         )
     except Exception:
         pass

@@ -36,6 +36,7 @@ file with no test on its main path. So the sequence is:
 | 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | DONE |
 | 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | DONE |
 | 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | DONE |
+| 008.5| Naming authority + shared doc-table heuristic (forward-architecture seams) | P2 | S | 001, 002, 007 | DONE |
 | 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | TODO |
 | 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | TODO |
 
@@ -55,6 +56,31 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   land on the smaller, current code rather than being rewritten mid-split.
 - **010 last** — the agent guide should describe the architecture *after* the
   engine protocol and module split settle, or it documents a moving target.
+
+## What's next after the refactor (the product backlog)
+
+The plans above are the *refactor*; they are not the product roadmap. When 009 and
+010 close, the refactor is done and the next work lives in the root `task*.md` files
+and the known-limitations of `README.md`/`SECURITY.md` — tracked here so closing 010
+hands off cleanly instead of dead-ending:
+
+- **PyPI publish** (`task.md`) — `pip install skillguard` / `uvx skillguard` 404
+  until a token-blocked publish lands. **Sequencing: do the rename first** so we
+  don't publish the old name and force a breaking migration.
+- **Portcullis rename** (`task-brand-names.md`) — plan 008.5 made this a
+  `branding.py` edit + two out-of-package files; the brand decision and migrating an
+  existing `~/.claude/skillguard-cache` / `SKILLGUARD_*` env vars are what remain.
+- **Cisco doc-table false-positives** (`task-cisco-false-positives.md`) — plan 008.5
+  hoisted `is_markdown_table_row` into `patterns.py`; the fix is now an adapter-side
+  post-filter reusing it.
+- **TOCTOU for plugin-namespaced skills** (`README`/`SECURITY` known limitation) —
+  the hook can't locate plugin skills for the mtime check; add a plugin-aware
+  candidate path in `hook.find_skill_mtime` and fail closed on unresolved.
+- **True sandboxing of `--mcp-introspect`** (plan 008 note) — container/seccomp; the
+  `introspect.py` boundary is ready for it.
+
+Full forward-architecture assessment:
+`.claude/checkin/2026-06-14-refactor-conformance-and-forward-architecture.md`.
 
 ## Session log
 
@@ -192,6 +218,31 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   go RED when *all* cleanup is removed. No new `mcp/*.py` module (all changes stay
   in `introspect.py`), so `install.sh` `MODULES` is unchanged. Verified green: ruff
   clean, ruff-format clean, mypy clean (33 files), **167 → 177** pass.
+- **2026-06-14** — Plan 008.5 (inserted from the intent / forward-architecture
+  check-in, NOT the original `improve` roadmap) executed on branch
+  `refactor/naming-authority`, off `main` after 008 merged via PR #2.
+  Behavior-preserving; closed the two "architecture for what's next" gaps the
+  check-in found. **(1) Naming authority:** new zero-dependency `branding.py`
+  (`APP_NAME`/`CACHE_DIR_NAME`/`DB_NAME`/`ENV_PREFIX`, all derived from `APP_NAME`);
+  `config.default_cache_dir`, `store.default_db_path`, `paths.db_path`, and the
+  `config`/`skillaudit` env reads now derive from it instead of hardcoding
+  `"skillguard-cache"`/`"skillguard.db"`/`"SKILLGUARD_"` across 6+ disconnected
+  sites — so the Portcullis rename becomes a one-file edit (+ `pyproject.toml` and
+  `install.sh`, which can't import the package). `hook.py` keeps an inline mirror —
+  it runs standalone and import-guards the package (its `CACHE_DIR` must resolve when
+  the package is unimportable, the 009-A path), so it can't `import branding`; the
+  mirror is pinned to `branding` by a drift test. **(2) Shared heuristic:** the
+  doc-table suppression (`"|" >= 3`) is hoisted from `LocalEngine` into
+  `patterns.is_markdown_table_row` so the planned Cisco false-positive post-filter
+  can reuse the exact rule; the predicate is unchanged so detection stays
+  byte-identical. `branding.py` added to `install.sh` `MODULES`. +10 tests (branding
+  derivation, env-prefix wiring, hook-mirror drift guard, an AST ratchet that fails
+  if the cache-dir name is re-scattered as a literal outside branding/hook, and the
+  hoisted heuristic). Mutation sweep **6/6 CAUGHT** (threshold, both hook-mirror
+  fields, the ratchet, env wiring, the rename tripwire). Also reconnected this
+  roadmap to the product backlog (new "What's next after the refactor" section).
+  Verified green: ruff clean, ruff-format clean, mypy clean (34 files),
+  **177 → 187** pass.
 
 ## Findings considered and rejected
 
