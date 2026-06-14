@@ -35,7 +35,7 @@ file with no test on its main path. So the sequence is:
 | 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | DONE |
 | 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | DONE |
 | 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | DONE |
-| 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | TODO |
+| 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | DONE |
 | 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | TODO |
 | 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | TODO |
 
@@ -163,6 +163,35 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   snapshot-locked verbose Finding messages and the four-source loader; the rest
   are ≤164. Verified green: ruff clean, ruff-format clean, mypy clean (33 files),
   **167** pass (unchanged — a pure structural refactor).
+- **2026-06-14** — Plan 008 executed on branch `refactor/harden-introspect` (off
+  `main` after 007 was fast-forward-merged in). Hardened `mcp/introspect.py` — the
+  only module that executes untrusted code — on the opt-in `--mcp-introspect`
+  path, in three independent ways. **(1) Env minimization:** the stdio child no
+  longer inherits the operator's full shell (`env={**os.environ, ...}` is gone;
+  scoped grep over `skillguard/mcp/` is clean). A new `_minimal_env` passes only
+  `PATH`/`HOME`/`SystemRoot` + the server's *declared* `env`, so an untrusted
+  server can't read every API key in `os.environ`. **(2) Process lifecycle:**
+  `_introspect_stdio` now launches with `start_new_session=True` (POSIX) and
+  always reaps in a `finally` (`_reap`); on timeout it kills the whole process
+  *group* (`_kill_tree` → `os.killpg`) so forked grandchildren can't orphan, and
+  the recovery path narrows `except Exception` to `subprocess.TimeoutExpired` (other
+  errors now propagate to `introspect`'s handler and are recorded, not swallowed).
+  **(3) SSRF guard:** `_introspect_http` refuses loopback/RFC1918/link-local/
+  reserved targets — including the `169.254.169.254` cloud-metadata endpoint — and
+  the `SUSPICIOUS_HOSTS` exfil sinks, resolving DNS so a public name pointing at an
+  internal IP is also caught; a new `--allow-local` flag (threaded `args` → `cli` →
+  `introspect`) lifts it for a trusted internal endpoint. OS-level sandboxing
+  (bubblewrap/seccomp) is explicitly out of scope and tracked as a roadmap item;
+  the printed warning stays honest. +10 tests (env-leak isolation, child reap on
+  timeout, grandchild process-group kill [POSIX-only], 4 internal-IP refusals,
+  exfil-sink refusal, `--allow-local` bypass, public-host connect). Mutation sweep
+  in an isolated worktree: env-minimization, group-kill, and SSRF guard all
+  **CAUGHT**; the `finally: _reap` line ESCAPED as expected — it is spec-mandated
+  defense-in-depth redundant with the `except`-branch kill on the timeout path, and
+  the observable "no living child after timeout" invariant was separately proven to
+  go RED when *all* cleanup is removed. No new `mcp/*.py` module (all changes stay
+  in `introspect.py`), so `install.sh` `MODULES` is unchanged. Verified green: ruff
+  clean, ruff-format clean, mypy clean (33 files), **167 → 177** pass.
 
 ## Findings considered and rejected
 

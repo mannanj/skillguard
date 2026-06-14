@@ -214,7 +214,7 @@ def run_scan(args: argparse.Namespace) -> int:
             )
         for t in mcp_targets:
             srv = t.extra["mcp"]
-            intro = introspect(srv)
+            intro = introspect(srv, allow_local=args.allow_local)
             if intro.get("ok"):
                 write_introspection_surface(t, intro)
             elif not args.quiet:

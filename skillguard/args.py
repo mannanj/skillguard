@@ -47,6 +47,13 @@ def build_parser() -> argparse.ArgumentParser:
         "prompt injection (executes the server — only for servers you trust)",
     )
     parser.add_argument(
+        "--allow-local",
+        dest="allow_local",
+        action="store_true",
+        help="With --mcp-introspect, permit HTTP introspection of loopback/private/"
+        "link-local hosts (refused by default as an SSRF guard)",
+    )
+    parser.add_argument(
         "--no-plugins",
         dest="no_plugins",
         action="store_true",
