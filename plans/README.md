@@ -32,7 +32,7 @@ file with no test on its main path. So the sequence is:
 | 002  | Consolidate shared primitives (atomic-write, severity, paths, time) | P1 | S | 001 | DONE |
 | 003  | Correctness & robustness fixes (DB lifecycle, silent failures, dead code) | P1 | M | 001 | DONE |
 | 004  | DX backstop: ruff + mypy + pre-commit + CI gates | P1 | M | 001 | DONE |
-| 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | TODO |
+| 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | DONE |
 | 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | TODO |
 | 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | TODO |
 | 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | TODO |
@@ -82,6 +82,25 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   lint/typecheck job, and broadened the test matrix to 3.10–3.14 to match the
   advertised classifiers. `pip-audit` intentionally **not** gated (zero runtime
   deps). Verified green: ruff clean, mypy clean (8 files), **156** pass.
+- **2026-06-13** — Plan 005 executed on the same branch: introduced a real
+  `Engine` Protocol (`runtime_checkable`, in `model.py`) + a single
+  `ENGINE_REGISTRY` in `cli.py` as the sole source of truth for "what engines
+  exist". `_build_engines` is now data-driven over the registry (lookup →
+  instantiate → gate on `.available` → skip with the engine's own
+  `unavailable_hint`); `--engines all` resolves via a new `resolve_engine_names`
+  helper to `list(ENGINE_REGISTRY)`; the dispatcher's `engine.name == "skillaudit"`
+  sleep hack became a generic per-engine `inter_target_delay` (SkillAudit carries
+  `SKILLAUDIT_DELAY`, all others `0.0`, incl. `McpConfigEngine` so MCP scans don't
+  `AttributeError`). Added the shared `normalize_severity` to `model.py` and routed
+  Cisco/Snyk through it; SkillAudit keeps its `clean`/`moderate` risk-map (STOP
+  condition) and defers only the unknown→medium clamp. Engine classes stay put
+  (plan 006 moves them). 9 new tests (registry membership/order, dynamic `all`
+  tracking, spec trim, protocol conformance for all registered engines +
+  `McpConfigEngine` + a non-vacuous guard, and two dispatch tests proving the
+  delay is honored by attribute not name). Each load-bearing/new test
+  mutation-proven (dispatch name-check, SkillAudit risk-map, protocol attr,
+  hardcoded `all` list — all CAUGHT). Verified green: ruff clean, mypy clean
+  (8 files), **156 → 165** pass.
 
 ## Findings considered and rejected
 

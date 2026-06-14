@@ -782,6 +782,7 @@ class McpConfigEngine:
 
     name = "mcp"
     available = True
+    inter_target_delay = 0.0
 
     def scan(self, target: SkillInfo) -> list[Finding]:
         mcp = target.extra.get("mcp") if getattr(target, "extra", None) else None

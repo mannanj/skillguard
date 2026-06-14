@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
@@ -49,6 +49,19 @@ def worst_severity(severities: Iterable[str]) -> str:
         if SEVERITY_ORDER.get(s, 99) < SEVERITY_ORDER.get(worst, 99):
             worst = s
     return worst
+
+
+def normalize_severity(sev: str) -> str:
+    """Clamp an arbitrary severity string to the known severity vocabulary.
+
+    Lower-cases the input and returns it when it is one of ``SEVERITY_ORDER``'s
+    keys, otherwise falls back to ``"medium"``. This is the single home for the
+    "unknown severity → medium" rule each engine used to inline. Engines that
+    speak their own risk vocabulary (e.g. SkillAudit's ``clean``/``moderate``)
+    pre-map those terms, then defer here for the final clamp.
+    """
+    s = (sev or "").lower()
+    return s if s in SEVERITY_ORDER else "medium"
 
 
 @dataclass
@@ -93,3 +106,32 @@ class SkillInfo:
         if skill_md.exists():
             return skill_md.stat().st_mtime
         return 0.0
+
+
+@runtime_checkable
+class Engine(Protocol):
+    """Structural contract every scan engine satisfies.
+
+    An engine exposes:
+
+    - ``name`` — stable identifier used in registry keys and finding records;
+    - ``available`` — ``False`` when a backing tool/credential is missing, so the
+      selector can skip it (declared read-only so an engine may back it with a
+      plain attribute *or* a computed property, e.g. SnykEngine reads its token
+      at call time);
+    - ``inter_target_delay`` — seconds the dispatcher sleeps *between* targets for
+      this engine (``0.0`` for everything except rate-limited remote APIs);
+    - ``scan`` — maps one target to its findings.
+
+    Engines are registered in ``skillguard.cli.ENGINE_REGISTRY`` and driven only
+    through these members — the dispatcher never branches on a specific engine.
+    ``runtime_checkable`` so tests can assert ``isinstance(engine, Engine)``.
+    """
+
+    name: str
+    inter_target_delay: float
+
+    @property
+    def available(self) -> bool: ...
+
+    def scan(self, target: SkillInfo, /) -> list[Finding]: ...

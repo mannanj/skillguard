@@ -18,6 +18,7 @@ import pytest
 
 from skillguard import cli
 from skillguard.cli import _build_engines
+from skillguard.model import Engine
 
 
 def test_local_always_selected():
@@ -62,3 +63,58 @@ def test_available_gated_engine_included(monkeypatch):
     engines, used = _build_engines(["local", "cisco"], quiet=True)
     assert used == ["local", "cisco"]
     assert len(engines) == 2
+
+
+# ─── Engine protocol + registry (plan 005) ──────────────────────────────────
+
+EXPECTED_ENGINES = ["local", "cisco", "skillaudit", "snyk"]
+
+
+def test_registry_lists_exactly_the_known_engines():
+    """The registry is the single source of truth for what engines exist; pin
+    its membership AND order — the order is what ``--engines all`` expands to."""
+    assert list(cli.ENGINE_REGISTRY) == EXPECTED_ENGINES
+
+
+def test_all_expands_to_the_registry_keys():
+    """``--engines all`` resolves to the registry keys, not a separate list."""
+    assert cli.resolve_engine_names("all") == list(cli.ENGINE_REGISTRY)
+    assert cli.resolve_engine_names("all") == EXPECTED_ENGINES
+
+
+def test_all_tracks_the_registry_dynamically(monkeypatch):
+    """``all`` is DERIVED from the registry, not a frozen copy: a newly
+    registered engine must show up in the expansion (guards against re-introducing
+    a hand-maintained ``["local", "cisco", ...]`` list)."""
+    monkeypatch.setitem(cli.ENGINE_REGISTRY, "zzfake", cli.LocalEngine)
+    assert cli.resolve_engine_names("all")[-1] == "zzfake"
+    assert cli.resolve_engine_names("all") == list(cli.ENGINE_REGISTRY)
+
+
+def test_explicit_engine_spec_is_split_and_trimmed():
+    assert cli.resolve_engine_names("local, snyk ") == ["local", "snyk"]
+
+
+def test_registered_engines_satisfy_the_protocol():
+    """Every registered factory must build something the dispatcher can drive:
+    name / available / inter_target_delay / scan — i.e. a structural ``Engine``."""
+    for name, factory in cli.ENGINE_REGISTRY.items():
+        assert isinstance(factory(), Engine), f"{name!r} does not satisfy the Engine protocol"
+
+
+def test_mcp_engine_satisfies_the_protocol():
+    """``McpConfigEngine`` is intentionally NOT registered (it is target-gated and
+    appended by ``main()``), but the same dispatcher reads its
+    ``inter_target_delay`` — so it must conform too, or MCP scans would crash."""
+    assert isinstance(cli.McpConfigEngine(), Engine)
+
+
+def test_engine_protocol_is_not_vacuous():
+    """A class missing the engine members must NOT pass the check — proves the
+    ``isinstance`` assertions above actually discriminate (catches a protocol that
+    accidentally requires nothing)."""
+
+    class NotAnEngine:
+        name = "nope"
+
+    assert not isinstance(NotAnEngine(), Engine)

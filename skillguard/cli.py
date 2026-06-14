@@ -30,6 +30,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,9 +55,11 @@ from skillguard.mcp import (
 )
 from skillguard.model import (
     SEVERITY_ORDER,
+    Engine,
     Finding,
     SkillInfo,
     max_severity_of,
+    normalize_severity,
     worst_severity,
 )
 
@@ -292,6 +295,8 @@ class LocalEngine:
     """Pattern-based local scanner. Zero dependencies."""
 
     name = "local"
+    available = True
+    inter_target_delay = 0.0
 
     def scan(self, skill: SkillInfo) -> list[Finding]:
         findings: list[Finding] = []
@@ -350,6 +355,10 @@ class CiscoEngine:
 
     name = "cisco"
     available = False
+    inter_target_delay = 0.0
+    unavailable_hint = (
+        "Cisco engine: cisco-ai-skill-scanner not installed (uv pip install cisco-ai-skill-scanner)"
+    )
 
     def __init__(self) -> None:
         try:
@@ -370,9 +379,7 @@ class CiscoEngine:
             result = scanner.scan_skill(str(skill.path))
 
             for f in getattr(result, "findings", []):
-                severity = getattr(f, "severity", "medium").lower()
-                if severity not in SEVERITY_ORDER:
-                    severity = "medium"
+                severity = normalize_severity(getattr(f, "severity", "medium"))
                 findings.append(
                     Finding(
                         engine="cisco",
@@ -403,6 +410,10 @@ class SkillAuditEngine:
     """SkillAudit.vercel.app REST API scanner."""
 
     name = "skillaudit"
+    available = True
+    # Throttle between targets to respect the API's 30 req/min limit. The
+    # dispatcher reads this generically; no engine-name special-case.
+    inter_target_delay = SKILLAUDIT_DELAY
 
     def scan(self, skill: SkillInfo) -> list[Finding]:
         findings: list[Finding] = []
@@ -455,11 +466,12 @@ class SkillAuditEngine:
                     raw_findings.append(entry)
 
             for f in raw_findings:
-                severity = str(f.get("severity", f.get("level", "medium"))).lower()
-                if severity not in SEVERITY_ORDER:
-                    # Map SkillAudit risk levels
-                    risk_map = {"clean": "info", "moderate": "medium"}
-                    severity = risk_map.get(severity, "medium")
+                # SkillAudit layers its own risk vocabulary ("clean", "moderate")
+                # on top of the standard severities; translate those first, then
+                # defer to the shared normalizer for the unknown → medium clamp.
+                raw_sev = str(f.get("severity", f.get("level", "medium"))).lower()
+                risk_map = {"clean": "info", "moderate": "medium"}
+                severity = risk_map.get(raw_sev, normalize_severity(raw_sev))
 
                 findings.append(
                     Finding(
@@ -529,6 +541,8 @@ class SnykEngine:
     """Snyk agent-scan CLI wrapper."""
 
     name = "snyk"
+    inter_target_delay = 0.0
+    unavailable_hint = "Snyk engine: SNYK_TOKEN not set"
 
     def __init__(self) -> None:
         self.token = os.environ.get("SNYK_TOKEN", "")
@@ -557,9 +571,7 @@ class SnykEngine:
                     data if isinstance(data, list) else data.get("issues", data.get("findings", []))
                 ):
                     if isinstance(issue, dict):
-                        severity = issue.get("severity", "medium").lower()
-                        if severity not in SEVERITY_ORDER:
-                            severity = "medium"
+                        severity = normalize_severity(issue.get("severity", "medium"))
                         findings.append(
                             Finding(
                                 engine="snyk",
@@ -602,6 +614,36 @@ class SnykEngine:
             )
 
         return findings
+
+
+# ─── Engine registry ─────────────────────────────────────────────────────────
+#
+# The single source of truth for "what content engines exist". Adding an engine
+# is one entry here (plus the engine class itself): `_build_engines`, the
+# `--engines all` expansion, and `resolve_engine_names` all derive from this map,
+# so there is no second list to keep in sync. `McpConfigEngine` is deliberately
+# NOT registered — it is the structural MCP analyzer that `main()` appends only
+# when MCP targets exist (a no-op on skills), never a user-selectable engine.
+
+ENGINE_REGISTRY: dict[str, Callable[[], Engine]] = {
+    "local": LocalEngine,
+    "cisco": CiscoEngine,
+    "skillaudit": SkillAuditEngine,
+    "snyk": SnykEngine,
+}
+
+
+def resolve_engine_names(spec: str) -> list[str]:
+    """Expand an ``--engines`` argument into a list of engine names.
+
+    ``"all"`` expands to every registered engine in registry order; any other
+    value is a comma-separated selection trimmed of surrounding whitespace.
+    Unknown names are not rejected here — ``_build_engines`` validates them so the
+    error names the offender.
+    """
+    if spec == "all":
+        return list(ENGINE_REGISTRY)
+    return [e.strip() for e in spec.split(",")]
 
 
 # ─── Triage (false-positive suppression) ────────────────────────────────────
@@ -1302,38 +1344,28 @@ def show_command(name: str, fmt: str) -> None:
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 
-def _build_engines(engine_names: list[str], quiet: bool) -> tuple[list, list[str]]:
-    """Instantiate the requested content engines, skipping unavailable ones."""
-    engines: list = []
+def _build_engines(engine_names: list[str], quiet: bool) -> tuple[list[Engine], list[str]]:
+    """Instantiate the requested engines, skipping any that are unavailable.
+
+    Fully data-driven over ``ENGINE_REGISTRY``: each requested name is looked up,
+    instantiated, and kept only if it reports ``available``. An unavailable engine
+    is announced (unless quiet) via its own ``unavailable_hint``; an unknown name
+    is a hard error (exit 1). Returns ``(engines, names-actually-used)``.
+    """
+    engines: list[Engine] = []
     used: list[str] = []
     for name in engine_names:
-        if name == "local":
-            engines.append(LocalEngine())
-            used.append("local")
-        elif name == "cisco":
-            cisco = CiscoEngine()
-            if cisco.available:
-                engines.append(cisco)
-                used.append("cisco")
-            elif not quiet:
-                print(
-                    f"{DIM}[skip] Cisco engine: cisco-ai-skill-scanner not installed "
-                    f"(uv pip install cisco-ai-skill-scanner){RESET}",
-                    file=sys.stderr,
-                )
-        elif name == "skillaudit":
-            engines.append(SkillAuditEngine())
-            used.append("skillaudit")
-        elif name == "snyk":
-            snyk = SnykEngine()
-            if snyk.available:
-                engines.append(snyk)
-                used.append("snyk")
-            elif not quiet:
-                print(f"{DIM}[skip] Snyk engine: SNYK_TOKEN not set{RESET}", file=sys.stderr)
-        else:
+        factory = ENGINE_REGISTRY.get(name)
+        if factory is None:
             print(f"Unknown engine: {name}", file=sys.stderr)
             sys.exit(1)
+        engine = factory()
+        if engine.available:
+            engines.append(engine)
+            used.append(name)
+        elif not quiet:
+            hint = getattr(engine, "unavailable_hint", "")
+            print(f"{DIM}[skip] {hint}{RESET}", file=sys.stderr)
     return engines, used
 
 
@@ -1534,11 +1566,7 @@ def main() -> None:
         want_mcps = args.target in ("mcps", "all")
 
     # ── Engines ──────────────────────────────────────────────────────────────
-    engine_names = (
-        ["local", "cisco", "skillaudit", "snyk"]
-        if args.engines == "all"
-        else [e.strip() for e in args.engines.split(",")]
-    )
+    engine_names = resolve_engine_names(args.engines)
     engines, engine_names_used = _build_engines(engine_names, args.quiet)
 
     # ── Discover + materialize targets ───────────────────────────────────────
@@ -1651,8 +1679,10 @@ def main() -> None:
 
             for engine in engines:
                 target.findings.extend(engine.scan(target))
-                if engine.name == "skillaudit" and i < total - 1:
-                    time.sleep(SKILLAUDIT_DELAY)
+                # Throttle between targets for any engine that asks for it (e.g.
+                # SkillAudit's rate limit) — by attribute, never by engine name.
+                if i < total - 1 and engine.inter_target_delay:
+                    time.sleep(engine.inter_target_delay)
 
             if target.kind == "mcp":
                 target.findings = _dedupe_mcp_findings(target.findings)
