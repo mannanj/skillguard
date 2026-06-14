@@ -6,6 +6,7 @@
 Imports nothing from the rest of ``skillguard`` so it stays safe to import from
 any module without risking a circular import.
 """
+
 from __future__ import annotations
 
 import json

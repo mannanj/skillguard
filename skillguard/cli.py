@@ -81,7 +81,10 @@ SKILLAUDIT_DELAY = float(os.environ.get("SKILLGUARD_SKILLAUDIT_DELAY", "2.1"))
 
 # ─── Skill Discovery ────────────────────────────────────────────────────────
 
-def discover_skills(scope: str, project_dir: Path, single_skill: str | None = None) -> list[SkillInfo]:
+
+def discover_skills(
+    scope: str, project_dir: Path, single_skill: str | None = None
+) -> list[SkillInfo]:
     """Find all skills in global and/or local directories."""
     skills: list[SkillInfo] = []
 
@@ -113,15 +116,26 @@ def discover_skills(scope: str, project_dir: Path, single_skill: str | None = No
             skill_files = []
             if resolved.is_dir():
                 for f in resolved.rglob("*"):
-                    if f.is_file() and f.suffix in (".md", ".py", ".sh", ".js", ".ts", ".yaml", ".yml", ".json"):
+                    if f.is_file() and f.suffix in (
+                        ".md",
+                        ".py",
+                        ".sh",
+                        ".js",
+                        ".ts",
+                        ".yaml",
+                        ".yml",
+                        ".json",
+                    ):
                         skill_files.append(f)
 
-            skills.append(SkillInfo(
-                name=entry.name,
-                path=resolved,
-                scope=skill_scope,
-                files=skill_files,
-            ))
+            skills.append(
+                SkillInfo(
+                    name=entry.name,
+                    path=resolved,
+                    scope=skill_scope,
+                    files=skill_files,
+                )
+            )
 
     return skills
 
@@ -131,15 +145,22 @@ def discover_skills(scope: str, project_dir: Path, single_skill: str | None = No
 # Each pattern: (category, severity, compiled_regex, description)
 LOCAL_PATTERNS: list[tuple[str, str, re.Pattern, str]] = []
 
+
 def _p(cat: str, sev: str, pattern: str, desc: str) -> None:
     """Register a detection pattern."""
     LOCAL_PATTERNS.append((cat, sev, re.compile(pattern, re.IGNORECASE), desc))
+
 
 # --- Reverse shells & RCE (CRITICAL) ---
 _p("reverse_shell", "critical", r"/dev/tcp/", "Reverse shell via /dev/tcp")
 _p("reverse_shell", "critical", r"nc\s+(-e|-c)\s+", "Netcat reverse shell")
 _p("reverse_shell", "critical", r"bash\s+-i\s+>&?\s*/dev/", "Bash interactive reverse shell")
-_p("reverse_shell", "critical", r"python[23]?\s+-c\s+['\"]import\s+socket", "Python socket reverse shell")
+_p(
+    "reverse_shell",
+    "critical",
+    r"python[23]?\s+-c\s+['\"]import\s+socket",
+    "Python socket reverse shell",
+)
 _p("reverse_shell", "critical", r"mkfifo\s+/tmp/", "Named pipe reverse shell")
 _p("reverse_shell", "critical", r"socat\s+exec:", "Socat reverse shell")
 
@@ -152,12 +173,37 @@ _p("data_exfil", "critical", r"pipedream\.net", "Data exfiltration via Pipedream
 _p("data_exfil", "critical", r"interact\.sh", "Data exfiltration via interactsh")
 
 # --- Prompt injection (HIGH) ---
-_p("prompt_injection", "high", r"ignore\s+(all\s+)?previous\s+instructions", "Prompt injection: ignore previous instructions")
-_p("prompt_injection", "high", r"forget\s+(all\s+)?(your|prior)\s+instructions", "Prompt injection: forget instructions")
-_p("prompt_injection", "high", r"you\s+are\s+now\s+(a|an)\s+", "Prompt injection: role reassignment")
-_p("prompt_injection", "high", r"disregard\s+(all\s+)?(prior|previous|above)", "Prompt injection: disregard prior")
+_p(
+    "prompt_injection",
+    "high",
+    r"ignore\s+(all\s+)?previous\s+instructions",
+    "Prompt injection: ignore previous instructions",
+)
+_p(
+    "prompt_injection",
+    "high",
+    r"forget\s+(all\s+)?(your|prior)\s+instructions",
+    "Prompt injection: forget instructions",
+)
+_p(
+    "prompt_injection",
+    "high",
+    r"you\s+are\s+now\s+(a|an)\s+",
+    "Prompt injection: role reassignment",
+)
+_p(
+    "prompt_injection",
+    "high",
+    r"disregard\s+(all\s+)?(prior|previous|above)",
+    "Prompt injection: disregard prior",
+)
 _p("prompt_injection", "high", r"new\s+system\s+prompt", "Prompt injection: new system prompt")
-_p("prompt_injection", "high", r"override\s+(your\s+)?(instructions|rules|guidelines)", "Prompt injection: override rules")
+_p(
+    "prompt_injection",
+    "high",
+    r"override\s+(your\s+)?(instructions|rules|guidelines)",
+    "Prompt injection: override rules",
+)
 _p("prompt_injection", "high", r"jailbreak", "Prompt injection: jailbreak reference")
 
 # --- Environment variable exfiltration (HIGH) ---
@@ -169,7 +215,12 @@ _p("env_exfil", "high", r"\$\{?[A-Z_]*SECRET[A-Z_]*\}?\s*[|>]", "Piping secrets"
 _p("env_exfil", "high", r"\$\{?[A-Z_]*TOKEN[A-Z_]*\}?\s*[|>]", "Piping tokens")
 
 # --- Credential theft (HIGH) ---
-_p("credential_theft", "high", r"~/.ssh/(id_rsa|id_ed25519|config|known_hosts)", "Accessing SSH keys/config")
+_p(
+    "credential_theft",
+    "high",
+    r"~/.ssh/(id_rsa|id_ed25519|config|known_hosts)",
+    "Accessing SSH keys/config",
+)
 _p("credential_theft", "high", r"~/.aws/(credentials|config)", "Accessing AWS credentials")
 _p("credential_theft", "high", r"~/.gcloud/", "Accessing GCloud credentials")
 _p("credential_theft", "high", r"~/.kube/config", "Accessing Kubernetes config")
@@ -186,10 +237,25 @@ _p("shell_pipe", "high", r"curl\s+[^\n]*\|\s*python", "curl piped to Python exec
 
 # --- Obfuscation (HIGH) ---
 _p("obfuscation", "high", r"(?:base64\s+--?d|atob|b64decode)\s*[(\s]", "Base64 decoding execution")
-_p("obfuscation", "high", r"\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}", "Hex-encoded strings (4+ bytes)")
+_p(
+    "obfuscation",
+    "high",
+    r"\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}",
+    "Hex-encoded strings (4+ bytes)",
+)
 _p("obfuscation", "high", r"[\u200b\u200c\u200d\ufeff]{3,}", "Zero-width character obfuscation")
-_p("obfuscation", "high", r"String\.fromCharCode\s*\(\s*\d+\s*(,\s*\d+\s*){3,}", "String.fromCharCode obfuscation")
-_p("obfuscation", "high", r"\\u00[0-9a-f]{2}\\u00[0-9a-f]{2}\\u00[0-9a-f]{2}", "Unicode escape obfuscation")
+_p(
+    "obfuscation",
+    "high",
+    r"String\.fromCharCode\s*\(\s*\d+\s*(,\s*\d+\s*){3,}",
+    "String.fromCharCode obfuscation",
+)
+_p(
+    "obfuscation",
+    "high",
+    r"\\u00[0-9a-f]{2}\\u00[0-9a-f]{2}\\u00[0-9a-f]{2}",
+    "Unicode escape obfuscation",
+)
 
 # --- Persistence (MEDIUM) ---
 _p("persistence", "medium", r"crontab\s+-[el]", "Crontab manipulation")
@@ -238,7 +304,11 @@ class LocalEngine:
             lines = content.split("\n")
             for line_num, line in enumerate(lines, 1):
                 # Skip YAML frontmatter lines (metadata, not instructions)
-                if line_num <= 10 and (line.startswith("---") or line.startswith("name:") or line.startswith("description:")):
+                if line_num <= 10 and (
+                    line.startswith("---")
+                    or line.startswith("name:")
+                    or line.startswith("description:")
+                ):
                     continue
 
                 for category, severity, pattern, description in LOCAL_PATTERNS:
@@ -253,20 +323,27 @@ class LocalEngine:
                         if "|" in stripped and stripped.count("|") >= 3:
                             continue
 
-                        rel_path = str(file_path.relative_to(skill.path)) if str(file_path).startswith(str(skill.path)) else file_path.name
-                        findings.append(Finding(
-                            engine="local",
-                            severity=severity,
-                            category=category,
-                            message=description,
-                            file=rel_path,
-                            line=line_num,
-                            context=line.strip()[:120],
-                        ))
+                        rel_path = (
+                            str(file_path.relative_to(skill.path))
+                            if str(file_path).startswith(str(skill.path))
+                            else file_path.name
+                        )
+                        findings.append(
+                            Finding(
+                                engine="local",
+                                severity=severity,
+                                category=category,
+                                message=description,
+                                file=rel_path,
+                                line=line_num,
+                                context=line.strip()[:120],
+                            )
+                        )
         return findings
 
 
 # ─── Engine: Cisco Skill Scanner ────────────────────────────────────────────
+
 
 class CiscoEngine:
     """Cisco AI Defense skill scanner via Python SDK."""
@@ -277,6 +354,7 @@ class CiscoEngine:
     def __init__(self) -> None:
         try:
             from skill_scanner import SkillScanner
+
             self.available = True
             self._scanner_cls = SkillScanner
         except ImportError:
@@ -295,26 +373,31 @@ class CiscoEngine:
                 severity = getattr(f, "severity", "medium").lower()
                 if severity not in SEVERITY_ORDER:
                     severity = "medium"
-                findings.append(Finding(
-                    engine="cisco",
-                    severity=severity,
-                    category=getattr(f, "category", getattr(f, "rule_id", "unknown")),
-                    message=getattr(f, "message", getattr(f, "description", str(f))),
-                    file=getattr(f, "file", ""),
-                    line=getattr(f, "line", 0),
-                    context=getattr(f, "context", "")[:120],
-                ))
+                findings.append(
+                    Finding(
+                        engine="cisco",
+                        severity=severity,
+                        category=getattr(f, "category", getattr(f, "rule_id", "unknown")),
+                        message=getattr(f, "message", getattr(f, "description", str(f))),
+                        file=getattr(f, "file", ""),
+                        line=getattr(f, "line", 0),
+                        context=getattr(f, "context", "")[:120],
+                    )
+                )
         except Exception as e:
-            findings.append(Finding(
-                engine="cisco",
-                severity="info",
-                category="engine_error",
-                message=f"Cisco scanner error: {e}",
-            ))
+            findings.append(
+                Finding(
+                    engine="cisco",
+                    severity="info",
+                    category="engine_error",
+                    message=f"Cisco scanner error: {e}",
+                )
+            )
         return findings
 
 
 # ─── Engine: SkillAudit REST API ────────────────────────────────────────────
+
 
 class SkillAuditEngine:
     """SkillAudit.vercel.app REST API scanner."""
@@ -329,7 +412,11 @@ class SkillAuditEngine:
         for file_path in skill.files[:30]:  # API limit: 30 files
             try:
                 content = file_path.read_text(errors="replace")
-                rel = str(file_path.relative_to(skill.path)) if str(file_path).startswith(str(skill.path)) else file_path.name
+                rel = (
+                    str(file_path.relative_to(skill.path))
+                    if str(file_path).startswith(str(skill.path))
+                    else file_path.name
+                )
                 files_payload.append({"name": rel, "content": content})
             except OSError:
                 continue
@@ -339,10 +426,12 @@ class SkillAuditEngine:
 
         # Use /scan/files for multi-file analysis
         try:
-            payload = json.dumps({
-                "projectName": skill.name,
-                "files": files_payload,
-            }).encode()
+            payload = json.dumps(
+                {
+                    "projectName": skill.name,
+                    "files": files_payload,
+                }
+            ).encode()
 
             req = urllib.request.Request(
                 f"{SKILLAUDIT_BASE}/scan/files",
@@ -372,58 +461,69 @@ class SkillAuditEngine:
                     risk_map = {"clean": "info", "moderate": "medium"}
                     severity = risk_map.get(severity, "medium")
 
-                findings.append(Finding(
-                    engine="skillaudit",
-                    severity=severity,
-                    category=f.get("category", f.get("rule", f.get("ruleId", "unknown"))),
-                    message=f.get("message", f.get("description", f.get("name", str(f)))),
-                    file=f.get("file", ""),
-                    line=f.get("line", 0),
-                    context=f.get("context", f.get("evidence", ""))[:120],
-                ))
+                findings.append(
+                    Finding(
+                        engine="skillaudit",
+                        severity=severity,
+                        category=f.get("category", f.get("rule", f.get("ruleId", "unknown"))),
+                        message=f.get("message", f.get("description", f.get("name", str(f)))),
+                        file=f.get("file", ""),
+                        line=f.get("line", 0),
+                        context=f.get("context", f.get("evidence", ""))[:120],
+                    )
+                )
 
             # topFindings is capped per file: never let a truncated list
             # read as the complete report.
             total = data.get("totalFindings", 0)
             if isinstance(total, int) and total > len(raw_findings):
-                findings.append(Finding(
-                    engine="skillaudit",
-                    severity="info",
-                    category="truncated",
-                    message=(
-                        f"SkillAudit reported {total} finding(s), "
-                        f"{len(raw_findings)} returned in topFindings; "
-                        "see the per-file SkillAudit report for the rest."
-                    ),
-                ))
+                findings.append(
+                    Finding(
+                        engine="skillaudit",
+                        severity="info",
+                        category="truncated",
+                        message=(
+                            f"SkillAudit reported {total} finding(s), "
+                            f"{len(raw_findings)} returned in topFindings; "
+                            "see the per-file SkillAudit report for the rest."
+                        ),
+                    )
+                )
 
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                findings.append(Finding(
-                    engine="skillaudit",
-                    severity="info",
-                    category="rate_limited",
-                    message="SkillAudit API rate limited (30 req/min). Try again later.",
-                ))
+                findings.append(
+                    Finding(
+                        engine="skillaudit",
+                        severity="info",
+                        category="rate_limited",
+                        message="SkillAudit API rate limited (30 req/min). Try again later.",
+                    )
+                )
             else:
-                findings.append(Finding(
+                findings.append(
+                    Finding(
+                        engine="skillaudit",
+                        severity="info",
+                        category="engine_error",
+                        message=f"SkillAudit API error: HTTP {e.code}",
+                    )
+                )
+        except Exception as e:
+            findings.append(
+                Finding(
                     engine="skillaudit",
                     severity="info",
                     category="engine_error",
-                    message=f"SkillAudit API error: HTTP {e.code}",
-                ))
-        except Exception as e:
-            findings.append(Finding(
-                engine="skillaudit",
-                severity="info",
-                category="engine_error",
-                message=f"SkillAudit error: {e}",
-            ))
+                    message=f"SkillAudit error: {e}",
+                )
+            )
 
         return findings
 
 
 # ─── Engine: Snyk Agent Scan ────────────────────────────────────────────────
+
 
 class SnykEngine:
     """Snyk agent-scan CLI wrapper."""
@@ -453,46 +553,59 @@ class SnykEngine:
 
             if result.stdout.strip():
                 data = json.loads(result.stdout)
-                for issue in data if isinstance(data, list) else data.get("issues", data.get("findings", [])):
+                for issue in (
+                    data if isinstance(data, list) else data.get("issues", data.get("findings", []))
+                ):
                     if isinstance(issue, dict):
                         severity = issue.get("severity", "medium").lower()
                         if severity not in SEVERITY_ORDER:
                             severity = "medium"
-                        findings.append(Finding(
-                            engine="snyk",
-                            severity=severity,
-                            category=str(issue.get("code", issue.get("type", "unknown"))),
-                            message=str(issue.get("message", issue.get("description", str(issue)))),
-                            file=issue.get("file", ""),
-                            line=issue.get("line", 0),
-                        ))
+                        findings.append(
+                            Finding(
+                                engine="snyk",
+                                severity=severity,
+                                category=str(issue.get("code", issue.get("type", "unknown"))),
+                                message=str(
+                                    issue.get("message", issue.get("description", str(issue)))
+                                ),
+                                file=issue.get("file", ""),
+                                line=issue.get("line", 0),
+                            )
+                        )
 
         except FileNotFoundError:
-            findings.append(Finding(
-                engine="snyk",
-                severity="info",
-                category="engine_error",
-                message="uvx not found. Install uv: https://docs.astral.sh/uv/",
-            ))
+            findings.append(
+                Finding(
+                    engine="snyk",
+                    severity="info",
+                    category="engine_error",
+                    message="uvx not found. Install uv: https://docs.astral.sh/uv/",
+                )
+            )
         except subprocess.TimeoutExpired:
-            findings.append(Finding(
-                engine="snyk",
-                severity="info",
-                category="engine_error",
-                message="Snyk agent-scan timed out (90s limit)",
-            ))
+            findings.append(
+                Finding(
+                    engine="snyk",
+                    severity="info",
+                    category="engine_error",
+                    message="Snyk agent-scan timed out (90s limit)",
+                )
+            )
         except Exception as e:
-            findings.append(Finding(
-                engine="snyk",
-                severity="info",
-                category="engine_error",
-                message=f"Snyk error: {e}",
-            ))
+            findings.append(
+                Finding(
+                    engine="snyk",
+                    severity="info",
+                    category="engine_error",
+                    message=f"Snyk error: {e}",
+                )
+            )
 
         return findings
 
 
 # ─── Triage (false-positive suppression) ────────────────────────────────────
+
 
 def triage_path() -> Path:
     # Computed per-call (not module-level) so tests that repoint CACHE_DIR work.
@@ -558,19 +671,28 @@ def mark_fp_command(skill_name: str) -> None:
     """Mark all of a skill/MCP's current non-info findings as triaged false positives."""
     cache_file = resolve_existing_cache(skill_name)
     if cache_file is None:
-        print(f"No scan on record for '{skill_name}'. Scan first: skillguard --skill {skill_name}"
-              f"  (or --mcp {skill_name})", file=sys.stderr)
+        print(
+            f"No scan on record for '{skill_name}'. Scan first: skillguard --skill {skill_name}"
+            f"  (or --mcp {skill_name})",
+            file=sys.stderr,
+        )
         sys.exit(1)
     try:
         cache = json.loads(cache_file.read_text())
     except (OSError, json.JSONDecodeError):
         # A torn/unreadable cache must exit cleanly, not traceback — mirror the
         # hook's fail-closed guard (hook.py) and unmark_fp_command's read guard.
-        print(f"Cache for '{skill_name}' is corrupted or unreadable. Re-scan first: skillguard --skill {skill_name}", file=sys.stderr)
+        print(
+            f"Cache for '{skill_name}' is corrupted or unreadable. Re-scan first: skillguard --skill {skill_name}",
+            file=sys.stderr,
+        )
         sys.exit(1)
     raw = cache.get("findings")
     if raw is None:
-        print(f"Cache for '{skill_name}' predates triage support. Re-scan first: skillguard --skill {skill_name}", file=sys.stderr)
+        print(
+            f"Cache for '{skill_name}' predates triage support. Re-scan first: skillguard --skill {skill_name}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     findings = [Finding(**f) for f in raw]
@@ -600,7 +722,9 @@ def mark_fp_command(skill_name: str) -> None:
     save_triage(triage)
     _rewrite_cache_verdict(cache_file, cache, findings)
     remaining = sum(1 for f in findings if not f.triaged_fp)
-    print(f"Marked {marked} finding(s) in '{skill_name}' as false positives ({remaining} remain active).")
+    print(
+        f"Marked {marked} finding(s) in '{skill_name}' as false positives ({remaining} remain active)."
+    )
     print(f"Marks persist across re-scans. Undo with: skillguard --unmark-fp {skill_name}")
 
 
@@ -630,6 +754,7 @@ def unmark_fp_command(skill_name: str) -> None:
 
 
 # ─── Cache ───────────────────────────────────────────────────────────────────
+
 
 def cache_path_for(name: str, kind: str = "skill") -> Path:
     """Where a target's verdict cache lives. MCP verdicts live under a ``mcps/``
@@ -662,7 +787,9 @@ def write_cache(skill: SkillInfo, engines_used: list[str], skipped: bool = False
             f"[{f.engine}/{f.severity}] {f.message} in {f.file}:{f.line}"
             for f in sorted(active, key=lambda x: x.sort_key())[:10]
         ],
-        "findings": [] if skipped else [asdict(f) for f in sorted(skill.findings, key=lambda x: x.sort_key())],
+        "findings": []
+        if skipped
+        else [asdict(f) for f in sorted(skill.findings, key=lambda x: x.sort_key())],
     }
     # MCP verdicts carry the tokens the hook uses to map mcp__<server>__tool
     # calls back to this verdict.
@@ -695,6 +822,7 @@ def write_skip_cache(skill_name: str, kind: str = "skill") -> None:
 
 
 # ─── History + Activity store integration ────────────────────────────────────
+
 
 def db_path() -> Path:
     """History DB path, computed per-call so tests that repoint CACHE_DIR work."""
@@ -746,21 +874,33 @@ def _dedupe_mcp_findings(findings: list[Finding]) -> list[Finding]:
 
 # ─── Reporting ───────────────────────────────────────────────────────────────
 
+
 def severity_color(sev: str) -> str:
     """ANSI color for severity level."""
-    colors = {"critical": "\033[91m", "high": "\033[93m", "medium": "\033[33m", "low": "\033[36m", "info": "\033[37m", "clean": "\033[92m"}
+    colors = {
+        "critical": "\033[91m",
+        "high": "\033[93m",
+        "medium": "\033[33m",
+        "low": "\033[36m",
+        "info": "\033[37m",
+        "clean": "\033[92m",
+    }
     return colors.get(sev, "")
+
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
 DIM = "\033[2m"
 
 
-def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: str,
-                 verbose: bool = False) -> None:
+def report_table(
+    skills: list[SkillInfo], engines_used: list[str], scan_time: str, verbose: bool = False
+) -> None:
     """Print a formatted table report to stdout."""
     # Count findings by engine and severity (triaged FPs excluded)
-    engine_counts: dict[str, dict[str, int]] = {e: {s: 0 for s in SEVERITY_ORDER} for e in engines_used}
+    engine_counts: dict[str, dict[str, int]] = {
+        e: {s: 0 for s in SEVERITY_ORDER} for e in engines_used
+    }
     for skill in skills:
         for f in skill.active_findings:
             if f.engine in engine_counts and f.severity in engine_counts[f.engine]:
@@ -808,45 +948,58 @@ def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: st
             for f in sorted(high_findings, key=lambda x: x.sort_key()):
                 color = severity_color(f.severity)
                 label = f"{skill.kind}/{skill.scope}" if skill.kind == "mcp" else skill.scope
-                print(f"  {color}{f.severity.upper():<9}{RESET} {skill.name} ({label}) — [{f.engine}] {f.message}")
+                print(
+                    f"  {color}{f.severity.upper():<9}{RESET} {skill.name} ({label}) — [{f.engine}] {f.message}"
+                )
                 if f.file:
                     print(f"           {DIM}{f.file}:{f.line}{RESET}")
         print()
 
     # Medium findings (compact)
-    med_findings_total = sum(len([f for f in s.active_findings if f.severity == "medium"]) for s in skills)
+    med_findings_total = sum(
+        len([f for f in s.active_findings if f.severity == "medium"]) for s in skills
+    )
     if med_findings_total > 0:
         print(f"{BOLD}MEDIUM FINDINGS{RESET} ({med_findings_total} total)")
         for skill in skills:
             med_f = [f for f in skill.active_findings if f.severity == "medium"]
             if med_f:
                 for f in sorted(med_f, key=lambda x: x.sort_key()):
-                    print(f"  {severity_color('medium')}MEDIUM{RESET}   {skill.name} — [{f.engine}] {f.message}")
+                    print(
+                        f"  {severity_color('medium')}MEDIUM{RESET}   {skill.name} — [{f.engine}] {f.message}"
+                    )
         print()
 
     # Low/info advisories — supply-chain inventory and notes. Counted always,
     # listed only under -v so they don't drown the threat signal. For MCPs these
     # are the "what does this server run / what can it read" inventory.
     if verbose:
-        advisories = [(s, f) for s in skills for f in s.active_findings
-                      if f.severity in ("low", "info")]
+        advisories = [
+            (s, f) for s in skills for f in s.active_findings if f.severity in ("low", "info")
+        ]
         if advisories:
             print(f"{BOLD}ADVISORIES (low/info){RESET}")
             for s, f in sorted(advisories, key=lambda sf: sf[1].sort_key()):
                 label = f"{s.kind}/{s.scope}" if s.kind == "mcp" else s.scope
-                print(f"  {severity_color(f.severity)}{f.severity.upper():<8}{RESET} "
-                      f"{s.name} ({label}) — [{f.engine}] {f.message}")
+                print(
+                    f"  {severity_color(f.severity)}{f.severity.upper():<8}{RESET} "
+                    f"{s.name} ({label}) — [{f.engine}] {f.message}"
+                )
             print()
 
     # Summary line
     noun = "target" if mcp_targets else "skill"
     if total_findings == 0:
-        print(f"{severity_color('clean')}✓ All {len(skills)} {noun}s clean across all engines{RESET}")
+        print(
+            f"{severity_color('clean')}✓ All {len(skills)} {noun}s clean across all engines{RESET}"
+        )
     else:
         print(f"✓ {clean_count}/{len(skills)} {noun}s clean")
         if any(s.max_severity in ("critical", "high") for s in skills):
             bad = sum(1 for s in skills if s.max_severity in ("critical", "high"))
-            print(f"{severity_color('high')}⚠ {bad} {noun}(s) have HIGH+ findings — review recommended{RESET}")
+            print(
+                f"{severity_color('high')}⚠ {bad} {noun}(s) have HIGH+ findings — review recommended{RESET}"
+            )
     print()
 
 
@@ -857,7 +1010,9 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
     back-compat and holds skill targets only; ``mcps`` is new), plus a combined
     ``targets`` array. ``by_scope`` covers skill scopes only.
     """
-    engine_counts: dict[str, dict[str, int]] = {e: {s: 0 for s in SEVERITY_ORDER} for e in engines_used}
+    engine_counts: dict[str, dict[str, int]] = {
+        e: {s: 0 for s in SEVERITY_ORDER} for e in engines_used
+    }
     for skill in skills:
         for f in skill.active_findings:
             if f.engine in engine_counts and f.severity in engine_counts[f.engine]:
@@ -880,7 +1035,11 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
     by_scope: dict[str, dict] = {}
     for s in skill_targets:
         bucket = by_scope.setdefault(
-            s.scope, {"total": 0, "findings_by_engine": {e: {sv: 0 for sv in SEVERITY_ORDER} for e in engines_used}}
+            s.scope,
+            {
+                "total": 0,
+                "findings_by_engine": {e: {sv: 0 for sv in SEVERITY_ORDER} for e in engines_used},
+            },
         )
         bucket["total"] += 1
         for f in s.active_findings:
@@ -911,8 +1070,9 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
     print(json.dumps(output, indent=2))
 
 
-def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time: str,
-                    verbose: bool = False) -> None:
+def report_markdown(
+    skills: list[SkillInfo], engines_used: list[str], scan_time: str, verbose: bool = False
+) -> None:
     """Print markdown report to stdout."""
     total_findings = sum(len(s.active_findings) for s in skills)
     triaged_total = sum(1 for s in skills for f in s.findings if f.triaged_fp)
@@ -939,7 +1099,9 @@ def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time:
     for sev in ["critical", "high", "medium", "low"]:
         cells = []
         for e in engines_used:
-            count = sum(1 for s in skills for f in s.active_findings if f.engine == e and f.severity == sev)
+            count = sum(
+                1 for s in skills for f in s.active_findings if f.engine == e and f.severity == sev
+            )
             cells.append(f" {count} ")
         total = sum(1 for s in skills for f in s.active_findings if f.severity == sev)
         print(f"| {sev} |" + "|".join(cells) + f"| {total} |")
@@ -980,6 +1142,7 @@ def report_quiet(skills: list[SkillInfo]) -> None:
 
 # ─── History / activity / show commands (read from the store) ────────────────
 
+
 def _fmt_ts(iso: str) -> str:
     try:
         return datetime.fromisoformat(iso).strftime("%Y-%m-%d %H:%M")
@@ -996,20 +1159,29 @@ def history_command(limit: int, fmt: str) -> None:
     conn.close()
 
     if fmt == "json":
-        print(json.dumps({
-            "stats": st,
-            "targets": [dict(t) for t in targets],
-            "recent_scans": [dict(r) for r in rows],
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "stats": st,
+                    "targets": [dict(t) for t in targets],
+                    "recent_scans": [dict(r) for r in rows],
+                },
+                indent=2,
+            )
+        )
         return
 
     print(f"\n{BOLD}SkillGuard History{RESET}")
     print("=" * 64)
-    print(f"Tracked: {st['skills_total']} skill(s), {st['mcps_total']} MCP(s) — "
-          f"{st['target_scans_total']} scan(s) recorded, {st['findings_total']} finding(s) total")
+    print(
+        f"Tracked: {st['skills_total']} skill(s), {st['mcps_total']} MCP(s) — "
+        f"{st['target_scans_total']} scan(s) recorded, {st['findings_total']} finding(s) total"
+    )
     if st["critical_targets"] or st["high_targets"]:
-        print(f"{severity_color('high')}⚠ last verdict HIGH+: "
-              f"{st['critical_targets']} critical, {st['high_targets']} high{RESET}")
+        print(
+            f"{severity_color('high')}⚠ last verdict HIGH+: "
+            f"{st['critical_targets']} critical, {st['high_targets']} high{RESET}"
+        )
     print()
     if not rows:
         print(f"{DIM}No scans recorded yet. Run: skillguard --target all{RESET}\n")
@@ -1020,8 +1192,10 @@ def history_command(limit: int, fmt: str) -> None:
         sev = r["max_severity"] or "?"
         color = severity_color(sev)
         name = (r["name"] or "")[:25]
-        print(f"{_fmt_ts(r['scanned_at']):<17}{r['kind'] or '?':<6}{name:<26}"
-              f"{color}{sev:<10}{RESET}{r['finding_count']:>6}  {DIM}{r['engines'] or ''}{RESET}")
+        print(
+            f"{_fmt_ts(r['scanned_at']):<17}{r['kind'] or '?':<6}{name:<26}"
+            f"{color}{sev:<10}{RESET}{r['finding_count']:>6}  {DIM}{r['engines'] or ''}{RESET}"
+        )
     print()
 
 
@@ -1033,10 +1207,15 @@ def activity_command(limit: int, fmt: str) -> None:
     logging_on = config.activity_logging_enabled(CACHE_DIR)
 
     if fmt == "json":
-        print(json.dumps({
-            "activity_logging_enabled": logging_on,
-            "activities": [dict(r) for r in rows],
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "activity_logging_enabled": logging_on,
+                    "activities": [dict(r) for r in rows],
+                },
+                indent=2,
+            )
+        )
         return
 
     print(f"\n{BOLD}SkillGuard Activity{RESET}")
@@ -1052,35 +1231,49 @@ def activity_command(limit: int, fmt: str) -> None:
             color = severity_color(sev) if sev else ""
             outcome = f"{color}{r['outcome'] or ''}{RESET}" if color else (r["outcome"] or "")
             tgt = (r["target_name"] or "")[:21]
-            print(f"{_fmt_ts(r['ts']):<17}{(r['actor'] or '')[:6]:<7}"
-                  f"{(r['action'] or '')[:12]:<13}{tgt:<22}{outcome}")
+            print(
+                f"{_fmt_ts(r['ts']):<17}{(r['actor'] or '')[:6]:<7}"
+                f"{(r['action'] or '')[:12]:<13}{tgt:<22}{outcome}"
+            )
             if r["detail"]:
                 print(f"{DIM}                 └ {r['detail']}{RESET}")
     # Make the toggle discoverable — this is a setting the user controls.
     print()
     if logging_on:
-        print(f"{DIM}Activity logging is ON. Turn it off with: "
-              f"skillguard --set-activity-logging off{RESET}")
+        print(
+            f"{DIM}Activity logging is ON. Turn it off with: "
+            f"skillguard --set-activity-logging off{RESET}"
+        )
     else:
-        print(f"{DIM}Activity logging is OFF (scan history is still recorded). "
-              f"Turn it on with: skillguard --set-activity-logging on{RESET}")
+        print(
+            f"{DIM}Activity logging is OFF (scan history is still recorded). "
+            f"Turn it on with: skillguard --set-activity-logging on{RESET}"
+        )
     print()
 
 
 def show_command(name: str, fmt: str) -> None:
     """Show the full scan history for one target (skill or MCP), with findings."""
     conn = store.connect(db_path())
-    rows = store.target_history(conn, kind="skill", name=name) + \
-        store.target_history(conn, kind="mcp", name=name)
+    rows = store.target_history(conn, kind="skill", name=name) + store.target_history(
+        conn, kind="mcp", name=name
+    )
     rows.sort(key=lambda r: r["id"], reverse=True)
     detail = {r["id"]: store.findings_for_scan(conn, r["id"]) for r in rows}
     conn.close()
 
     if fmt == "json":
-        print(json.dumps({
-            "target": name,
-            "scans": [{**dict(r), "findings": [dict(f) for f in detail[r["id"]]]} for r in rows],
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "target": name,
+                    "scans": [
+                        {**dict(r), "findings": [dict(f) for f in detail[r["id"]]]} for r in rows
+                    ],
+                },
+                indent=2,
+            )
+        )
         return
 
     print(f"\n{BOLD}History for '{name}'{RESET}")
@@ -1090,19 +1283,24 @@ def show_command(name: str, fmt: str) -> None:
         return
     for r in rows:
         sev = r["max_severity"] or "?"
-        print(f"\n{_fmt_ts(r['scanned_at'])}  [{r['kind']}/{r['scope']}]  "
-              f"{severity_color(sev)}{sev}{RESET}  "
-              f"{DIM}({r['finding_count']} finding(s), engines: {r['engines']}){RESET}")
+        print(
+            f"\n{_fmt_ts(r['scanned_at'])}  [{r['kind']}/{r['scope']}]  "
+            f"{severity_color(sev)}{sev}{RESET}  "
+            f"{DIM}({r['finding_count']} finding(s), engines: {r['engines']}){RESET}"
+        )
         for f in detail[r["id"]]:
             if f["severity"] == "info" and not f["message"]:
                 continue
             loc = f" {f['file']}:{f['line']}" if f["file"] else ""
-            print(f"    {severity_color(f['severity'])}{f['severity']:<8}{RESET}"
-                  f"[{f['engine']}] {f['message']}{DIM}{loc}{RESET}")
+            print(
+                f"    {severity_color(f['severity'])}{f['severity']:<8}{RESET}"
+                f"[{f['engine']}] {f['message']}{DIM}{loc}{RESET}"
+            )
     print()
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────
+
 
 def _build_engines(engine_names: list[str], quiet: bool) -> tuple[list, list[str]]:
     """Instantiate the requested content engines, skipping unavailable ones."""
@@ -1118,8 +1316,11 @@ def _build_engines(engine_names: list[str], quiet: bool) -> tuple[list, list[str
                 engines.append(cisco)
                 used.append("cisco")
             elif not quiet:
-                print(f"{DIM}[skip] Cisco engine: cisco-ai-skill-scanner not installed "
-                      f"(uv pip install cisco-ai-skill-scanner){RESET}", file=sys.stderr)
+                print(
+                    f"{DIM}[skip] Cisco engine: cisco-ai-skill-scanner not installed "
+                    f"(uv pip install cisco-ai-skill-scanner){RESET}",
+                    file=sys.stderr,
+                )
         elif name == "skillaudit":
             engines.append(SkillAuditEngine())
             used.append("skillaudit")
@@ -1141,45 +1342,107 @@ def main() -> None:
         description="SkillGuard — Multi-engine security scanner for Claude Code skills and MCP servers",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--scope", choices=["global", "local", "all"], default="all",
-                        help="Which scope to scan (default: all)")
-    parser.add_argument("--target", choices=["skills", "mcps", "all"], default=None,
-                        help="What to scan: skills, mcps, or all (default: all unless --skill/--mcp narrows it)")
-    parser.add_argument("--engines", default="local",
-                        help="Comma-separated engines: local,cisco,skillaudit,snyk,all (default: local)")
+    parser.add_argument(
+        "--scope",
+        choices=["global", "local", "all"],
+        default="all",
+        help="Which scope to scan (default: all)",
+    )
+    parser.add_argument(
+        "--target",
+        choices=["skills", "mcps", "all"],
+        default=None,
+        help="What to scan: skills, mcps, or all (default: all unless --skill/--mcp narrows it)",
+    )
+    parser.add_argument(
+        "--engines",
+        default="local",
+        help="Comma-separated engines: local,cisco,skillaudit,snyk,all (default: local)",
+    )
     parser.add_argument("--skill", metavar="NAME", help="Scan a single skill by name")
     parser.add_argument("--mcp", metavar="NAME", help="Scan a single MCP server by name")
-    parser.add_argument("--mcp-introspect", dest="mcp_introspect", action="store_true",
-                        help="LAUNCH each MCP server to scan its tool descriptions/instructions for "
-                             "prompt injection (executes the server — only for servers you trust)")
-    parser.add_argument("--no-plugins", dest="no_plugins", action="store_true",
-                        help="Exclude plugin-provided MCP servers from discovery")
-    parser.add_argument("--format", choices=["table", "json", "markdown"], default="table",
-                        help="Output format (default: table)")
-    parser.add_argument("--skip", metavar="NAME",
-                        help="Mark a skill as skipped (stops hook blocking, shows reminder instead)")
-    parser.add_argument("--skip-mcp", metavar="NAME", dest="skip_mcp",
-                        help="Mark an MCP server as skipped (for the hook's enforce policy)")
-    parser.add_argument("--mark-fp", metavar="NAME", dest="mark_fp",
-                        help="Mark all of a skill/MCP's current non-info findings as triaged false positives")
-    parser.add_argument("--unmark-fp", metavar="NAME", dest="unmark_fp",
-                        help="Remove all false-positive marks for a skill/MCP")
-    parser.add_argument("--history", nargs="?", type=int, const=25, default=None, metavar="N",
-                        help="Show the last N scans from the preserved history (default 25) and exit")
-    parser.add_argument("--activity", nargs="?", type=int, const=30, default=None, metavar="N",
-                        help="Show the last N activity-log entries (default 30) and exit")
-    parser.add_argument("--show", metavar="NAME",
-                        help="Show the full scan history for one target (skill or MCP) and exit")
-    parser.add_argument("--set-activity-logging", dest="set_activity_logging",
-                        choices=["on", "off"],
-                        help="Turn the activity audit log on/off (persistent). Scan history is "
-                             "always kept regardless. Default: on")
-    parser.add_argument("--set-mcp-policy", dest="set_mcp_policy",
-                        choices=list(config.VALID_MCP_POLICIES),
-                        help="Set how the hook treats MCP tool calls: off | warn | enforce (default warn)")
+    parser.add_argument(
+        "--mcp-introspect",
+        dest="mcp_introspect",
+        action="store_true",
+        help="LAUNCH each MCP server to scan its tool descriptions/instructions for "
+        "prompt injection (executes the server — only for servers you trust)",
+    )
+    parser.add_argument(
+        "--no-plugins",
+        dest="no_plugins",
+        action="store_true",
+        help="Exclude plugin-provided MCP servers from discovery",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["table", "json", "markdown"],
+        default="table",
+        help="Output format (default: table)",
+    )
+    parser.add_argument(
+        "--skip",
+        metavar="NAME",
+        help="Mark a skill as skipped (stops hook blocking, shows reminder instead)",
+    )
+    parser.add_argument(
+        "--skip-mcp",
+        metavar="NAME",
+        dest="skip_mcp",
+        help="Mark an MCP server as skipped (for the hook's enforce policy)",
+    )
+    parser.add_argument(
+        "--mark-fp",
+        metavar="NAME",
+        dest="mark_fp",
+        help="Mark all of a skill/MCP's current non-info findings as triaged false positives",
+    )
+    parser.add_argument(
+        "--unmark-fp",
+        metavar="NAME",
+        dest="unmark_fp",
+        help="Remove all false-positive marks for a skill/MCP",
+    )
+    parser.add_argument(
+        "--history",
+        nargs="?",
+        type=int,
+        const=25,
+        default=None,
+        metavar="N",
+        help="Show the last N scans from the preserved history (default 25) and exit",
+    )
+    parser.add_argument(
+        "--activity",
+        nargs="?",
+        type=int,
+        const=30,
+        default=None,
+        metavar="N",
+        help="Show the last N activity-log entries (default 30) and exit",
+    )
+    parser.add_argument(
+        "--show",
+        metavar="NAME",
+        help="Show the full scan history for one target (skill or MCP) and exit",
+    )
+    parser.add_argument(
+        "--set-activity-logging",
+        dest="set_activity_logging",
+        choices=["on", "off"],
+        help="Turn the activity audit log on/off (persistent). Scan history is "
+        "always kept regardless. Default: on",
+    )
+    parser.add_argument(
+        "--set-mcp-policy",
+        dest="set_mcp_policy",
+        choices=list(config.VALID_MCP_POLICIES),
+        help="Set how the hook treats MCP tool calls: off | warn | enforce (default warn)",
+    )
     parser.add_argument("--quiet", action="store_true", help="Minimal output (for hooks/scripts)")
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Show all findings including low/info")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Show all findings including low/info"
+    )
     parser.add_argument("--version", action="version", version=f"skillguard {__version__}")
     args = parser.parse_args()
 
@@ -1198,8 +1461,10 @@ def main() -> None:
     if args.set_activity_logging:
         on = args.set_activity_logging == "on"
         config.set_activity_logging(on, CACHE_DIR)
-        print(f"Activity logging is now {'ON' if on else 'OFF'}. "
-              f"{'Scan history is recorded either way.' if not on else ''}".rstrip())
+        print(
+            f"Activity logging is now {'ON' if on else 'OFF'}. "
+            f"{'Scan history is recorded either way.' if not on else ''}".rstrip()
+        )
         sys.exit(0)
     if args.set_mcp_policy:
         config.set_mcp_policy(args.set_mcp_policy, CACHE_DIR)
@@ -1209,27 +1474,49 @@ def main() -> None:
     # ── Overrides (logged as activities) ─────────────────────────────────────
     if args.skip:
         write_skip_cache(args.skip, "skill")
-        log_activity(actor="user", action="skip", target_kind="skill", target_name=args.skip,
-                     outcome="skipped", detail="hook will allow with a reminder")
+        log_activity(
+            actor="user",
+            action="skip",
+            target_kind="skill",
+            target_name=args.skip,
+            outcome="skipped",
+            detail="hook will allow with a reminder",
+        )
         print(f"Marked skill '{args.skip}' as skipped. Hook will show a reminder on each use.")
         print(f"To scan it properly: skillguard --skill {args.skip}")
         sys.exit(0)
     if args.skip_mcp:
         write_skip_cache(args.skip_mcp, "mcp")
-        log_activity(actor="user", action="skip", target_kind="mcp", target_name=args.skip_mcp,
-                     outcome="skipped", detail="hook will allow with a reminder")
+        log_activity(
+            actor="user",
+            action="skip",
+            target_kind="mcp",
+            target_name=args.skip_mcp,
+            outcome="skipped",
+            detail="hook will allow with a reminder",
+        )
         print(f"Marked MCP '{args.skip_mcp}' as skipped.")
         print(f"To scan it properly: skillguard --mcp {args.skip_mcp}")
         sys.exit(0)
     if args.mark_fp:
         mark_fp_command(args.mark_fp)
-        log_activity(actor="user", action="mark_fp", target_name=args.mark_fp,
-                     outcome="ok", detail="findings marked false-positive")
+        log_activity(
+            actor="user",
+            action="mark_fp",
+            target_name=args.mark_fp,
+            outcome="ok",
+            detail="findings marked false-positive",
+        )
         sys.exit(0)
     if args.unmark_fp:
         unmark_fp_command(args.unmark_fp)
-        log_activity(actor="user", action="unmark_fp", target_name=args.unmark_fp,
-                     outcome="ok", detail="false-positive marks removed")
+        log_activity(
+            actor="user",
+            action="unmark_fp",
+            target_name=args.unmark_fp,
+            outcome="ok",
+            detail="false-positive marks removed",
+        )
         sys.exit(0)
 
     project_dir = Path.cwd()
@@ -1247,8 +1534,11 @@ def main() -> None:
         want_mcps = args.target in ("mcps", "all")
 
     # ── Engines ──────────────────────────────────────────────────────────────
-    engine_names = ["local", "cisco", "skillaudit", "snyk"] if args.engines == "all" \
+    engine_names = (
+        ["local", "cisco", "skillaudit", "snyk"]
+        if args.engines == "all"
         else [e.strip() for e in args.engines.split(",")]
+    )
     engines, engine_names_used = _build_engines(engine_names, args.quiet)
 
     # ── Discover + materialize targets ───────────────────────────────────────
@@ -1257,8 +1547,9 @@ def main() -> None:
         targets += discover_skills(args.scope, project_dir, single_skill=args.skill)
     mcp_targets: list[SkillInfo] = []
     if want_mcps:
-        servers = discover_mcps(args.scope, project_dir, single=args.mcp,
-                                include_plugins=not args.no_plugins)
+        servers = discover_mcps(
+            args.scope, project_dir, single=args.mcp, include_plugins=not args.no_plugins
+        )
         mcp_base = CACHE_DIR / MCP_CACHE_SUBDIR
         for srv in servers:
             mcp_targets.append(materialize_surface(srv, mcp_base))
@@ -1290,9 +1581,11 @@ def main() -> None:
     # ── Opt-in live introspection (executes servers) ─────────────────────────
     if args.mcp_introspect and mcp_targets:
         if not args.quiet:
-            print(f"{DIM}⚠ --mcp-introspect LAUNCHES each MCP server to read its tool "
-                  f"descriptions/instructions. Only do this for servers you trust.{RESET}",
-                  file=sys.stderr)
+            print(
+                f"{DIM}⚠ --mcp-introspect LAUNCHES each MCP server to read its tool "
+                f"descriptions/instructions. Only do this for servers you trust.{RESET}",
+                file=sys.stderr,
+            )
         for t in mcp_targets:
             srv = t.extra["mcp"]
             intro = introspect(srv)
@@ -1302,11 +1595,17 @@ def main() -> None:
                 # A deliberately-requested introspection that fails must be
                 # visible — not buried in the activity log, which the toggle can
                 # silence. stderr so it never corrupts json/markdown on stdout.
-                print(f"⚠ introspection of {srv.name} failed: {intro.get('error')}",
-                      file=sys.stderr)
-            log_activity(actor="user", action="introspect", target_kind="mcp",
-                         target_name=srv.name, outcome="ok" if intro.get("ok") else "error",
-                         detail=(intro.get("error") or f"{len(intro.get('tools', []))} tool(s) read"))
+                print(
+                    f"⚠ introspection of {srv.name} failed: {intro.get('error')}", file=sys.stderr
+                )
+            log_activity(
+                actor="user",
+                action="introspect",
+                target_kind="mcp",
+                target_name=srv.name,
+                outcome="ok" if intro.get("ok") else "error",
+                detail=(intro.get("error") or f"{len(intro.get('tools', []))} tool(s) read"),
+            )
 
     # ── Scan ─────────────────────────────────────────────────────────────────
     scan_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -1328,15 +1627,27 @@ def main() -> None:
         try:
             conn = store.connect(db_path())
             run_id = store.start_scan_run(
-                conn, engines=engine_names_used, scope=args.scope, target_kind=target_kind_label,
-                source="cli", command_line=" ".join(sys.argv),
+                conn,
+                engines=engine_names_used,
+                scope=args.scope,
+                target_kind=target_kind_label,
+                source="cli",
+                command_line=" ".join(sys.argv),
             )
         except Exception as e:
-            history_error, run_id = e, None  # history unavailable; conn (if opened) closed in finally
+            history_error, run_id = (
+                e,
+                None,
+            )  # history unavailable; conn (if opened) closed in finally
 
         for i, target in enumerate(targets):
             if not args.quiet and args.format == "table":
-                print(f"\r  Scanning {i+1}/{total}: {target.name:<40}", end="", file=sys.stderr, flush=True)
+                print(
+                    f"\r  Scanning {i + 1}/{total}: {target.name:<40}",
+                    end="",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
             for engine in engines:
                 target.findings.extend(engine.scan(target))
@@ -1352,11 +1663,20 @@ def main() -> None:
             if conn is not None and run_id is not None:
                 try:
                     store.record_scan(
-                        conn, run_id=run_id, kind=target.kind, name=target.name, scope=target.scope,
-                        scanned_at=cache["scanned_at"], engines=engine_names_used,
-                        max_severity=cache["max_severity"], finding_count=cache["finding_count"],
-                        triaged_fp_count=cache["triaged_fp_count"], mtime_epoch=cache["skill_mtime_epoch"],
-                        skipped=False, findings=cache["findings"], raw_json=cache,
+                        conn,
+                        run_id=run_id,
+                        kind=target.kind,
+                        name=target.name,
+                        scope=target.scope,
+                        scanned_at=cache["scanned_at"],
+                        engines=engine_names_used,
+                        max_severity=cache["max_severity"],
+                        finding_count=cache["finding_count"],
+                        triaged_fp_count=cache["triaged_fp_count"],
+                        mtime_epoch=cache["skill_mtime_epoch"],
+                        skipped=False,
+                        findings=cache["findings"],
+                        raw_json=cache,
                     )
                 except Exception as e:
                     history_error = history_error or e
@@ -1383,7 +1703,8 @@ def main() -> None:
 
     # One activity entry summarizing the run (gated by the toggle).
     log_activity(
-        actor="user", action="scan",
+        actor="user",
+        action="scan",
         target_kind=target_kind_label if total > 1 else (targets[0].kind if targets else None),
         target_name=(targets[0].name if total == 1 else None),
         outcome="findings" if total_findings else "clean",

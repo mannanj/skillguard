@@ -14,8 +14,7 @@ from skillguard.model import Finding
 
 
 def _f(message, file, category="shell_pipe", engine="local"):
-    return Finding(engine=engine, severity="high", category=category,
-                   message=message, file=file)
+    return Finding(engine=engine, severity="high", category=category, message=message, file=file)
 
 
 def test_dedupe_keeps_most_specific_location():

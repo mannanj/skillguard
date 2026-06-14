@@ -45,6 +45,7 @@ from skillguard.model import Finding, SkillInfo
 
 # ─── Config locations ────────────────────────────────────────────────────────
 
+
 def global_config_path() -> Path:
     return Path.home() / ".claude.json"
 
@@ -59,8 +60,15 @@ def plugins_root() -> Path:
 
 # Hosts that are exfiltration sinks, not legitimate MCP endpoints.
 SUSPICIOUS_HOSTS = (
-    "webhook.site", "requestbin.com", "requestbin.net", "pipedream.net",
-    "interact.sh", "burpcollaborator.net", "ngrok.io", "ngrok.com", "ngrok.app",
+    "webhook.site",
+    "requestbin.com",
+    "requestbin.net",
+    "pipedream.net",
+    "interact.sh",
+    "burpcollaborator.net",
+    "ngrok.io",
+    "ngrok.com",
+    "ngrok.app",
 )
 
 # Package runners that fetch and execute third-party code at launch.
@@ -68,6 +76,7 @@ _RUNNERS = ("npx", "pnpm", "bunx", "yarn", "uvx", "uv", "pipx", "dlx", "deno")
 
 
 # ─── Server descriptor ───────────────────────────────────────────────────────
+
 
 @dataclass
 class McpServer:
@@ -77,16 +86,16 @@ class McpServer:
     emitting anything that persists."""
 
     name: str
-    source: str            # config file this came from
-    scope: str             # global | project | plugin
-    transport: str         # stdio | http | sse | unknown
+    source: str  # config file this came from
+    scope: str  # global | project | plugin
+    transport: str  # stdio | http | sse | unknown
     command: str = ""
     args: list[str] = field(default_factory=list)
-    env: dict[str, str] = field(default_factory=dict)      # in-memory only
+    env: dict[str, str] = field(default_factory=dict)  # in-memory only
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)  # in-memory only
     plugin: str | None = None
-    raw: dict = field(default_factory=dict)                # in-memory only
+    raw: dict = field(default_factory=dict)  # in-memory only
 
     @property
     def env_names(self) -> list[str]:
@@ -111,6 +120,7 @@ class McpServer:
 
 
 # ─── Discovery ───────────────────────────────────────────────────────────────
+
 
 def _read_json(path: Path) -> dict | None:
     try:
@@ -148,9 +158,17 @@ def _server_from_config(
     headers = cfg.get("headers") if isinstance(cfg.get("headers"), dict) else {}
 
     return McpServer(
-        name=name, source=str(source), scope=scope, transport=transport,
-        command=command, args=[str(a) for a in args], env=dict(env), url=url,
-        headers=dict(headers), plugin=plugin, raw=dict(cfg),
+        name=name,
+        source=str(source),
+        scope=scope,
+        transport=transport,
+        command=command,
+        args=[str(a) for a in args],
+        env=dict(env),
+        url=url,
+        headers=dict(headers),
+        plugin=plugin,
+        raw=dict(cfg),
     )
 
 
@@ -159,10 +177,7 @@ def _servers_from_mapping(
 ) -> list[McpServer]:
     if not isinstance(mapping, dict):
         return []
-    return [
-        _server_from_config(name, cfg, source, scope, plugin)
-        for name, cfg in mapping.items()
-    ]
+    return [_server_from_config(name, cfg, source, scope, plugin) for name, cfg in mapping.items()]
 
 
 def discover_mcps(
@@ -200,7 +215,9 @@ def discover_mcps(
     if want_global:
         sc = _read_json(secondary_config_path())
         if sc is not None:
-            servers += _servers_from_mapping(sc.get("mcpServers"), secondary_config_path(), "global")
+            servers += _servers_from_mapping(
+                sc.get("mcpServers"), secondary_config_path(), "global"
+            )
 
     # 3. project-local .mcp.json
     if want_project:
@@ -227,8 +244,18 @@ def discover_mcps(
 
 # Directories never worth walking for MCP configs — pruning them keeps
 # discovery fast on real plugin trees (which can contain huge node_modules).
-_PRUNE_DIRS = {"node_modules", ".git", ".venv", "venv", "dist", "build",
-               "__pycache__", ".cache", ".next", "target"}
+_PRUNE_DIRS = {
+    "node_modules",
+    ".git",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    "__pycache__",
+    ".cache",
+    ".next",
+    "target",
+}
 
 
 def _discover_plugin_mcps(root: Path | None = None, cap: int = 4000) -> list[McpServer]:
@@ -286,16 +313,20 @@ _SECRET_PREFIX = re.compile(
 )
 # `--flag=SECRET` style argument carrying an inline credential.
 _INLINE_KV_SECRET = re.compile(
-    r"^(--?[A-Za-z0-9_-]*(?:key|token|secret|password|auth)[A-Za-z0-9_-]*=)(.+)$", re.I)
+    r"^(--?[A-Za-z0-9_-]*(?:key|token|secret|password|auth)[A-Za-z0-9_-]*=)(.+)$", re.I
+)
 # A long-form credential flag whose *next* argument is the value, e.g.
 # `--token SECRET`. Restricted to unambiguous long flags so we never redact the
 # value after a benign short flag like `-p 8080`.
 _CRED_FLAG = re.compile(
     r"^--(api[-_]?key|access[-_]?token|auth[-_]?token|client[-_]?secret|api[-_]?secret|"
-    r"token|secret|password|passwd|bearer|credential)$", re.I)
+    r"token|secret|password|passwd|bearer|credential)$",
+    re.I,
+)
 # Credential-bearing URL query parameters, e.g. `?api_key=…&access_token=…`.
 _URL_QS_SECRET = re.compile(
-    r"([?&])([^=&\s]*(?:key|token|secret|password|auth|sig|access)[^=&\s]*)=([^&\s]+)", re.I)
+    r"([?&])([^=&\s]*(?:key|token|secret|password|auth|sig|access)[^=&\s]*)=([^&\s]+)", re.I
+)
 
 
 def _is_env_ref(value: str) -> bool:
@@ -333,7 +364,10 @@ def _is_secretish_header(name: str) -> bool:
     n = name.lower()
     return (
         n in ("authorization", "proxy-authorization")
-        or "key" in n or "token" in n or "secret" in n or "password" in n
+        or "key" in n
+        or "token" in n
+        or "secret" in n
+        or "password" in n
     )
 
 
@@ -360,11 +394,13 @@ def redact_arg(arg: str) -> str:
 
 def redact_url_secrets(url: str) -> str:
     """Redact credential-bearing query parameters in a URL, keeping ``${REF}``s."""
+
     def sub(m: re.Match) -> str:
         val = m.group(3)
         if _is_env_ref(val) or _has_interpolation(val):
             return m.group(0)
         return f"{m.group(1)}{m.group(2)}=<redacted-literal>"
+
     return _URL_QS_SECRET.sub(sub, str(url))
 
 
@@ -378,7 +414,12 @@ def redacted_args(args: list) -> list[str]:
         out.append(redact_arg(a))
         if _CRED_FLAG.match(a) and i + 1 < n:
             nxt = str(args[i + 1])
-            if nxt and not _is_env_ref(nxt) and not _has_interpolation(nxt) and not nxt.startswith("-"):
+            if (
+                nxt
+                and not _is_env_ref(nxt)
+                and not _has_interpolation(nxt)
+                and not nxt.startswith("-")
+            ):
                 out.append("<redacted-literal>")
                 i += 2
                 continue
@@ -413,6 +454,7 @@ def redacted_config(mcp: McpServer) -> dict:
 
 
 # ─── Materialization ─────────────────────────────────────────────────────────
+
 
 def safe_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", name) or "_unnamed"
@@ -468,6 +510,7 @@ def materialize_surface(mcp: McpServer, base_dir: Path) -> SkillInfo:
 
 # ─── Structural analysis (the "mcp" engine) ──────────────────────────────────
 
+
 def analyze_mcp_config(mcp: McpServer) -> list[Finding]:
     """MCP-specific structural findings the text engines can't see: supply-chain
     execution, insecure transport, and inline plaintext secrets. Severities are
@@ -487,102 +530,179 @@ def analyze_mcp_config(mcp: McpServer) -> list[Finding]:
     if mcp.url:
         parsed = urlparse(mcp.url if "://" in mcp.url else f"//{mcp.url}")
         host = (parsed.hostname or "").lower()
-        if any(host == h or host.endswith("." + h) or h in mcp.url.lower() for h in SUSPICIOUS_HOSTS):
-            add("critical", "mcp_suspicious_endpoint",
-                f"MCP endpoint points at a known exfiltration host: {host or mcp.url}", "endpoint.txt")
+        if any(
+            host == h or host.endswith("." + h) or h in mcp.url.lower() for h in SUSPICIOUS_HOSTS
+        ):
+            add(
+                "critical",
+                "mcp_suspicious_endpoint",
+                f"MCP endpoint points at a known exfiltration host: {host or mcp.url}",
+                "endpoint.txt",
+            )
         if parsed.scheme == "http":
-            add("medium", "mcp_insecure_transport",
+            add(
+                "medium",
+                "mcp_insecure_transport",
                 f"MCP endpoint uses unencrypted http:// ({host}); traffic and any "
-                f"auth header are sent in clear text.", "endpoint.txt")
+                f"auth header are sent in clear text.",
+                "endpoint.txt",
+            )
         if host and re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", host):
-            add("low", "mcp_raw_ip_endpoint",
-                f"MCP endpoint is a raw IP address ({host}), not a named host.", "endpoint.txt")
+            add(
+                "low",
+                "mcp_raw_ip_endpoint",
+                f"MCP endpoint is a raw IP address ({host}), not a named host.",
+                "endpoint.txt",
+            )
 
     # --- stdio launch command ---
     if launch:
         if re.search(r"\b(curl|wget)\b[^\n|]*\|\s*(ba)?sh", low):
-            add("high", "mcp_remote_exec",
-                "MCP launch command pipes a network download straight into a shell.", "command.txt")
-        if re.search(r"\b(node|deno|bun)\b[^\n]*\s-e\b", low) or re.search(r"\bpython[23]?\b[^\n]*\s-c\b", low):
-            add("high", "mcp_inline_exec",
-                "MCP launches inline code via an -e/-c flag; the code runs at every start.", "command.txt")
+            add(
+                "high",
+                "mcp_remote_exec",
+                "MCP launch command pipes a network download straight into a shell.",
+                "command.txt",
+            )
+        if re.search(r"\b(node|deno|bun)\b[^\n]*\s-e\b", low) or re.search(
+            r"\bpython[23]?\b[^\n]*\s-c\b", low
+        ):
+            add(
+                "high",
+                "mcp_inline_exec",
+                "MCP launches inline code via an -e/-c flag; the code runs at every start.",
+                "command.txt",
+            )
         if re.search(r"base64\s+(--?d(ecode)?)\b", low):
-            add("high", "mcp_obfuscated_launch",
-                "MCP launch command base64-decodes content before running it.", "command.txt")
+            add(
+                "high",
+                "mcp_obfuscated_launch",
+                "MCP launch command base64-decodes content before running it.",
+                "command.txt",
+            )
 
         runner = _runner_in(low)
         if runner:
             git_src = re.search(r"(git\+https?://\S+|github:\S+|--from\s+git\+\S+)", launch, re.I)
             if git_src:
-                add("medium", "mcp_remote_code_source",
+                add(
+                    "medium",
+                    "mcp_remote_code_source",
                     f"MCP runs code fetched from a git source via {runner}; the upstream "
-                    f"repo can change what executes at any time.", "command.txt")
+                    f"repo can change what executes at any time.",
+                    "command.txt",
+                )
             else:
                 pkg, ver = _runner_package(launch, runner)
                 if pkg and (ver is None or ver == "latest"):
-                    add("low", "mcp_unpinned_dependency",
+                    add(
+                        "low",
+                        "mcp_unpinned_dependency",
                         f"MCP runs third-party package '{pkg}' unpinned (@{ver or 'none'}) via "
                         f"{runner}; a compromised or typosquatted upstream would execute at launch. "
-                        f"Pin an exact version.", "command.txt")
+                        f"Pin an exact version.",
+                        "command.txt",
+                    )
                 elif pkg:
-                    add("info", "mcp_third_party_runtime",
+                    add(
+                        "info",
+                        "mcp_third_party_runtime",
                         f"MCP runs third-party package '{pkg}@{ver}' via {runner} (pinned).",
-                        "command.txt")
+                        "command.txt",
+                    )
         if re.search(r"\bdocker\s+run\b", low):
             image = _docker_image(launch)
-            add("low", "mcp_container_runtime",
+            add(
+                "low",
+                "mcp_container_runtime",
                 f"MCP runs a container image{f' ({image})' if image else ''}; it pulls and "
-                f"executes whatever that tag resolves to.", "command.txt")
+                f"executes whatever that tag resolves to.",
+                "command.txt",
+            )
 
     # --- Inline plaintext secrets (NEVER echo the value) ---
     for ename, evalue in mcp.env.items():
         if looks_secretish(evalue):
-            add("high", "mcp_inline_secret",
+            add(
+                "high",
+                "mcp_inline_secret",
                 f"Env var '{ename}' has an inline literal value in the MCP config (looks like a "
-                f"plaintext credential). Reference the environment with ${{{ename}}} instead.")
+                f"plaintext credential). Reference the environment with ${{{ename}}} instead.",
+            )
     for hname, hvalue in mcp.headers.items():
         if _header_has_inline_secret(hname, hvalue):
-            add("high", "mcp_inline_secret",
+            add(
+                "high",
+                "mcp_inline_secret",
                 f"Header '{hname}' carries an inline literal credential in the MCP config. "
-                f"Reference an env var (e.g. ${{TOKEN}}) instead of hard-coding it.", "endpoint.txt")
+                f"Reference an env var (e.g. ${{TOKEN}}) instead of hard-coding it.",
+                "endpoint.txt",
+            )
     i = 0
     while i < len(mcp.args):
         s = str(mcp.args[i])
         kv = _INLINE_KV_SECRET.match(s)
         if looks_secretish(s):
-            add("high", "mcp_inline_secret",
+            add(
+                "high",
+                "mcp_inline_secret",
                 f"Launch argument #{i} looks like a plaintext credential. Pass it via an "
-                f"environment variable reference instead of hard-coding it.", "command.txt")
+                f"environment variable reference instead of hard-coding it.",
+                "command.txt",
+            )
         elif kv and not _is_env_ref(kv.group(2)) and not _has_interpolation(kv.group(2)):
-            add("high", "mcp_inline_secret",
+            add(
+                "high",
+                "mcp_inline_secret",
                 f"Launch flag '{kv.group(1).rstrip('=')}' carries an inline literal credential. "
-                f"Reference an env var instead.", "command.txt")
+                f"Reference an env var instead.",
+                "command.txt",
+            )
         elif _CRED_FLAG.match(s) and i + 1 < len(mcp.args):
             nxt = str(mcp.args[i + 1])
-            if nxt and not _is_env_ref(nxt) and not _has_interpolation(nxt) and not nxt.startswith("-"):
-                add("high", "mcp_inline_secret",
+            if (
+                nxt
+                and not _is_env_ref(nxt)
+                and not _has_interpolation(nxt)
+                and not nxt.startswith("-")
+            ):
+                add(
+                    "high",
+                    "mcp_inline_secret",
                     f"Launch flag '{s}' is followed by an inline literal credential. "
-                    f"Reference an env var instead.", "command.txt")
+                    f"Reference an env var instead.",
+                    "command.txt",
+                )
                 i += 2
                 continue
         i += 1
     if mcp.url:
         for m in _URL_QS_SECRET.finditer(mcp.url):
             if not _is_env_ref(m.group(3)) and not _has_interpolation(m.group(3)):
-                add("high", "mcp_inline_secret",
+                add(
+                    "high",
+                    "mcp_inline_secret",
                     f"MCP endpoint URL carries an inline credential in query parameter "
-                    f"'{m.group(2)}'. Reference an env var instead.", "endpoint.txt")
+                    f"'{m.group(2)}'. Reference an env var instead.",
+                    "endpoint.txt",
+                )
                 break
 
     # --- Informational: what this server can read ---
     if mcp.env_names:
-        add("info", "mcp_env_exposure",
+        add(
+            "info",
+            "mcp_env_exposure",
             f"This MCP server is granted {len(mcp.env_names)} environment secret(s): "
-            f"{', '.join(mcp.env_names)}. It can read these at runtime.")
+            f"{', '.join(mcp.env_names)}. It can read these at runtime.",
+        )
 
     if mcp.transport == "unknown" and not launch and not mcp.url:
-        add("info", "mcp_unparsed",
-            "MCP server config has neither a command nor a url; nothing to scan statically.")
+        add(
+            "info",
+            "mcp_unparsed",
+            "MCP server config has neither a command nor a url; nothing to scan statically.",
+        )
 
     return out
 
@@ -635,7 +755,7 @@ def _runner_package(launch: str, runner: str) -> tuple[str | None, str | None]:
         at = pkg.find("@", 1)
         if at == -1:
             return pkg, None
-        return pkg[:at], pkg[at + 1:]
+        return pkg[:at], pkg[at + 1 :]
     if "@" in pkg:
         name, ver = pkg.rsplit("@", 1)
         return name, ver
@@ -646,7 +766,7 @@ def _docker_image(launch: str) -> str:
     toks = launch.split()
     for i, t in enumerate(toks):
         if t == "run":
-            for cand in toks[i + 1:]:
+            for cand in toks[i + 1 :]:
                 if cand.startswith("-"):
                     continue
                 if cand in ("-e", "--env", "-v", "--volume", "-i", "--rm", "-t"):
@@ -672,6 +792,7 @@ class McpConfigEngine:
 
 # ─── Opt-in live introspection (executes the server) ─────────────────────────
 
+
 def introspect(mcp: McpServer, timeout: float = 20.0) -> dict:
     """Launch/connect to the server and pull its model-facing text (server
     ``instructions`` + every tool's name/description/param descriptions).
@@ -685,8 +806,12 @@ def introspect(mcp: McpServer, timeout: float = 20.0) -> dict:
             return _introspect_stdio(mcp, timeout)
         if mcp.transport in ("http", "sse") and mcp.url:
             return _introspect_http(mcp, timeout)
-        return {"ok": False, "instructions": "", "tools": [],
-                "error": f"no introspection for transport {mcp.transport!r}"}
+        return {
+            "ok": False,
+            "instructions": "",
+            "tools": [],
+            "error": f"no introspection for transport {mcp.transport!r}",
+        }
     except Exception as e:  # never let introspection crash a scan
         return {"ok": False, "instructions": "", "tools": [], "error": str(e)}
 
@@ -708,16 +833,24 @@ _INIT_PARAMS = {
 
 
 def _introspect_stdio(mcp: McpServer, timeout: float) -> dict:
-    requests = "\n".join([
-        _jsonrpc("initialize", 1, **_INIT_PARAMS),
-        _jsonrpc("notifications/initialized"),
-        _jsonrpc("tools/list", 2),
-    ]) + "\n"
+    requests = (
+        "\n".join(
+            [
+                _jsonrpc("initialize", 1, **_INIT_PARAMS),
+                _jsonrpc("notifications/initialized"),
+                _jsonrpc("tools/list", 2),
+            ]
+        )
+        + "\n"
+    )
 
     proc = subprocess.Popen(
         [mcp.command, *mcp.args],
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, env={**os.environ, **{k: str(v) for k, v in mcp.env.items()}},
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env={**os.environ, **{k: str(v) for k, v in mcp.env.items()}},
     )
     try:
         out, _err = proc.communicate(input=requests, timeout=timeout)
@@ -732,8 +865,8 @@ def _introspect_stdio(mcp: McpServer, timeout: float) -> dict:
 
 def _introspect_http(mcp: McpServer, timeout: float) -> dict:
     import urllib.request
-    headers = {"Content-Type": "application/json",
-               "Accept": "application/json, text/event-stream"}
+
+    headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
     # Pass through configured headers, resolving ${ENV} references locally.
     for hk, hv in mcp.headers.items():
         headers[hk] = _resolve_env_refs(hv)
@@ -748,6 +881,7 @@ def _introspect_http(mcp: McpServer, timeout: float) -> dict:
 def _resolve_env_refs(value: str) -> str:
     def sub(m: re.Match) -> str:
         return os.environ.get(m.group(1) or m.group(2) or "", m.group(0))
+
     return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)", sub, str(value))
 
 
@@ -784,12 +918,19 @@ def _parse_introspection(stream: str) -> dict:
                     for pname, pdef in props.items():
                         desc = pdef.get("description", "") if isinstance(pdef, dict) else ""
                         params.append({"name": pname, "description": desc})
-                tools.append({
-                    "name": t.get("name", ""),
-                    "description": t.get("description", ""),
-                    "params": params,
-                })
-    return {"ok": ok, "instructions": instructions, "tools": tools, "error": "" if ok else "no MCP response parsed"}
+                tools.append(
+                    {
+                        "name": t.get("name", ""),
+                        "description": t.get("description", ""),
+                        "params": params,
+                    }
+                )
+    return {
+        "ok": ok,
+        "instructions": instructions,
+        "tools": tools,
+        "error": "" if ok else "no MCP response parsed",
+    }
 
 
 def write_introspection_surface(target: SkillInfo, intro: dict) -> list[Path]:

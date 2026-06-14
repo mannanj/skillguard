@@ -84,6 +84,7 @@ def _coerce_bool(value: str) -> bool | None:
 
 # ─── activity_logging ────────────────────────────────────────────────────────
 
+
 def activity_logging_enabled(cache_dir: Path | None = None) -> bool:
     """Is the activity audit log on? Env var overrides the persisted setting."""
     env = os.environ.get("SKILLGUARD_ACTIVITY_LOG")
@@ -101,6 +102,7 @@ def set_activity_logging(enabled: bool, cache_dir: Path | None = None) -> None:
 
 
 # ─── mcp_policy ──────────────────────────────────────────────────────────────
+
 
 def mcp_policy(cache_dir: Path | None = None) -> str:
     """Hook policy for MCP tool calls: off | warn | enforce."""

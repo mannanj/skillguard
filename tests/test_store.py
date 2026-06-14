@@ -19,9 +19,14 @@ def db(tmp_path: Path) -> Path:
 
 def _finding(**kw) -> dict:
     base = {
-        "engine": "mcp", "severity": "high", "category": "mcp_inline_secret",
-        "message": "inline secret in env", "file": "mcp-config.json", "line": 0,
-        "context": "", "triaged_fp": False,
+        "engine": "mcp",
+        "severity": "high",
+        "category": "mcp_inline_secret",
+        "message": "inline secret in env",
+        "file": "mcp-config.json",
+        "line": 0,
+        "context": "",
+        "triaged_fp": False,
     }
     base.update(kw)
     return base
@@ -50,16 +55,36 @@ def test_record_scan_preserves_every_scan(db):
     run = store.start_scan_run(conn, engines=["local", "mcp"], scope="all", target_kind="mcps")
 
     sid1 = store.record_scan(
-        conn, run_id=run, kind="mcp", name="srv", scope="global",
-        scanned_at="2026-06-11T00:00:00+00:00", engines=["local", "mcp"],
-        max_severity="high", finding_count=1, triaged_fp_count=0, mtime_epoch=1.0,
-        skipped=False, findings=[_finding()], raw_json={"v": 1},
+        conn,
+        run_id=run,
+        kind="mcp",
+        name="srv",
+        scope="global",
+        scanned_at="2026-06-11T00:00:00+00:00",
+        engines=["local", "mcp"],
+        max_severity="high",
+        finding_count=1,
+        triaged_fp_count=0,
+        mtime_epoch=1.0,
+        skipped=False,
+        findings=[_finding()],
+        raw_json={"v": 1},
     )
     sid2 = store.record_scan(
-        conn, run_id=run, kind="mcp", name="srv", scope="global",
-        scanned_at="2026-06-11T01:00:00+00:00", engines=["local", "mcp"],
-        max_severity="clean", finding_count=0, triaged_fp_count=0, mtime_epoch=2.0,
-        skipped=False, findings=[], raw_json={"v": 2},
+        conn,
+        run_id=run,
+        kind="mcp",
+        name="srv",
+        scope="global",
+        scanned_at="2026-06-11T01:00:00+00:00",
+        engines=["local", "mcp"],
+        max_severity="clean",
+        finding_count=0,
+        triaged_fp_count=0,
+        mtime_epoch=2.0,
+        skipped=False,
+        findings=[],
+        raw_json={"v": 2},
     )
 
     hist = store.target_history(conn, kind="mcp", name="srv")
@@ -90,11 +115,24 @@ def test_finish_scan_run_records_totals(db):
 
 def test_activity_log_and_filtering(db):
     conn = store.connect(db)
-    store.log_activity(conn, actor="hook", action="hook_block", target_kind="mcp",
-                       target_name="srv", outcome="block", severity="high")
+    store.log_activity(
+        conn,
+        actor="hook",
+        action="hook_block",
+        target_kind="mcp",
+        target_name="srv",
+        outcome="block",
+        severity="high",
+    )
     store.log_activity(conn, actor="user", action="scan", outcome="clean")
-    store.log_activity(conn, actor="hook", action="hook_allow", target_kind="skill",
-                       target_name="s", outcome="allow")
+    store.log_activity(
+        conn,
+        actor="hook",
+        action="hook_allow",
+        target_kind="skill",
+        target_name="s",
+        outcome="allow",
+    )
 
     assert len(store.recent_activity(conn, limit=10)) == 3
     blocks = store.recent_activity(conn, action="hook_block")
@@ -107,13 +145,36 @@ def test_activity_log_and_filtering(db):
 def test_stats_counts(db):
     conn = store.connect(db)
     run = store.start_scan_run(conn, engines=["local"], scope="all", target_kind="all")
-    store.record_scan(conn, run_id=run, kind="skill", name="sk", scope="global",
-                      scanned_at="t", engines=["local"], max_severity="clean",
-                      finding_count=0, triaged_fp_count=0, mtime_epoch=0, skipped=False, findings=[])
-    store.record_scan(conn, run_id=run, kind="mcp", name="m1", scope="global",
-                      scanned_at="t", engines=["mcp"], max_severity="critical",
-                      finding_count=2, triaged_fp_count=0, mtime_epoch=0, skipped=False,
-                      findings=[_finding(severity="critical"), _finding(severity="high")])
+    store.record_scan(
+        conn,
+        run_id=run,
+        kind="skill",
+        name="sk",
+        scope="global",
+        scanned_at="t",
+        engines=["local"],
+        max_severity="clean",
+        finding_count=0,
+        triaged_fp_count=0,
+        mtime_epoch=0,
+        skipped=False,
+        findings=[],
+    )
+    store.record_scan(
+        conn,
+        run_id=run,
+        kind="mcp",
+        name="m1",
+        scope="global",
+        scanned_at="t",
+        engines=["mcp"],
+        max_severity="critical",
+        finding_count=2,
+        triaged_fp_count=0,
+        mtime_epoch=0,
+        skipped=False,
+        findings=[_finding(severity="critical"), _finding(severity="high")],
+    )
     st = store.stats(conn)
     assert st["skills_total"] == 1
     assert st["mcps_total"] == 1

@@ -31,7 +31,10 @@ def run_cli(tmp_home: Path, *args: str) -> subprocess.CompletedProcess:
     env.pop("SKILLGUARD_MCP_POLICY", None)
     return subprocess.run(
         [sys.executable, str(CLI), *args],
-        capture_output=True, text=True, env=env, cwd=str(tmp_home),
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(tmp_home),
     )
 
 
@@ -46,8 +49,17 @@ def test_scan_skills_json_summary(tmp_path):
     seed_skill(tmp_path, "malicious-skill", "evil")
     seed_skill(tmp_path, "clean-skill", "good")
 
-    r = run_cli(tmp_path, "--target", "skills", "--scope", "global",
-                "--engines", "local", "--format", "json")
+    r = run_cli(
+        tmp_path,
+        "--target",
+        "skills",
+        "--scope",
+        "global",
+        "--engines",
+        "local",
+        "--format",
+        "json",
+    )
     assert r.returncode == 0, r.stderr
 
     out = json.loads(r.stdout)
@@ -61,8 +73,9 @@ def test_scan_skills_quiet_lines(tmp_path):
     seed_skill(tmp_path, "malicious-skill", "evil")
     seed_skill(tmp_path, "clean-skill", "good")
 
-    r = run_cli(tmp_path, "--target", "skills", "--scope", "global",
-                "--engines", "local", "--quiet")
+    r = run_cli(
+        tmp_path, "--target", "skills", "--scope", "global", "--engines", "local", "--quiet"
+    )
     assert r.returncode == 0, r.stderr
     assert "target(s) have HIGH+ findings" in r.stdout
     assert "evil" in r.stdout
@@ -72,8 +85,7 @@ def test_scan_skills_table_contains_finding(tmp_path):
     seed_skill(tmp_path, "malicious-skill", "evil")
     seed_skill(tmp_path, "clean-skill", "good")
 
-    r = run_cli(tmp_path, "--target", "skills", "--scope", "global",
-                "--engines", "local")
+    r = run_cli(tmp_path, "--target", "skills", "--scope", "global", "--engines", "local")
     assert r.returncode == 0, r.stderr
     assert "evil" in r.stdout
     assert ("HIGH" in r.stdout) or ("CRITICAL" in r.stdout)
@@ -81,8 +93,7 @@ def test_scan_skills_table_contains_finding(tmp_path):
 
 def test_scan_no_skills_exits_1(tmp_path):
     # Empty HOME: no ~/.claude/skills dir at all.
-    r = run_cli(tmp_path, "--target", "skills", "--scope", "global",
-                "--engines", "local")
+    r = run_cli(tmp_path, "--target", "skills", "--scope", "global", "--engines", "local")
     assert r.returncode == 1
     assert "No skills" in r.stderr
 
@@ -91,6 +102,5 @@ def test_scan_findings_still_exit_0(tmp_path):
     # README exit-code contract: findings are reported, not an error.
     seed_skill(tmp_path, "malicious-skill", "evil")
 
-    r = run_cli(tmp_path, "--target", "skills", "--scope", "global",
-                "--engines", "local")
+    r = run_cli(tmp_path, "--target", "skills", "--scope", "global", "--engines", "local")
     assert r.returncode == 0, r.stderr

@@ -69,8 +69,9 @@ def fake_conn(tmp_path, monkeypatch):
 
 
 def _run(monkeypatch, *argv):
-    monkeypatch.setattr(sys, "argv", ["skillguard", "--target", "skills",
-                                      "--engines", "local", *argv])
+    monkeypatch.setattr(
+        sys, "argv", ["skillguard", "--target", "skills", "--engines", "local", *argv]
+    )
     cli.main()
 
 
@@ -81,7 +82,7 @@ def test_normal_scan_records_then_closes(fake_conn, monkeypatch):
 
     _run(monkeypatch, "--quiet")
 
-    assert recorded == ["victim"]   # the target was mirrored into history
+    assert recorded == ["victim"]  # the target was mirrored into history
     assert fake_conn.closed is True  # and the owner closed the handle
 
 

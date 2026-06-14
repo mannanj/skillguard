@@ -42,6 +42,7 @@ try:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from skillguard import config as _config
     from skillguard import store as _store
+
     _HAVE_PKG = True
 except Exception:  # pragma: no cover - defensive
     _HAVE_PKG = False
@@ -83,13 +84,15 @@ def _log(action: str, **kw) -> None:
     try:
         if not _config.activity_logging_enabled(CACHE_DIR):
             return
-        _store.log_activity_safe(CACHE_DIR / "skillguard.db", actor="hook",
-                                 action=action, source="hook", **kw)
+        _store.log_activity_safe(
+            CACHE_DIR / "skillguard.db", actor="hook", action=action, source="hook", **kw
+        )
     except Exception:
         pass
 
 
 # ─── Skill gating (unchanged behavior) ───────────────────────────────────────
+
 
 def find_skill_mtime(skill_name: str, short_name: str) -> "float | None":
     """Current SKILL.md mtime for a globally-installed skill, or None if unresolvable."""
@@ -111,8 +114,13 @@ def handle_skill(skill_name: str) -> None:
         cache_file = CACHE_DIR / f"{short_name}.json"
 
     if not cache_file.exists():
-        _log("hook_block", target_kind="skill", target_name=skill_name, outcome="block",
-             detail="never scanned")
+        _log(
+            "hook_block",
+            target_kind="skill",
+            target_name=skill_name,
+            outcome="block",
+            detail="never scanned",
+        )
         block(
             f"⚠ SkillGuard: '{skill_name}' has never been scanned.\n"
             f"  Option 1: {cmd} --skill {short_name}\n"
@@ -123,8 +131,13 @@ def handle_skill(skill_name: str) -> None:
     try:
         cache = json.loads(cache_file.read_text())
     except (json.JSONDecodeError, OSError):
-        _log("hook_block", target_kind="skill", target_name=skill_name, outcome="block",
-             detail="corrupted cache")
+        _log(
+            "hook_block",
+            target_kind="skill",
+            target_name=skill_name,
+            outcome="block",
+            detail="corrupted cache",
+        )
         block(
             f"⚠ SkillGuard: cache entry for '{skill_name}' is corrupted or unreadable.\n"
             f"  Re-scan to restore it: {cmd} --skill {short_name}"
@@ -134,8 +147,13 @@ def handle_skill(skill_name: str) -> None:
     date_str = _fmt_date(scanned_at)
 
     if cache.get("skipped"):
-        _log("hook_warn", target_kind="skill", target_name=skill_name, outcome="warn",
-             detail="skipped (never scanned)")
+        _log(
+            "hook_warn",
+            target_kind="skill",
+            target_name=skill_name,
+            outcome="warn",
+            detail="skipped (never scanned)",
+        )
         print(
             f"⚠ SkillGuard: '{skill_name}' was SKIPPED (never scanned) — "
             f"run: {cmd} --skill {short_name}"
@@ -147,8 +165,13 @@ def handle_skill(skill_name: str) -> None:
     if cached_mtime:
         current_mtime = find_skill_mtime(skill_name, short_name)
         if current_mtime is not None and current_mtime > cached_mtime + 1:
-            _log("hook_block", target_kind="skill", target_name=skill_name, outcome="block",
-                 detail="modified after scan")
+            _log(
+                "hook_block",
+                target_kind="skill",
+                target_name=skill_name,
+                outcome="block",
+                detail="modified after scan",
+            )
             block(
                 f"⚠ SkillGuard: '{skill_name}' was MODIFIED after its last scan "
                 f"({date_str}).\n"
@@ -161,12 +184,23 @@ def handle_skill(skill_name: str) -> None:
     fp_note = f" ({triaged} triaged FP)" if triaged else ""
 
     if max_sev == "clean":
-        _log("hook_allow", target_kind="skill", target_name=skill_name, outcome="allow",
-             detail=f"clean | {date_str}")
+        _log(
+            "hook_allow",
+            target_kind="skill",
+            target_name=skill_name,
+            outcome="allow",
+            detail=f"clean | {date_str}",
+        )
         print(f"✓ SkillGuard: {skill_name} — clean{fp_note} | scanned {date_str}")
     else:
-        _log("hook_allow", target_kind="skill", target_name=skill_name, outcome="allow",
-             severity=max_sev, detail=f"{finding_count} finding(s), max {max_sev}")
+        _log(
+            "hook_allow",
+            target_kind="skill",
+            target_name=skill_name,
+            outcome="allow",
+            severity=max_sev,
+            detail=f"{finding_count} finding(s), max {max_sev}",
+        )
         print(
             f"✓ SkillGuard: {skill_name} — {finding_count} finding(s), "
             f"max: {max_sev}{fp_note} | scanned {date_str}"
@@ -175,6 +209,7 @@ def handle_skill(skill_name: str) -> None:
 
 
 # ─── MCP gating ──────────────────────────────────────────────────────────────
+
 
 def find_mcp_verdict(server_token: str) -> "dict | None":
     """Map an ``mcp__<server>__<tool>`` token back to a cached MCP verdict.
@@ -227,26 +262,38 @@ def handle_mcp(tool_name: str) -> None:
     if policy == "off":
         sys.exit(0)
 
-    server_token = tool_name[len("mcp__"):]
+    server_token = tool_name[len("mcp__") :]
     server_label = server_token.split("__", 1)[0] if "__" in server_token else server_token
     cmd = scan_cmd()
     verdict = find_mcp_verdict(server_token)
 
     if verdict is None:
         if policy == "enforce":
-            _log("hook_block", target_kind="mcp", target_name=server_label, outcome="block",
-                 detail="unscanned MCP server")
+            _log(
+                "hook_block",
+                target_kind="mcp",
+                target_name=server_label,
+                outcome="block",
+                detail="unscanned MCP server",
+            )
             block(
                 f"⚠ SkillGuard: MCP server '{server_label}' has not been scanned.\n"
                 f"  Scan it:    {cmd} --mcp {server_label}\n"
                 f"  Or allow:   {cmd} --skip-mcp {server_label}"
             )
         # warn: never block; nudge once, always log.
-        _log("hook_warn", target_kind="mcp", target_name=server_label, outcome="warn",
-             detail="unscanned MCP server (allowed under warn policy)")
+        _log(
+            "hook_warn",
+            target_kind="mcp",
+            target_name=server_label,
+            outcome="warn",
+            detail="unscanned MCP server (allowed under warn policy)",
+        )
         if _should_nudge(server_label):
-            print(f"⚠ SkillGuard: MCP '{server_label}' is unscanned — scan with "
-                  f"{cmd} --mcp {server_label}  (set 'enforce' to block)")
+            print(
+                f"⚠ SkillGuard: MCP '{server_label}' is unscanned — scan with "
+                f"{cmd} --mcp {server_label}  (set 'enforce' to block)"
+            )
         sys.exit(0)
 
     name = verdict.get("target_name") or verdict.get("skill_name") or server_label
@@ -262,8 +309,14 @@ def handle_mcp(tool_name: str) -> None:
     finding_count = verdict.get("finding_count", 0)
 
     if policy == "enforce" and max_sev in ("critical", "high"):
-        _log("hook_block", target_kind="mcp", target_name=name, outcome="block", severity=max_sev,
-             detail=f"{finding_count} finding(s), max {max_sev}")
+        _log(
+            "hook_block",
+            target_kind="mcp",
+            target_name=name,
+            outcome="block",
+            severity=max_sev,
+            detail=f"{finding_count} finding(s), max {max_sev}",
+        )
         block(
             f"⚠ SkillGuard: MCP '{name}' has {finding_count} finding(s) (max: {max_sev}).\n"
             f"  Review:      {cmd} --show {name}\n"
@@ -273,11 +326,22 @@ def handle_mcp(tool_name: str) -> None:
     # Allow. Scanned MCP allows are silent on stdout (MCP tools fire often) but
     # are recorded to the activity log so the audit trail stays complete.
     if max_sev == "clean":
-        _log("hook_allow", target_kind="mcp", target_name=name, outcome="allow",
-             detail=f"clean | {date_str}")
+        _log(
+            "hook_allow",
+            target_kind="mcp",
+            target_name=name,
+            outcome="allow",
+            detail=f"clean | {date_str}",
+        )
     else:
-        _log("hook_allow", target_kind="mcp", target_name=name, outcome="allow", severity=max_sev,
-             detail=f"{finding_count} finding(s), max {max_sev}")
+        _log(
+            "hook_allow",
+            target_kind="mcp",
+            target_name=name,
+            outcome="allow",
+            severity=max_sev,
+            detail=f"{finding_count} finding(s), max {max_sev}",
+        )
     sys.exit(0)
 
 

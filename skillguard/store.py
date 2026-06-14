@@ -187,6 +187,7 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
 
 # ─── Recording scans ─────────────────────────────────────────────────────────
 
+
 def start_scan_run(
     conn: sqlite3.Connection,
     *,
@@ -286,8 +287,17 @@ def record_scan(
         "max_severity, finding_count, triaged_fp_count, mtime_epoch, skipped, raw_json) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
-            run_id, target_id, kind, name, scope, scanned_at, ",".join(engines),
-            max_severity, finding_count, triaged_fp_count, float(mtime_epoch or 0),
+            run_id,
+            target_id,
+            kind,
+            name,
+            scope,
+            scanned_at,
+            ",".join(engines),
+            max_severity,
+            finding_count,
+            triaged_fp_count,
+            float(mtime_epoch or 0),
             1 if skipped else 0,
             json.dumps(raw_json) if raw_json is not None else None,
         ),
@@ -295,9 +305,15 @@ def record_scan(
     scan_id = _last_rowid(cur)
     rows = [
         (
-            scan_id, f.get("engine", ""), f.get("severity", ""), f.get("category", ""),
-            f.get("message", ""), f.get("file", ""), int(f.get("line", 0) or 0),
-            (f.get("context", "") or "")[:200], 1 if f.get("triaged_fp") else 0,
+            scan_id,
+            f.get("engine", ""),
+            f.get("severity", ""),
+            f.get("category", ""),
+            f.get("message", ""),
+            f.get("file", ""),
+            int(f.get("line", 0) or 0),
+            (f.get("context", "") or "")[:200],
+            1 if f.get("triaged_fp") else 0,
         )
         for f in findings
     ]
@@ -312,6 +328,7 @@ def record_scan(
 
 
 # ─── Activity log ────────────────────────────────────────────────────────────
+
 
 def log_activity(
     conn: sqlite3.Connection,
@@ -332,8 +349,16 @@ def log_activity(
         "INSERT INTO activities (ts, actor, action, target_kind, target_name, outcome, "
         "severity, detail, metadata, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
-            ts or _utcnow_iso(), actor, action, target_kind, target_name, outcome,
-            severity, detail, json.dumps(metadata) if metadata else None, source,
+            ts or _utcnow_iso(),
+            actor,
+            action,
+            target_kind,
+            target_name,
+            outcome,
+            severity,
+            detail,
+            json.dumps(metadata) if metadata else None,
+            source,
         ),
     )
     conn.commit()
@@ -360,45 +385,52 @@ def log_activity_safe(db_path: Path, **kwargs: Any) -> None:
 
 # ─── Queries ─────────────────────────────────────────────────────────────────
 
+
 def recent_scan_runs(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
-    return list(conn.execute(
-        "SELECT * FROM scan_runs ORDER BY id DESC LIMIT ?", (limit,)
-    ).fetchall())
+    return list(
+        conn.execute("SELECT * FROM scan_runs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    )
 
 
 def recent_target_scans(
     conn: sqlite3.Connection, limit: int = 50, kind: str | None = None
 ) -> list[sqlite3.Row]:
     if kind:
-        return list(conn.execute(
-            "SELECT * FROM target_scans WHERE kind=? ORDER BY id DESC LIMIT ?", (kind, limit)
-        ).fetchall())
-    return list(conn.execute(
-        "SELECT * FROM target_scans ORDER BY id DESC LIMIT ?", (limit,)
-    ).fetchall())
+        return list(
+            conn.execute(
+                "SELECT * FROM target_scans WHERE kind=? ORDER BY id DESC LIMIT ?", (kind, limit)
+            ).fetchall()
+        )
+    return list(
+        conn.execute("SELECT * FROM target_scans ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    )
 
 
 def target_history(conn: sqlite3.Connection, *, kind: str, name: str) -> list[sqlite3.Row]:
     """Every scan ever recorded for one target, newest first."""
-    return list(conn.execute(
-        "SELECT * FROM target_scans WHERE kind=? AND name=? ORDER BY id DESC", (kind, name)
-    ).fetchall())
+    return list(
+        conn.execute(
+            "SELECT * FROM target_scans WHERE kind=? AND name=? ORDER BY id DESC", (kind, name)
+        ).fetchall()
+    )
 
 
 def findings_for_scan(conn: sqlite3.Connection, target_scan_id: int) -> list[sqlite3.Row]:
-    return list(conn.execute(
-        "SELECT * FROM findings WHERE target_scan_id=? ORDER BY id", (target_scan_id,)
-    ).fetchall())
+    return list(
+        conn.execute(
+            "SELECT * FROM findings WHERE target_scan_id=? ORDER BY id", (target_scan_id,)
+        ).fetchall()
+    )
 
 
 def list_targets(conn: sqlite3.Connection, kind: str | None = None) -> list[sqlite3.Row]:
     if kind:
-        return list(conn.execute(
-            "SELECT * FROM targets WHERE kind=? ORDER BY kind, name", (kind,)
-        ).fetchall())
-    return list(conn.execute(
-        "SELECT * FROM targets ORDER BY kind, name"
-    ).fetchall())
+        return list(
+            conn.execute(
+                "SELECT * FROM targets WHERE kind=? ORDER BY kind, name", (kind,)
+            ).fetchall()
+        )
+    return list(conn.execute("SELECT * FROM targets ORDER BY kind, name").fetchall())
 
 
 def recent_activity(
@@ -417,13 +449,14 @@ def recent_activity(
         params.append(action)
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     params.append(limit)
-    return list(conn.execute(
-        f"SELECT * FROM activities{where} ORDER BY id DESC LIMIT ?", params
-    ).fetchall())
+    return list(
+        conn.execute(f"SELECT * FROM activities{where} ORDER BY id DESC LIMIT ?", params).fetchall()
+    )
 
 
 def stats(conn: sqlite3.Connection) -> dict:
     """Headline counts for summary lines."""
+
     def scalar(sql: str, *p: Any) -> int:
         r = conn.execute(sql, p).fetchone()
         return int(r[0]) if r and r[0] is not None else 0
@@ -439,7 +472,5 @@ def stats(conn: sqlite3.Connection) -> dict:
         "critical_targets": scalar(
             "SELECT COUNT(*) FROM targets WHERE last_max_severity='critical'"
         ),
-        "high_targets": scalar(
-            "SELECT COUNT(*) FROM targets WHERE last_max_severity='high'"
-        ),
+        "high_targets": scalar("SELECT COUNT(*) FROM targets WHERE last_max_severity='high'"),
     }

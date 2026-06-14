@@ -43,9 +43,7 @@ def skill(tmp_path: Path) -> SkillInfo:
 
 
 def _scan_with(monkeypatch: pytest.MonkeyPatch, skill: SkillInfo, payload: dict):
-    monkeypatch.setattr(
-        urllib.request, "urlopen", lambda req, timeout=30: _FakeResponse(payload)
-    )
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=30: _FakeResponse(payload))
     return SkillAuditEngine().scan(skill)
 
 
@@ -61,8 +59,18 @@ NESTED_RESPONSE = {
             "riskLevel": "critical",
             "findings": 2,
             "topFindings": [
-                {"severity": "critical", "name": "Reverse shell", "rule": "REVERSE_SHELL", "line": 2},
-                {"severity": "high", "name": "Credential exfiltration", "rule": "CRED_ENV_READ", "line": 3},
+                {
+                    "severity": "critical",
+                    "name": "Reverse shell",
+                    "rule": "REVERSE_SHELL",
+                    "line": 2,
+                },
+                {
+                    "severity": "high",
+                    "name": "Credential exfiltration",
+                    "rule": "CRED_ENV_READ",
+                    "line": 3,
+                },
             ],
         }
     ],
@@ -103,7 +111,13 @@ def test_truncated_topfindings_get_an_info_note(monkeypatch, skill):
 def test_legacy_top_level_findings_still_parse(monkeypatch, skill):
     payload = {
         "findings": [
-            {"severity": "high", "category": "data_exfil", "message": "posts env to remote", "file": "run.sh", "line": 7}
+            {
+                "severity": "high",
+                "category": "data_exfil",
+                "message": "posts env to remote",
+                "file": "run.sh",
+                "line": 7,
+            }
         ]
     }
 
@@ -141,10 +155,14 @@ def test_clean_response_yields_no_findings(monkeypatch, skill):
 def test_http_429_yields_rate_limited_info(monkeypatch, skill):
     """A 429 from the API must degrade to a single info/rate_limited note, never
     crash the scan."""
+
     def raise_429(req, timeout=30):
         raise urllib.error.HTTPError(
-            "https://skillaudit.example/scan/files", 429,
-            "Too Many Requests", hdrs=None, fp=None,
+            "https://skillaudit.example/scan/files",
+            429,
+            "Too Many Requests",
+            hdrs=None,
+            fp=None,
         )
 
     monkeypatch.setattr(urllib.request, "urlopen", raise_429)
@@ -157,10 +175,14 @@ def test_http_429_yields_rate_limited_info(monkeypatch, skill):
 
 def test_http_500_yields_engine_error_info(monkeypatch, skill):
     """Any non-429 HTTP error degrades to an info/engine_error note (not a crash)."""
+
     def raise_500(req, timeout=30):
         raise urllib.error.HTTPError(
-            "https://skillaudit.example/scan/files", 500,
-            "Internal Server Error", hdrs=None, fp=None,
+            "https://skillaudit.example/scan/files",
+            500,
+            "Internal Server Error",
+            hdrs=None,
+            fp=None,
         )
 
     monkeypatch.setattr(urllib.request, "urlopen", raise_500)
