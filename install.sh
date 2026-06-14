@@ -33,7 +33,15 @@ hook.py
 config.py
 model.py
 store.py
-mcp.py
+mcp/__init__.py
+mcp/model.py
+mcp/discovery.py
+mcp/secrets.py
+mcp/launch.py
+mcp/rules.py
+mcp/materialize.py
+mcp/engine.py
+mcp/introspect.py
 patterns.py
 discovery.py
 paths.py

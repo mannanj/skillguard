@@ -34,7 +34,7 @@ file with no test on its main path. So the sequence is:
 | 004  | DX backstop: ruff + mypy + pre-commit + CI gates | P1 | M | 001 | DONE |
 | 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | DONE |
 | 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | DONE |
-| 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | TODO |
+| 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | DONE |
 | 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | TODO |
 | 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | TODO |
 | 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | TODO |
@@ -128,6 +128,41 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   exceeds ~300 LOC (`cli.py` 289, `commands.py` 300; `mcp.py`/`store.py`/`hook.py`
   unchanged — 007 territory). Verified green: ruff clean, ruff-format clean, mypy
   clean (25 files), **165 → 167** pass.
+- **2026-06-14** — Plan 007 executed on branch `refactor/decompose-mcp` (off
+  `main` post-merge). Converted the 962-LOC `mcp.py` god-file into an `mcp/`
+  **package** behind a thin re-export facade (`__init__.py` 80 LOC) whose
+  `__all__` + redundant-alias seams keep `skillguard.mcp`'s flat-module API
+  intact — `cli.py`, `paths.py`, and both MCP test files import unchanged.
+  Modules by concern: `model.py` (`McpServer`), `discovery.py` (config
+  locations + the 4-source loader + pruned plugin walk), `secrets.py` (the
+  single redaction/secret-detection authority), `launch.py` (runner/package/
+  image parsers), `rules.py` (`SUSPICIOUS_HOSTS`/`_RUNNERS` data),
+  `materialize.py` (`safe_name`/`materialize_surface`/`write_introspection_surface`),
+  `engine.py` (the 117-line `analyze_mcp_config` god-function split into four
+  named predicates — `_endpoint_findings`/`_launch_findings`/
+  `_inline_secret_findings`/`_exposure_findings` — + `McpConfigEngine`), and
+  `introspect.py` (the only module that executes untrusted code, isolated for
+  plan 008). Embedded sub-improvement MCP-02: the doubled
+  `not _is_env_ref(x) and not _has_interpolation(x)` guard collapsed into one
+  `_is_safe_ref` (grep shows **0** open-coded sites left). The riskier
+  sub-improvements (MCP-06 `shlex` `parse_launch`, MCP-04 table-driven rules,
+  MCP-08 unified `scan_url`) were **deferred** to keep detection byte-identical
+  — the launch parsers and rule checks were moved verbatim — since the plan
+  flags `shlex` tokenization deltas as a STOP-and-ask condition. Behavior pinned
+  by a 35-case corpus snapshot (findings + redactions) proven **byte-identical**
+  before/after, the `test_secret_never_persisted_anywhere` leak-guard green, and
+  the verdict-cache JSON unchanged (materialization moved verbatim). The
+  monkeypatch seam (the `isolate` fixture patches `mcp.global_config_path` et al.
+  on the package) is preserved by resolving the path accessors through the
+  facade at call time — the same idiom `paths.cache_dir` uses for `cli.CACHE_DIR`.
+  `install.sh`'s `MODULES` gained all nine `mcp/*.py` paths; a real local
+  `HOME=tmp SKILLGUARD_SRC=. sh install.sh` shipped them and the installed copy
+  imports the full public API. `McpConfigEngine` stays out of `ENGINE_REGISTRY`
+  (appended only when MCP targets exist). Largest modules `engine.py` (273) and
+  `discovery.py` (224) sit just over the ~200 soft target — intrinsic to the
+  snapshot-locked verbose Finding messages and the four-source loader; the rest
+  are ≤164. Verified green: ruff clean, ruff-format clean, mypy clean (33 files),
+  **167** pass (unchanged — a pure structural refactor).
 
 ## Findings considered and rejected
 
