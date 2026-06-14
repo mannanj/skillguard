@@ -11,9 +11,10 @@ without importing each other. ``cli`` re-exports ``Finding`` / ``SkillInfo`` /
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
@@ -33,7 +34,7 @@ class Finding:
         return (SEVERITY_ORDER.get(self.severity, 99), self.engine, self.category)
 
 
-def max_severity_of(findings: "Iterable[Finding]") -> str:
+def max_severity_of(findings: Iterable[Finding]) -> str:
     """Worst (lowest sort_key) severity among findings, or 'clean' if none."""
     active = [f for f in findings if not f.triaged_fp]
     if not active:
@@ -41,7 +42,7 @@ def max_severity_of(findings: "Iterable[Finding]") -> str:
     return min(active, key=lambda f: f.sort_key()).severity
 
 
-def worst_severity(severities: "Iterable[str]") -> str:
+def worst_severity(severities: Iterable[str]) -> str:
     """Worst severity among a sequence of severity strings, 'clean' if all clean/empty."""
     worst = "clean"
     for s in severities:
@@ -68,7 +69,7 @@ class SkillInfo:
     files: list[Path] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
     kind: str = "skill"  # "skill" | "mcp"
-    mtime_override: Optional[float] = None
+    mtime_override: float | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @property

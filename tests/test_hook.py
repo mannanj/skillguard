@@ -17,8 +17,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
-
 
 def _run_hook(hook_path: Path, tmp_home: Path, stdin_text: str) -> subprocess.CompletedProcess:
     """Invoke the hook as a subprocess with HOME overridden to tmp_home."""

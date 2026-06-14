@@ -15,9 +15,9 @@ import skillguard.cli as cli
 from skillguard.cli import (
     Finding,
     SkillInfo,
+    _atomic_write_json,
     write_cache,
     write_skip_cache,
-    _atomic_write_json,
 )
 
 

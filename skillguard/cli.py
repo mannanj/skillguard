@@ -33,7 +33,6 @@ import urllib.request
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 # Allow `python3 /path/to/skillguard/cli.py` to run standalone — the hook prints
 # exactly that as its fallback scan command for plugin-only installs, where the
@@ -43,6 +42,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from skillguard import config, store
+from skillguard._util import atomic_write_json as _atomic_write_json
+from skillguard._util import utcnow_iso
 from skillguard.mcp import (
     McpConfigEngine,
     discover_mcps,
@@ -51,7 +52,6 @@ from skillguard.mcp import (
     safe_name,
     write_introspection_surface,
 )
-from skillguard._util import atomic_write_json as _atomic_write_json, utcnow_iso
 from skillguard.model import (
     SEVERITY_ORDER,
     Finding,
@@ -81,7 +81,7 @@ SKILLAUDIT_DELAY = float(os.environ.get("SKILLGUARD_SKILLAUDIT_DELAY", "2.1"))
 
 # ─── Skill Discovery ────────────────────────────────────────────────────────
 
-def discover_skills(scope: str, project_dir: Path, single_skill: Optional[str] = None) -> list[SkillInfo]:
+def discover_skills(scope: str, project_dir: Path, single_skill: str | None = None) -> list[SkillInfo]:
     """Find all skills in global and/or local directories."""
     skills: list[SkillInfo] = []
 
@@ -276,7 +276,7 @@ class CiscoEngine:
 
     def __init__(self) -> None:
         try:
-            from skill_scanner import SkillScanner  # type: ignore
+            from skill_scanner import SkillScanner
             self.available = True
             self._scanner_cls = SkillScanner
         except ImportError:
@@ -461,8 +461,8 @@ class SnykEngine:
                         findings.append(Finding(
                             engine="snyk",
                             severity=severity,
-                            category=issue.get("code", issue.get("type", "unknown")),
-                            message=issue.get("message", issue.get("description", str(issue))),
+                            category=str(issue.get("code", issue.get("type", "unknown"))),
+                            message=str(issue.get("message", issue.get("description", str(issue)))),
                             file=issue.get("file", ""),
                             line=issue.get("line", 0),
                         ))
@@ -499,7 +499,7 @@ def triage_path() -> Path:
     return CACHE_DIR / "_triage.json"
 
 
-def resolve_existing_cache(name: str) -> Optional[Path]:
+def resolve_existing_cache(name: str) -> Path | None:
     """Locate a target's verdict cache, whether it's a skill (top-level) or an
     MCP (under ``mcps/``). Skill path wins on the rare name collision."""
     skill_p = cache_path_for(name, "skill")
@@ -532,7 +532,7 @@ def save_triage(data: dict) -> None:
     _atomic_write_json(triage_path(), data)
 
 
-def apply_triage(skill: SkillInfo, triage: Optional[dict] = None) -> None:
+def apply_triage(skill: SkillInfo, triage: dict | None = None) -> None:
     """Flag findings previously marked false-positive so they stop counting."""
     fps = (triage if triage is not None else load_triage())["false_positives"]
     for f in skill.findings:
@@ -919,7 +919,7 @@ def report_markdown(skills: list[SkillInfo], engines_used: list[str], scan_time:
     skill_targets = [s for s in skills if s.kind == "skill"]
     mcp_targets = [s for s in skills if s.kind == "mcp"]
 
-    print(f"# SkillGuard Scan Report")
+    print("# SkillGuard Scan Report")
     print(f"\n**Date:** {scan_time}")
     print(f"**Engines:** {', '.join(engines_used)}")
     print(f"**Targets:** {len(skill_targets)} skill(s), {len(mcp_targets)} MCP(s)")
@@ -1110,20 +1110,24 @@ def _build_engines(engine_names: list[str], quiet: bool) -> tuple[list, list[str
     used: list[str] = []
     for name in engine_names:
         if name == "local":
-            engines.append(LocalEngine()); used.append("local")
+            engines.append(LocalEngine())
+            used.append("local")
         elif name == "cisco":
-            eng = CiscoEngine()
-            if eng.available:
-                engines.append(eng); used.append("cisco")
+            cisco = CiscoEngine()
+            if cisco.available:
+                engines.append(cisco)
+                used.append("cisco")
             elif not quiet:
                 print(f"{DIM}[skip] Cisco engine: cisco-ai-skill-scanner not installed "
                       f"(uv pip install cisco-ai-skill-scanner){RESET}", file=sys.stderr)
         elif name == "skillaudit":
-            engines.append(SkillAuditEngine()); used.append("skillaudit")
+            engines.append(SkillAuditEngine())
+            used.append("skillaudit")
         elif name == "snyk":
-            eng = SnykEngine()
-            if eng.available:
-                engines.append(eng); used.append("snyk")
+            snyk = SnykEngine()
+            if snyk.available:
+                engines.append(snyk)
+                used.append("snyk")
             elif not quiet:
                 print(f"{DIM}[skip] Snyk engine: SNYK_TOKEN not set{RESET}", file=sys.stderr)
         else:

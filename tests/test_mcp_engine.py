@@ -9,14 +9,12 @@ well-configured server stays silent at HIGH+.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
 
 from skillguard import mcp
 from skillguard.model import SkillInfo
-
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 

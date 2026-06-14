@@ -38,7 +38,7 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from skillguard.model import Finding, SkillInfo
@@ -85,7 +85,7 @@ class McpServer:
     env: dict[str, str] = field(default_factory=dict)      # in-memory only
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)  # in-memory only
-    plugin: Optional[str] = None
+    plugin: str | None = None
     raw: dict = field(default_factory=dict)                # in-memory only
 
     @property
@@ -112,7 +112,7 @@ class McpServer:
 
 # ─── Discovery ───────────────────────────────────────────────────────────────
 
-def _read_json(path: Path) -> Optional[dict]:
+def _read_json(path: Path) -> dict | None:
     try:
         data = json.loads(path.read_text())
         return data if isinstance(data, dict) else None
@@ -121,7 +121,7 @@ def _read_json(path: Path) -> Optional[dict]:
 
 
 def _server_from_config(
-    name: str, cfg: Any, source: Path, scope: str, plugin: Optional[str] = None
+    name: str, cfg: Any, source: Path, scope: str, plugin: str | None = None
 ) -> McpServer:
     cfg = cfg if isinstance(cfg, dict) else {}
     ttype = str(cfg.get("type") or cfg.get("transport") or "").lower()
@@ -155,7 +155,7 @@ def _server_from_config(
 
 
 def _servers_from_mapping(
-    mapping: Any, source: Path, scope: str, plugin: Optional[str] = None
+    mapping: Any, source: Path, scope: str, plugin: str | None = None
 ) -> list[McpServer]:
     if not isinstance(mapping, dict):
         return []
@@ -167,8 +167,8 @@ def _servers_from_mapping(
 
 def discover_mcps(
     scope: str = "all",
-    project_dir: Optional[Path] = None,
-    single: Optional[str] = None,
+    project_dir: Path | None = None,
+    single: str | None = None,
     include_plugins: bool = True,
 ) -> list[McpServer]:
     """Find every MCP server Claude Code would load, deduplicated by (scope,name).
@@ -187,7 +187,8 @@ def discover_mcps(
         if want_global:
             servers += _servers_from_mapping(gc.get("mcpServers"), global_config_path(), "global")
         if want_project:
-            projects = gc.get("projects") if isinstance(gc.get("projects"), dict) else {}
+            raw_projects = gc.get("projects")
+            projects = raw_projects if isinstance(raw_projects, dict) else {}
             for key in {str(project_dir), str(project_dir.resolve())}:
                 proj = projects.get(key)
                 if isinstance(proj, dict):
@@ -230,7 +231,7 @@ _PRUNE_DIRS = {"node_modules", ".git", ".venv", "venv", "dist", "build",
                "__pycache__", ".cache", ".next", "target"}
 
 
-def _discover_plugin_mcps(root: Optional[Path] = None, cap: int = 4000) -> list[McpServer]:
+def _discover_plugin_mcps(root: Path | None = None, cap: int = 4000) -> list[McpServer]:
     """Find plugin-declared MCP servers in ``.mcp.json`` / ``plugin.json`` files.
 
     Uses a pruned, bounded walk (not ``rglob``) so a plugin tree with vendored
@@ -359,7 +360,7 @@ def redact_arg(arg: str) -> str:
 
 def redact_url_secrets(url: str) -> str:
     """Redact credential-bearing query parameters in a URL, keeping ``${REF}``s."""
-    def sub(m: "re.Match") -> str:
+    def sub(m: re.Match) -> str:
         val = m.group(3)
         if _is_env_ref(val) or _has_interpolation(val):
             return m.group(0)
@@ -586,7 +587,7 @@ def analyze_mcp_config(mcp: McpServer) -> list[Finding]:
     return out
 
 
-def _runner_in(low_launch: str) -> Optional[str]:
+def _runner_in(low_launch: str) -> str | None:
     toks = low_launch.split()
     for i, t in enumerate(toks):
         base = os.path.basename(t)
@@ -605,7 +606,7 @@ def _runner_in(low_launch: str) -> Optional[str]:
     return None
 
 
-def _runner_package(launch: str, runner: str) -> tuple[Optional[str], Optional[str]]:
+def _runner_package(launch: str, runner: str) -> tuple[str | None, str | None]:
     """Extract (package, version) from a runner invocation. Skips flags and the
     runner subcommand. Returns version None when unpinned."""
     toks = launch.split()
@@ -690,7 +691,7 @@ def introspect(mcp: McpServer, timeout: float = 20.0) -> dict:
         return {"ok": False, "instructions": "", "tools": [], "error": str(e)}
 
 
-def _jsonrpc(method: str, _id: Optional[int] = None, **params: Any) -> str:
+def _jsonrpc(method: str, _id: int | None = None, **params: Any) -> str:
     msg: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
     if _id is not None:
         msg["id"] = _id

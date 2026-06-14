@@ -108,7 +108,7 @@ def mcp_policy(cache_dir: Path | None = None) -> str:
     if env is not None and env.strip().lower() in VALID_MCP_POLICIES:
         return env.strip().lower()
     val = str(load_settings(cache_dir).get("mcp_policy", DEFAULTS["mcp_policy"])).lower()
-    return val if val in VALID_MCP_POLICIES else DEFAULTS["mcp_policy"]
+    return val if val in VALID_MCP_POLICIES else str(DEFAULTS["mcp_policy"])
 
 
 def set_mcp_policy(policy: str, cache_dir: Path | None = None) -> None:

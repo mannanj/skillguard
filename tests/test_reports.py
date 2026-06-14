@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from skillguard.cli import report_table, report_json, report_markdown, report_quiet
+from skillguard.cli import report_json, report_markdown, report_quiet, report_table
 from skillguard.model import Finding, SkillInfo
 
 

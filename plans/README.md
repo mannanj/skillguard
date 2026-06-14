@@ -31,7 +31,7 @@ file with no test on its main path. So the sequence is:
 | 001  | Characterization tests: pin cli.py behavior before refactor | P1 | M | — | DONE |
 | 002  | Consolidate shared primitives (atomic-write, severity, paths, time) | P1 | S | 001 | DONE |
 | 003  | Correctness & robustness fixes (DB lifecycle, silent failures, dead code) | P1 | M | 001 | DONE |
-| 004  | DX backstop: ruff + mypy + pre-commit + CI gates | P1 | M | 001 | TODO |
+| 004  | DX backstop: ruff + mypy + pre-commit + CI gates | P1 | M | 001 | DONE |
 | 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | TODO |
 | 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | TODO |
 | 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | TODO |
@@ -69,6 +69,19 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   `med_skills`). Also closed a latent connect-OK/start-fail connection leak.
   5 new tests (corrupt-cache guard, introspect-failure surfacing, 3 scan-loop
   lifecycle invariants). Verified green (**151 → 156**).
+- **2026-06-13** — Plan 004 executed on the same branch: added `[tool.ruff]` +
+  `[tool.mypy]` config (lenient start) and `ruff`/`mypy` to the `dev` extra, then
+  fixed every finding they surfaced — 11 mypy + 6 non-autofix ruff. Substantive
+  fixes: a single `_last_rowid()` helper replacing four `int(cur.lastrowid)`
+  Optional sites (fail-loud, DRY); `str()`-coerce untrusted Snyk JSON into the
+  `str`-typed `Finding` fields; narrow the MCP per-project lookup so `projects`
+  is always a dict; drop a now-redundant `# type: ignore`; give the cisco/snyk
+  engine locals distinct names. `tests/fixtures/` excluded from ruff (sample
+  skill code, one deliberately malicious). Applied `ruff format` tree-wide in its
+  own commit. Added `.pre-commit-config.yaml` (ruff + mypy) and a CI
+  lint/typecheck job, and broadened the test matrix to 3.10–3.14 to match the
+  advertised classifiers. `pip-audit` intentionally **not** gated (zero runtime
+  deps). Verified green: ruff clean, mypy clean (8 files), **156** pass.
 
 ## Findings considered and rejected
 

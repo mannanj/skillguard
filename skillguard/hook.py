@@ -40,7 +40,8 @@ NUDGE_DIR = MCP_CACHE_DIR / "_nudged"
 # Optional package integration (settings + activity log). Never fatal.
 try:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from skillguard import config as _config, store as _store
+    from skillguard import config as _config
+    from skillguard import store as _store
     _HAVE_PKG = True
 except Exception:  # pragma: no cover - defensive
     _HAVE_PKG = False

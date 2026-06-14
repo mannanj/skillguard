@@ -1,0 +1,20 @@
+# SkillGuard pre-commit hooks — lint, format, and type-check before every commit.
+#
+#   pip install -e ".[dev]" && pre-commit install   # one-time setup
+#   pre-commit run --all-files                       # run across the whole tree
+#
+# Tool revs are pinned to the versions in the [dev] extra of pyproject.toml; bump
+# them together. tests/fixtures/ (sample skill code, one fixture deliberately
+# malicious) is skipped via force-exclude in [tool.ruff] — never lint/format it.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.17
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.1.0
+    hooks:
+      - id: mypy
+        files: ^skillguard/

@@ -38,7 +38,7 @@ dependencies = []
 
 [project.optional-dependencies]
 cisco = ["cisco-ai-skill-scanner"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff", "mypy"]
 
 [project.scripts]
 skillguard = "skillguard.cli:main"
@@ -55,3 +55,23 @@ packages = ["skillguard"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+# tests/fixtures/ holds sample skill code the scanner analyzes (one fixture is
+# deliberately malicious) — never lint or reformat it. force-exclude makes the
+# pre-commit hook honor this even when it passes fixture paths explicitly.
+extend-exclude = ["tests/fixtures"]
+force-exclude = true
+
+[tool.ruff.lint]
+# pyflakes (F), pycodestyle (E), isort (I), pyupgrade (UP), bugbear (B)
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # don't fight existing long lines; reflow opportunistically
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true   # cisco / skill_scanner are optional extras
+warn_unused_ignores = true
+check_untyped_defs = true
