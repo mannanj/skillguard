@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from skillguard import branding
 from skillguard.mcp import safe_name
 
 MCP_CACHE_SUBDIR = "mcps"  # MCP verdicts/surfaces live under <cache>/mcps/
@@ -36,7 +37,7 @@ def triage_path() -> Path:
 
 def db_path() -> Path:
     """History DB path, computed per-call so tests that repoint CACHE_DIR work."""
-    return cache_dir() / "skillguard.db"
+    return cache_dir() / branding.DB_NAME
 
 
 def cache_path_for(name: str, kind: str = "skill") -> Path:

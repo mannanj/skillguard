@@ -40,13 +40,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from skillguard import branding
+
 # Bump when the schema changes in a way that needs migration logic below.
 SCHEMA_VERSION = 1
 
 
 def default_db_path() -> Path:
     """Location of the history DB, alongside the per-target JSON caches."""
-    return Path.home() / ".claude" / "skillguard-cache" / "skillguard.db"
+    return Path.home() / ".claude" / branding.CACHE_DIR_NAME / branding.DB_NAME
 
 
 def _utcnow_iso() -> str:

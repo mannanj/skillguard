@@ -10,12 +10,15 @@ import os
 import urllib.error
 import urllib.request
 
+from skillguard import branding
 from skillguard.discovery import rel_to
 from skillguard.model import Finding, SkillInfo, normalize_severity
 
-SKILLAUDIT_BASE = os.environ.get("SKILLGUARD_SKILLAUDIT_BASE", "https://skillaudit.vercel.app")
+SKILLAUDIT_BASE = os.environ.get(
+    f"{branding.ENV_PREFIX}SKILLAUDIT_BASE", "https://skillaudit.vercel.app"
+)
 # Delay between SkillAudit API calls (default respects the 30 req/min limit)
-SKILLAUDIT_DELAY = float(os.environ.get("SKILLGUARD_SKILLAUDIT_DELAY", "2.1"))
+SKILLAUDIT_DELAY = float(os.environ.get(f"{branding.ENV_PREFIX}SKILLAUDIT_DELAY", "2.1"))
 
 
 class SkillAuditEngine:

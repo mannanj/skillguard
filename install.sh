@@ -31,6 +31,7 @@ args.py
 cli.py
 hook.py
 config.py
+branding.py
 model.py
 store.py
 mcp/__init__.py

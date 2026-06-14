@@ -35,6 +35,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from skillguard import branding
 from skillguard._util import atomic_write_json
 
 _TRUTHY = {"1", "on", "true", "yes", "enabled"}
@@ -49,7 +50,7 @@ DEFAULTS = {
 
 
 def default_cache_dir() -> Path:
-    return Path.home() / ".claude" / "skillguard-cache"
+    return Path.home() / ".claude" / branding.CACHE_DIR_NAME
 
 
 def settings_path(cache_dir: Path | None = None) -> Path:
@@ -87,7 +88,7 @@ def _coerce_bool(value: str) -> bool | None:
 
 def activity_logging_enabled(cache_dir: Path | None = None) -> bool:
     """Is the activity audit log on? Env var overrides the persisted setting."""
-    env = os.environ.get("SKILLGUARD_ACTIVITY_LOG")
+    env = os.environ.get(f"{branding.ENV_PREFIX}ACTIVITY_LOG")
     if env is not None:
         coerced = _coerce_bool(env)
         if coerced is not None:
@@ -106,7 +107,7 @@ def set_activity_logging(enabled: bool, cache_dir: Path | None = None) -> None:
 
 def mcp_policy(cache_dir: Path | None = None) -> str:
     """Hook policy for MCP tool calls: off | warn | enforce."""
-    env = os.environ.get("SKILLGUARD_MCP_POLICY")
+    env = os.environ.get(f"{branding.ENV_PREFIX}MCP_POLICY")
     if env is not None and env.strip().lower() in VALID_MCP_POLICIES:
         return env.strip().lower()
     val = str(load_settings(cache_dir).get("mcp_policy", DEFAULTS["mcp_policy"])).lower()

@@ -22,6 +22,17 @@ def _p(cat: str, sev: str, pattern: str, desc: str) -> None:
     LOCAL_PATTERNS.append((cat, sev, re.compile(pattern, re.IGNORECASE), desc))
 
 
+def is_markdown_table_row(line: str) -> bool:
+    """True if ``line`` is a markdown table row or separator (three or more ``|``).
+
+    Hoisted out of ``LocalEngine`` so engines that lack their own documentation-
+    table suppression (e.g. a Cisco post-filter) can reuse the *exact* same rule
+    instead of re-deriving it and drifting. Pipe-counting is unaffected by leading
+    or trailing whitespace, so callers may pass a stripped or raw line.
+    """
+    return "|" in line and line.count("|") >= 3
+
+
 # --- Reverse shells & RCE (CRITICAL) ---
 _p("reverse_shell", "critical", r"/dev/tcp/", "Reverse shell via /dev/tcp")
 _p("reverse_shell", "critical", r"nc\s+(-e|-c)\s+", "Netcat reverse shell")

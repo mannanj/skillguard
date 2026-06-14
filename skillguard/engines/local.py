@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from skillguard.discovery import rel_to
 from skillguard.model import Finding, SkillInfo
-from skillguard.patterns import LOCAL_PATTERNS
+from skillguard.patterns import LOCAL_PATTERNS, is_markdown_table_row
 
 
 class LocalEngine:
@@ -44,7 +44,7 @@ class LocalEngine:
                         if stripped.startswith("//") and "detect" in stripped.lower():
                             continue
                         # Skip if the line is inside a markdown table header or description
-                        if "|" in stripped and stripped.count("|") >= 3:
+                        if is_markdown_table_row(stripped):
                             continue
 
                         rel_path = rel_to(file_path, skill.path)
