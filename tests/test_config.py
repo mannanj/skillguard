@@ -10,7 +10,6 @@ import pytest
 
 from skillguard import config
 
-
 # ── activity_logging ──────────────────────────────────────────────────────────
 
 

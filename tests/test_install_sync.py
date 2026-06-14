@@ -24,14 +24,22 @@ INSTALL_SH = (ROOT / "install.sh").read_text()
 
 
 def test_remote_fetch_lists_every_package_module():
-    """Every skillguard/*.py module must be in install.sh's remote-fetch loop,
-    or a remote curl install ships an incomplete package that fails to import."""
-    modules = {p.name for p in (ROOT / "skillguard").glob("*.py")}
+    """Every skillguard package module — top-level AND nested in sub-packages
+    (engines/, render/) — must be in install.sh's fetch list by its relative path,
+    or a remote curl install ships an incomplete package that fails to import.
+
+    Recursive + path-aware: a basename match isn't enough once sub-packages exist
+    (two ``__init__.py`` files, same name, different paths), so we assert the exact
+    relative path (``engines/local.py``) appears in install.sh."""
+    pkg = ROOT / "skillguard"
+    modules = {
+        p.relative_to(pkg).as_posix() for p in pkg.rglob("*.py") if "__pycache__" not in p.parts
+    }
     assert modules, "no package modules found — wrong ROOT?"
     missing = [m for m in sorted(modules) if m not in INSTALL_SH]
     assert not missing, (
         f"install.sh does not fetch these package modules on remote install: {missing}. "
-        f"Add them to the `for f in ...` loop."
+        f"Add them to the MODULES list (use the path relative to skillguard/)."
     )
 
 

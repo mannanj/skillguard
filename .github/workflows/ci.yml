@@ -8,9 +8,17 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.10", "3.13"]
+        # Cover every Python the classifiers advertise (3.10–3.14) on Linux;
+        # sanity-check the endpoints on macOS to keep the runner bill modest.
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: macos-latest
+            python-version: "3.10"
+          - os: macos-latest
+            python-version: "3.14"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -25,3 +33,19 @@ jobs:
         run: |
           skillguard --version
           skillguard --skill does-not-exist --scope local || test $? -eq 1
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Ruff lint
+        run: ruff check skillguard tests
+      - name: Ruff format check
+        run: ruff format --check skillguard tests
+      - name: Mypy
+        run: mypy skillguard

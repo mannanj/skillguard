@@ -20,9 +20,7 @@ _SCAN_SUFFIXES = (".md", ".py", ".sh", ".js", ".ts", ".yaml", ".yml", ".json")
 def _build_skill(skill_dir: Path) -> SkillInfo:
     """Construct a SkillInfo pointing at a fixture directory, the same way
     discover_skills collects files."""
-    files = sorted(
-        f for f in skill_dir.rglob("*") if f.is_file() and f.suffix in _SCAN_SUFFIXES
-    )
+    files = sorted(f for f in skill_dir.rglob("*") if f.is_file() and f.suffix in _SCAN_SUFFIXES)
     return SkillInfo(name=skill_dir.name, path=skill_dir, scope="local", files=files)
 
 

