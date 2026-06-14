@@ -561,7 +561,13 @@ def mark_fp_command(skill_name: str) -> None:
         print(f"No scan on record for '{skill_name}'. Scan first: skillguard --skill {skill_name}"
               f"  (or --mcp {skill_name})", file=sys.stderr)
         sys.exit(1)
-    cache = json.loads(cache_file.read_text())
+    try:
+        cache = json.loads(cache_file.read_text())
+    except (OSError, json.JSONDecodeError):
+        # A torn/unreadable cache must exit cleanly, not traceback — mirror the
+        # hook's fail-closed guard (hook.py) and unmark_fp_command's read guard.
+        print(f"Cache for '{skill_name}' is corrupted or unreadable. Re-scan first: skillguard --skill {skill_name}", file=sys.stderr)
+        sys.exit(1)
     raw = cache.get("findings")
     if raw is None:
         print(f"Cache for '{skill_name}' predates triage support. Re-scan first: skillguard --skill {skill_name}", file=sys.stderr)
@@ -786,9 +792,6 @@ def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: st
     print(f"  {'─' * len(header)}")
     for sev in ["critical", "high", "medium", "low"]:
         row_total = sum(engine_counts[e][sev] for e in engines_used)
-        if row_total == 0 and sev in ("low",):
-            # Always show low even if 0
-            pass
         color = severity_color(sev) if row_total > 0 else DIM
         cells = "".join(f"{engine_counts[e][sev]:>10}" for e in engines_used)
         print(f"  {color}{sev:<10}{cells}{row_total:>10}{RESET}")
@@ -811,7 +814,6 @@ def report_table(skills: list[SkillInfo], engines_used: list[str], scan_time: st
         print()
 
     # Medium findings (compact)
-    med_skills = [s for s in skills if s.max_severity == "medium" and s.max_severity not in ("critical", "high")]
     med_findings_total = sum(len([f for f in s.active_findings if f.severity == "medium"]) for s in skills)
     if med_findings_total > 0:
         print(f"{BOLD}MEDIUM FINDINGS{RESET} ({med_findings_total} total)")
@@ -1292,6 +1294,12 @@ def main() -> None:
             intro = introspect(srv)
             if intro.get("ok"):
                 write_introspection_surface(t, intro)
+            elif not args.quiet:
+                # A deliberately-requested introspection that fails must be
+                # visible — not buried in the activity log, which the toggle can
+                # silence. stderr so it never corrupts json/markdown on stdout.
+                print(f"⚠ introspection of {srv.name} failed: {intro.get('error')}",
+                      file=sys.stderr)
             log_activity(actor="user", action="introspect", target_kind="mcp",
                          target_name=srv.name, outcome="ok" if intro.get("ok") else "error",
                          detail=(intro.get("error") or f"{len(intro.get('tools', []))} tool(s) read"))
@@ -1301,58 +1309,73 @@ def main() -> None:
     total = len(targets)
     triage = load_triage()
 
-    conn = run_id = None
     target_kind_label = "all" if want_skills and want_mcps else "mcps" if want_mcps else "skills"
+
+    # History is best-effort but OBSERVABLE. A single try/finally owns the
+    # connection for the whole scan, so the handle is always closed — even if
+    # opening half-succeeds (connect OK, start_scan_run fails) or scanning raises
+    # mid-loop (no leak either way). DB failures are collected and surfaced once
+    # to stderr instead of silently swallowed, so a user never believes a scan was
+    # recorded when it wasn't. Recording stays independent of the activity-log
+    # toggle. When plan 006 extracts the scan loop, this owner moves as one unit.
+    conn = run_id = None
+    history_error = None  # first DB error encountered; surfaced once after the loop
     try:
-        conn = store.connect(db_path())
-        run_id = store.start_scan_run(
-            conn, engines=engine_names_used, scope=args.scope, target_kind=target_kind_label,
-            source="cli", command_line=" ".join(sys.argv),
-        )
-    except Exception:
-        conn = None
+        try:
+            conn = store.connect(db_path())
+            run_id = store.start_scan_run(
+                conn, engines=engine_names_used, scope=args.scope, target_kind=target_kind_label,
+                source="cli", command_line=" ".join(sys.argv),
+            )
+        except Exception as e:
+            history_error, run_id = e, None  # history unavailable; conn (if opened) closed in finally
 
-    for i, target in enumerate(targets):
+        for i, target in enumerate(targets):
+            if not args.quiet and args.format == "table":
+                print(f"\r  Scanning {i+1}/{total}: {target.name:<40}", end="", file=sys.stderr, flush=True)
+
+            for engine in engines:
+                target.findings.extend(engine.scan(target))
+                if engine.name == "skillaudit" and i < total - 1:
+                    time.sleep(SKILLAUDIT_DELAY)
+
+            if target.kind == "mcp":
+                target.findings = _dedupe_mcp_findings(target.findings)
+            apply_triage(target, triage)
+            cache = write_cache(target, engine_names_used)
+
+            # History is ALWAYS preserved (independent of the activity-log toggle).
+            if conn is not None and run_id is not None:
+                try:
+                    store.record_scan(
+                        conn, run_id=run_id, kind=target.kind, name=target.name, scope=target.scope,
+                        scanned_at=cache["scanned_at"], engines=engine_names_used,
+                        max_severity=cache["max_severity"], finding_count=cache["finding_count"],
+                        triaged_fp_count=cache["triaged_fp_count"], mtime_epoch=cache["skill_mtime_epoch"],
+                        skipped=False, findings=cache["findings"], raw_json=cache,
+                    )
+                except Exception as e:
+                    history_error = history_error or e
+
         if not args.quiet and args.format == "table":
-            print(f"\r  Scanning {i+1}/{total}: {target.name:<40}", end="", file=sys.stderr, flush=True)
+            print("\r" + " " * 60 + "\r", end="", file=sys.stderr, flush=True)
 
-        for engine in engines:
-            target.findings.extend(engine.scan(target))
-            if engine.name == "skillaudit" and i < total - 1:
-                time.sleep(SKILLAUDIT_DELAY)
-
-        if target.kind == "mcp":
-            target.findings = _dedupe_mcp_findings(target.findings)
-        apply_triage(target, triage)
-        cache = write_cache(target, engine_names_used)
-
-        # History is ALWAYS preserved (independent of the activity-log toggle).
+        total_findings = sum(len(t.active_findings) for t in targets)
+        worst = worst_severity(t.max_severity for t in targets)
+        if conn is not None and run_id is not None:
+            try:
+                store.finish_scan_run(conn, run_id, num_targets=total, num_findings=total_findings)
+            except Exception as e:
+                history_error = history_error or e
+    finally:
         if conn is not None:
             try:
-                store.record_scan(
-                    conn, run_id=run_id, kind=target.kind, name=target.name, scope=target.scope,
-                    scanned_at=cache["scanned_at"], engines=engine_names_used,
-                    max_severity=cache["max_severity"], finding_count=cache["finding_count"],
-                    triaged_fp_count=cache["triaged_fp_count"], mtime_epoch=cache["skill_mtime_epoch"],
-                    skipped=False, findings=cache["findings"], raw_json=cache,
-                )
+                conn.close()
             except Exception:
                 pass
 
-    if not args.quiet and args.format == "table":
-        print("\r" + " " * 60 + "\r", end="", file=sys.stderr, flush=True)
-
-    total_findings = sum(len(t.active_findings) for t in targets)
-    worst = worst_severity(t.max_severity for t in targets)
-    if conn is not None:
-        try:
-            store.finish_scan_run(conn, run_id, num_targets=total, num_findings=total_findings)
-        except Exception:
-            pass
-        try:
-            conn.close()
-        except Exception:
-            pass
+    if history_error is not None and not args.quiet:
+        print(f"[history] could not record scan: {history_error}", file=sys.stderr)
 
     # One activity entry summarizing the run (gated by the toggle).
     log_activity(

@@ -159,6 +159,18 @@ def test_mark_fp_requires_structured_findings(cache_dir):
     assert exc.value.code == 1
 
 
+def test_mark_fp_handles_corrupt_cache(cache_dir, capsys):
+    # A torn cache (e.g. an interrupted write) must exit cleanly with a message,
+    # not raise an uncaught JSONDecodeError traceback — parity with the hook,
+    # which already fails closed on the same read.
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "torn.json").write_text("{ not json")
+    with pytest.raises(SystemExit) as exc:
+        mark_fp_command("torn")
+    assert exc.value.code == 1
+    assert "corrupted or unreadable" in capsys.readouterr().err
+
+
 def test_unmark_fp_restores_verdict(cache_dir, tmp_path, capsys):
     skill = _skill(tmp_path, _finding(sev="critical"))
     write_cache(skill, ["local"])

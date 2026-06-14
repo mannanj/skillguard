@@ -153,6 +153,18 @@ def test_mark_fp_works_on_mcp(tmp_path):
     assert restored["max_severity"] in ("critical", "high")
 
 
+def test_mcp_introspect_failure_is_surfaced(tmp_path):
+    """A deliberately-requested introspection that fails must warn on stderr —
+    not vanish into the (toggle-able) activity log. The warning goes to stderr so
+    it never corrupts the json report on stdout, and the scan still succeeds."""
+    write_config(tmp_path, {"broken": {"command": "/nonexistent/binary/xyz", "args": []}})
+    r = run_cli(tmp_path, "--mcp", "broken", "--engines", "local",
+                "--mcp-introspect", "--format", "json")
+    assert r.returncode == 0, r.stderr
+    assert "introspection of broken failed" in r.stderr
+    json.loads(r.stdout)  # stdout is still clean JSON, uncontaminated by the warning
+
+
 def test_no_mcps_found_is_clean_error(tmp_path):
     write_config(tmp_path, {})
     r = run_cli(tmp_path, "--target", "mcps", "--engines", "local")

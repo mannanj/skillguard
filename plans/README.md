@@ -30,7 +30,7 @@ file with no test on its main path. So the sequence is:
 |------|-------|----------|--------|------------|--------|
 | 001  | Characterization tests: pin cli.py behavior before refactor | P1 | M | — | DONE |
 | 002  | Consolidate shared primitives (atomic-write, severity, paths, time) | P1 | S | 001 | DONE |
-| 003  | Correctness & robustness fixes (DB lifecycle, silent failures, dead code) | P1 | M | 001 | TODO |
+| 003  | Correctness & robustness fixes (DB lifecycle, silent failures, dead code) | P1 | M | 001 | DONE |
 | 004  | DX backstop: ruff + mypy + pre-commit + CI gates | P1 | M | 001 | TODO |
 | 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | TODO |
 | 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | TODO |
@@ -62,6 +62,13 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   session on branch `refactor/improve-foundation`, verified green
   (`pytest` passing). Plans 003–010 authored for a fresh executor session; see
   `.claude/handoff/` for the resume pointer.
+- **2026-06-13** — Plan 003 executed on the same branch: single-owner DB scan
+  lifecycle (try/finally, no leak) with DB failures surfaced once to stderr;
+  `--mcp-introspect` failures surfaced to stderr; corrupted-cache guard in
+  `mark_fp_command`; dead code removed (table reporter no-op + unused
+  `med_skills`). Also closed a latent connect-OK/start-fail connection leak.
+  5 new tests (corrupt-cache guard, introspect-failure surfacing, 3 scan-loop
+  lifecycle invariants). Verified green (**151 → 156**).
 
 ## Findings considered and rejected
 
