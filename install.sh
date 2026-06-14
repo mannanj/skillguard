@@ -18,18 +18,56 @@ command -v python3 >/dev/null 2>&1 || { echo "python3 is required"; exit 1; }
 echo "→ Installing SkillGuard to $DEST"
 mkdir -p "$DEST"
 
+# Every package module the scanner imports, as a path relative to skillguard/.
+# cli.py imports the whole package tree (engines/, render/, and the top-level
+# helpers) at import time, so ALL of these must be present or a curl install
+# imports nothing and the scanner is DOA. Sub-package files are listed by their
+# relative path. Keep this list in sync with skillguard/**/*.py — enforced by
+# tests/test_install_sync.py, which fails CI the moment it drifts.
+MODULES="
+__init__.py
+_util.py
+args.py
+cli.py
+hook.py
+config.py
+model.py
+store.py
+mcp.py
+patterns.py
+discovery.py
+paths.py
+cache.py
+triage.py
+commands.py
+scan.py
+engines/__init__.py
+engines/local.py
+engines/cisco.py
+engines/skillaudit.py
+engines/snyk.py
+render/__init__.py
+render/colors.py
+render/summary.py
+render/reports.py
+"
+
 if [ -d "${SKILLGUARD_SRC:-}" ]; then
     # Local install (from a cloned repo): SKILLGUARD_SRC=. sh install.sh
-    cp "$SKILLGUARD_SRC"/skillguard/*.py "$DEST/"
+    for f in $MODULES; do
+        mkdir -p "$DEST/$(dirname "$f")"
+        cp "$SKILLGUARD_SRC/skillguard/$f" "$DEST/$f"
+    done
 else
-    # Remote install: fetch every package module from the main branch. cli.py
-    # imports _util/config/mcp/model/store at top level, so all must be present or
-    # the scanner won't import. Keep this list in sync with skillguard/*.py.
-    for f in __init__.py _util.py cli.py hook.py config.py model.py store.py mcp.py; do
+    # Remote install: fetch every package module from the main branch, recreating
+    # the sub-package directory layout (engines/, render/) under $DEST.
+    for f in $MODULES; do
         python3 -c "
 import urllib.request
-url = '$REPO/raw/main/skillguard/$f'
-urllib.request.urlretrieve(url, '$DEST/$f')
+from pathlib import Path
+dest = Path('$DEST/$f')
+dest.parent.mkdir(parents=True, exist_ok=True)
+urllib.request.urlretrieve('$REPO/raw/main/skillguard/$f', str(dest))
 print('  fetched', '$f')
 "
     done

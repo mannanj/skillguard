@@ -33,7 +33,7 @@ file with no test on its main path. So the sequence is:
 | 003  | Correctness & robustness fixes (DB lifecycle, silent failures, dead code) | P1 | M | 001 | DONE |
 | 004  | DX backstop: ruff + mypy + pre-commit + CI gates | P1 | M | 001 | DONE |
 | 005  | Engine protocol + registry (the reusability centerpiece) | P1 | M | 001, 002 | DONE |
-| 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | TODO |
+| 006  | Decompose cli.py into modules behind a thin facade | P2 | L | 001, 002, 004, 005 | DONE |
 | 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | TODO |
 | 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | TODO |
 | 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | TODO |
@@ -101,6 +101,33 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED 
   mutation-proven (dispatch name-check, SkillAudit risk-map, protocol attr,
   hardcoded `all` list — all CAUGHT). Verified green: ruff clean, mypy clean
   (8 files), **156 → 165** pass.
+- **2026-06-14** — Plan 006 executed on the same branch: decomposed `cli.py`
+  (**1758 → 289 LOC**) into focused modules behind a thin facade whose `__all__`
+  re-exports every moved public name (so `from skillguard.cli import …` and the
+  `cli.*` monkeypatch seams keep working); `main()` is now **12 LOC**. New modules:
+  `patterns.py` (the ruleset), `discovery.py` (+ a `rel_to` helper killing the
+  duplicated rel-path logic), `paths.py` (a `cache_dir()` accessor that reads
+  `cli.CACHE_DIR` at call time — the single monkeypatch seam), `cache.py`,
+  `triage.py`, `commands.py`, `engines/` (`__init__` holds `ENGINE_REGISTRY` +
+  `_build_engines` + `resolve_engine_names`; one module per engine), `render/`
+  (`colors`, `summary`, `reports`), `scan.py`, and `args.py` (`build_parser`).
+  Embedded sub-improvements: CLI-11 (patterns out), CLI-03 (one `summarize()` →
+  `ScanSummary` kills the triplicated `engine_counts`), CLI-07 (NO_COLOR/TTY gate
+  in `render/colors`; ANSI no longer leaks to piped output — new
+  `test_color_gate.py`), CLI-10 (one `build_verdict`/`verdict_fields`; verdict JSON
+  kept **byte-compatible** — the hook contract), CLI-06 (history/activity/show
+  split into `gather_*`/`render_*` + a shared `emit`, returning exit codes), CLI-01
+  (`main` → parse → `_dispatch_early_exit` → `run_scan`; the scan loop + single
+  DB-lifecycle owner moved to `scan.py:run_scan_pipeline`). `install.sh` + its sync
+  test made recursive/path-aware for the `engines/`/`render/` sub-packages (a real
+  local install was run end-to-end and the installed copy imports fully).
+  `McpConfigEngine` stays in `mcp.py` and out of the registry (plan 007). Byte-for-
+  byte equivalence proven before/after for the verdict cache (skill/MCP/skip), all
+  four report formats, and the history/activity/show output. +2 tests (color gate);
+  every load-bearing behavior mutation-proven (8/8 CAUGHT). No plan-touched module
+  exceeds ~300 LOC (`cli.py` 289, `commands.py` 300; `mcp.py`/`store.py`/`hook.py`
+  unchanged — 007 territory). Verified green: ruff clean, ruff-format clean, mypy
+  clean (25 files), **165 → 167** pass.
 
 ## Findings considered and rejected
 

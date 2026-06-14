@@ -5,8 +5,8 @@
 Core scan data types, shared by the CLI engine pipeline and the MCP scanner.
 
 These live in their own module so ``cli`` and ``mcp`` can both depend on them
-without importing each other. ``cli`` re-exports ``Finding`` / ``SkillInfo`` /
-``SEVERITY_ORDER`` so existing ``from skillguard.cli import ...`` keeps working.
+without importing each other. ``cli`` re-exports ``Finding`` / ``SkillInfo`` so
+existing ``from skillguard.cli import ...`` keeps working.
 """
 
 from __future__ import annotations
