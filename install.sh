@@ -23,9 +23,9 @@ if [ -d "${SKILLGUARD_SRC:-}" ]; then
     cp "$SKILLGUARD_SRC"/skillguard/*.py "$DEST/"
 else
     # Remote install: fetch every package module from the main branch. cli.py
-    # imports config/mcp/model/store at top level, so all must be present or the
-    # scanner won't import. Keep this list in sync with skillguard/*.py.
-    for f in __init__.py cli.py hook.py config.py model.py store.py mcp.py; do
+    # imports _util/config/mcp/model/store at top level, so all must be present or
+    # the scanner won't import. Keep this list in sync with skillguard/*.py.
+    for f in __init__.py _util.py cli.py hook.py config.py model.py store.py mcp.py; do
         python3 -c "
 import urllib.request
 url = '$REPO/raw/main/skillguard/$f'

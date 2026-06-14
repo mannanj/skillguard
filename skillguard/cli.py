@@ -51,13 +51,20 @@ from skillguard.mcp import (
     safe_name,
     write_introspection_surface,
 )
-from skillguard.model import SEVERITY_ORDER, Finding, SkillInfo
+from skillguard._util import atomic_write_json as _atomic_write_json, utcnow_iso
+from skillguard.model import (
+    SEVERITY_ORDER,
+    Finding,
+    SkillInfo,
+    max_severity_of,
+    worst_severity,
+)
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 __version__ = "0.3.0"
 
-CACHE_DIR = Path.home() / ".claude" / "skillguard-cache"
+CACHE_DIR = config.default_cache_dir()
 GLOBAL_SKILLS_DIR = Path.home() / ".claude" / "skills"
 MCP_CACHE_SUBDIR = "mcps"  # MCP verdicts/surfaces live under CACHE_DIR/mcps/
 SKILLAUDIT_BASE = os.environ.get("SKILLGUARD_SKILLAUDIT_BASE", "https://skillaudit.vercel.app")
@@ -536,7 +543,7 @@ def apply_triage(skill: SkillInfo, triage: Optional[dict] = None) -> None:
 def _rewrite_cache_verdict(cache_file: Path, cache: dict, findings: list[Finding]) -> None:
     """Recompute verdict fields from triaged findings, preserving scan metadata."""
     active = [f for f in findings if not f.triaged_fp]
-    cache["max_severity"] = min(active, key=lambda f: f.sort_key()).severity if active else "clean"
+    cache["max_severity"] = max_severity_of(active)
     cache["finding_count"] = len(active)
     cache["triaged_fp_count"] = len(findings) - len(active)
     cache["findings_summary"] = [
@@ -562,7 +569,7 @@ def mark_fp_command(skill_name: str) -> None:
 
     findings = [Finding(**f) for f in raw]
     triage = load_triage()
-    marked_at = datetime.now(timezone.utc).isoformat()
+    marked_at = utcnow_iso()
     marked = 0
     for f in findings:
         # info entries are advisories (engine errors, policy notes), not
@@ -638,7 +645,7 @@ def write_cache(skill: SkillInfo, engines_used: list[str], skipped: bool = False
         "target_name": skill.name,
         "kind": skill.kind,
         "scope": skill.scope,
-        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "scanned_at": utcnow_iso(),
         "skill_mtime_epoch": skill.mtime_epoch,
         "engines_used": engines_used,
         "skipped": skipped,
@@ -660,13 +667,6 @@ def write_cache(skill: SkillInfo, engines_used: list[str], skipped: bool = False
     return cache_data
 
 
-def _atomic_write_json(path: Path, data: dict) -> None:
-    """Write JSON via temp-file-then-rename so concurrent scans never leave a torn cache."""
-    tmp = path.with_suffix(f".tmp.{os.getpid()}")
-    tmp.write_text(json.dumps(data, indent=2))
-    tmp.replace(path)
-
-
 def write_skip_cache(skill_name: str, kind: str = "skill") -> None:
     """Write a 'skipped' cache entry so the hook stops blocking but shows reminders."""
     path = cache_path_for(skill_name, kind)
@@ -675,7 +675,7 @@ def write_skip_cache(skill_name: str, kind: str = "skill") -> None:
         "skill_name": skill_name,
         "target_name": skill_name,
         "kind": kind,
-        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "scanned_at": utcnow_iso(),
         "skill_mtime_epoch": 0,
         "engines_used": [],
         "skipped": True,
@@ -1343,10 +1343,7 @@ def main() -> None:
         print("\r" + " " * 60 + "\r", end="", file=sys.stderr, flush=True)
 
     total_findings = sum(len(t.active_findings) for t in targets)
-    worst = "clean"
-    for t in targets:
-        if SEVERITY_ORDER.get(t.max_severity, 99) < SEVERITY_ORDER.get(worst, 99):
-            worst = t.max_severity
+    worst = worst_severity(t.max_severity for t in targets)
     if conn is not None:
         try:
             store.finish_scan_run(conn, run_id, num_targets=total, num_findings=total_findings)

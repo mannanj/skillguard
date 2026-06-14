@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
@@ -31,6 +31,23 @@ class Finding:
 
     def sort_key(self) -> tuple:
         return (SEVERITY_ORDER.get(self.severity, 99), self.engine, self.category)
+
+
+def max_severity_of(findings: "Iterable[Finding]") -> str:
+    """Worst (lowest sort_key) severity among findings, or 'clean' if none."""
+    active = [f for f in findings if not f.triaged_fp]
+    if not active:
+        return "clean"
+    return min(active, key=lambda f: f.sort_key()).severity
+
+
+def worst_severity(severities: "Iterable[str]") -> str:
+    """Worst severity among a sequence of severity strings, 'clean' if all clean/empty."""
+    worst = "clean"
+    for s in severities:
+        if SEVERITY_ORDER.get(s, 99) < SEVERITY_ORDER.get(worst, 99):
+            worst = s
+    return worst
 
 
 @dataclass
@@ -60,10 +77,7 @@ class SkillInfo:
 
     @property
     def max_severity(self) -> str:
-        active = self.active_findings
-        if not active:
-            return "clean"
-        return min(active, key=lambda f: f.sort_key()).severity
+        return max_severity_of(self.findings)
 
     @property
     def mtime_epoch(self) -> float:

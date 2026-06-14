@@ -23,8 +23,9 @@ Two toggles live here:
     ``enforce`` (block, symmetric with skills). Env override:
     ``SKILLGUARD_MCP_POLICY=enforce``.
 
-This module imports nothing from the rest of the package so both the CLI and
-the dependency-light hook can use it without a circular import.
+This module imports only the dependency-free ``_util`` helper from the package,
+so both the CLI and the dependency-light hook can use it without a circular
+import.
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+
+from skillguard._util import atomic_write_json
 
 _TRUTHY = {"1", "on", "true", "yes", "enabled"}
 _FALSEY = {"0", "off", "false", "no", "disabled"}
@@ -67,9 +70,7 @@ def load_settings(cache_dir: Path | None = None) -> dict[str, Any]:
 def save_settings(settings: dict[str, Any], cache_dir: Path | None = None) -> None:
     path = settings_path(cache_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(f".tmp.{os.getpid()}")
-    tmp.write_text(json.dumps(settings, indent=2))
-    tmp.replace(path)
+    atomic_write_json(path, settings)
 
 
 def _coerce_bool(value: str) -> bool | None:
