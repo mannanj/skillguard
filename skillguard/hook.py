@@ -20,13 +20,18 @@ MCP tools (matcher ``mcp__.*``), governed by the ``mcp_policy`` setting:
 
 Exit codes: 0 = allow (status on stdout, never interrupts) · 2 = block.
 
-Robustness: the optional integration with the skillguard package (settings +
-activity log) is import-guarded. If the package can't be imported, the hook
-still performs its core blocking duty with a default ``warn`` policy and no
-logging — it never crashes a tool call.
+Robustness: the optional integration with the skillguard package (activity log)
+is import-guarded — it never crashes a tool call. If the package can't be
+imported, the hook still performs its core blocking duty and reads ``mcp_policy``
+standalone from the env var / ``_settings.json`` (neither needs the package), so a
+configured ``enforce`` keeps blocking instead of silently downgrading to ``warn``
+(009-A) — symmetric with skills, which already fail closed. The degradation is
+surfaced once on stderr (logging is off) so the operator can repair the install.
 """
 
 import json
+import os
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -42,6 +47,16 @@ DB_NAME = "skillguard.db"
 GLOBAL_SKILLS_DIR = Path.home() / ".claude" / "skills"
 MCP_CACHE_DIR = CACHE_DIR / "mcps"
 NUDGE_DIR = MCP_CACHE_DIR / "_nudged"
+
+# Standalone mcp_policy inputs for the degraded path (009-A): the policy lives in
+# a flat settings file + an env var that need no package to read, so a configured
+# `enforce` must survive a broken/partial install instead of silently degrading to
+# the non-blocking `warn` default (skills already fail CLOSED — this keeps MCP
+# symmetric). These mirror config.py / branding.py; the env name is pinned against
+# branding by tests/test_branding.py::test_hook_mirrors_branding.
+MCP_POLICY_ENV = "SKILLGUARD_MCP_POLICY"
+SETTINGS_NAME = "_settings.json"
+_VALID_MCP_POLICIES = ("off", "warn", "enforce")
 
 # Optional package integration (settings + activity log). Never fatal.
 try:
@@ -74,13 +89,35 @@ def _fmt_date(scanned_at: str) -> str:
         return str(scanned_at)
 
 
-def _mcp_policy() -> str:
+def _standalone_mcp_policy() -> str:
+    """Resolve mcp_policy WITHOUT the skillguard package — env var first, then the
+    flat ``_settings.json`` — mirroring ``config.mcp_policy``'s resolution order.
+    Used on the degraded path so an explicitly configured ``enforce`` is honored
+    even when the package can't be imported (009-A)."""
+    env = os.environ.get(MCP_POLICY_ENV)
+    if env is not None and env.strip().lower() in _VALID_MCP_POLICIES:
+        return env.strip().lower()
+    try:
+        data = json.loads((CACHE_DIR / SETTINGS_NAME).read_text())
+        val = str(data.get("mcp_policy", "warn")).lower()
+        if val in _VALID_MCP_POLICIES:
+            return val
+    except (OSError, json.JSONDecodeError, AttributeError, TypeError):
+        pass
+    return "warn"
+
+
+def _mcp_policy() -> "tuple[str, bool]":
+    """Return ``(policy, degraded)``. ``degraded`` is True when the package
+    integration is unavailable and we fell back to the standalone reader — the
+    caller surfaces a visible notice (activity logging is off; policy is read
+    directly from settings) so the operator can repair the install."""
     if _HAVE_PKG:
         try:
-            return _config.mcp_policy(CACHE_DIR)
+            return _config.mcp_policy(CACHE_DIR), False
         except Exception:
             pass
-    return "warn"
+    return _standalone_mcp_policy(), True
 
 
 def _log(action: str, **kw) -> None:
@@ -217,36 +254,111 @@ def handle_skill(skill_name: str) -> None:
 # ─── MCP gating ──────────────────────────────────────────────────────────────
 
 
-def find_mcp_verdict(server_token: str) -> "dict | None":
+# Per-call bound on the verdict glob (009-B): find_mcp_verdict runs on EVERY
+# mcp__* tool call; an unbounded cache dir would make every call read+parse every
+# file (latency-tail DoS). Exact-named verdicts always resolve via the fast path
+# below regardless of this cap; only best-effort loose matching is bounded.
+# Overridable via env for operators with huge caches (and for tests).
+try:
+    MCP_GLOB_CAP = max(1, int(os.environ.get("SKILLGUARD_MCP_GLOB_CAP", "4000")))
+except ValueError:
+    MCP_GLOB_CAP = 4000
+# Loose substring matches shorter than this are too ambiguous to trust (009-D):
+# a 2–3 char token like "api" must not vouch for "api_prod".
+MIN_LOOSE_TOKEN = 4
+
+
+def _safe_name(name: str) -> str:
+    """Mirror of ``skillguard.mcp.safe_name`` (the verdict-filename sanitizer) so
+    the hook can probe a server's expected verdict file WITHOUT importing the
+    package — it runs standalone. Pinned against the real one by
+    tests/test_hook.py::test_safe_name_mirrors_package."""
+    return re.sub(r"[^A-Za-z0-9._-]", "_", name) or "_unnamed"
+
+
+def _read_verdict(path: Path) -> "dict | None":
+    """Bounded, fault-tolerant read of one verdict file. Runs on every MCP tool
+    call, so a pathological (huge/corrupt) file must never stall the hook."""
+    try:
+        if path.stat().st_size > 512 * 1024:
+            return None
+        cache = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    return cache if isinstance(cache, dict) else None
+
+
+def _verdict_tokens(cache: dict) -> list:
+    return cache.get("match_tokens") or [cache.get("target_name", "")]
+
+
+def _is_exact_token(server_token: str, t: str) -> bool:
+    """The server portion equals this token or is namespaced under it (prefix)."""
+    return bool(t) and (server_token == t or server_token.startswith(t + "__"))
+
+
+def _is_loose_token(server_part: str, t: str) -> bool:
+    """A token long enough to trust, appearing as a whole ``_``-delimited segment
+    of the server part (or equal to it)."""
+    return (
+        bool(t)
+        and len(t) >= MIN_LOOSE_TOKEN
+        and (("_" + t + "_") in ("_" + server_part + "_") or server_part == t)
+    )
+
+
+def find_mcp_verdict(server_token: str, *, strict: bool = False) -> "dict | None":
     """Map an ``mcp__<server>__<tool>`` token back to a cached MCP verdict.
 
-    Matches the longest cached match-token that the server portion starts with.
-    Plugin-namespaced servers may not match perfectly (Claude's exact tool-name
-    sanitization isn't reproduced); under the default non-blocking ``warn``
-    policy that is harmless, and ``--skip-mcp`` / ``off`` cover ``enforce``.
+    Resolution, safest-first:
+      1. **Fast path** — probe the verdict file the server name maps to directly
+         (``mcps/<safe_name(server)>.json`` and its ``-``/``_`` variants) and
+         return on an exact/prefix token match. The common case is O(1) and never
+         touches the directory glob (009-B).
+      2. **Bounded fallback** — scan the cache dir (capped at ``MCP_GLOB_CAP``
+         files), preferring the longest EXACT/prefix match. A loose substring
+         match is a last resort, must clear ``MIN_LOOSE_TOKEN``, and is refused
+         entirely under ``strict`` (enforce) so a risky/unscanned server can never
+         inherit a *different* server's clean verdict (009-D, fail-closed).
     """
     if not MCP_CACHE_DIR.is_dir():
         return None
-    best, best_len = None, -1
     server_part = server_token.split("__", 1)[0]
-    for p in sorted(MCP_CACHE_DIR.glob("*.json")):
-        try:
-            # Bound the read — this runs on every MCP tool call; a pathological
-            # verdict file must never stall the hook.
-            if p.stat().st_size > 512 * 1024:
-                continue
-            cache = json.loads(p.read_text())
-        except (json.JSONDecodeError, OSError):
+
+    # 1. Fast path: the exact verdict file, if the server name maps straight to it.
+    probed: set[str] = set()
+    for cand in (server_part, server_part.replace("_", "-"), server_part.replace("-", "_")):
+        p = MCP_CACHE_DIR / f"{_safe_name(cand)}.json"
+        key = str(p)
+        if key in probed or not p.is_file():
             continue
-        tokens = cache.get("match_tokens") or [cache.get("target_name", "")]
-        for t in tokens:
-            if not t:
-                continue
-            exact = server_token == t or server_token.startswith(t + "__")
-            loose = ("_" + t + "_") in ("_" + server_part + "_") or server_part == t
-            if (exact or loose) and len(t) > best_len:
-                best, best_len = cache, len(t)
-    return best
+        probed.add(key)
+        cache = _read_verdict(p)
+        if cache and any(_is_exact_token(server_token, t) for t in _verdict_tokens(cache)):
+            return cache
+
+    # 2. Bounded fallback: exact wins; loose only if non-strict and long enough.
+    files = sorted(MCP_CACHE_DIR.glob("*.json"))
+    if len(files) > MCP_GLOB_CAP:
+        print(
+            f"⚠ SkillGuard: MCP verdict cache has {len(files)} files; scanning only "
+            f"the first {MCP_GLOB_CAP}. Exact-named verdicts still resolve; prune the "
+            f"cache (or raise SKILLGUARD_MCP_GLOB_CAP) to restore loose matching.",
+            file=sys.stderr,
+        )
+        files = files[:MCP_GLOB_CAP]
+    best_exact: tuple[dict | None, int] = (None, -1)
+    best_loose: tuple[dict | None, int] = (None, -1)
+    for p in files:
+        cache = _read_verdict(p)
+        if cache is None:
+            continue
+        for t in _verdict_tokens(cache):
+            if _is_exact_token(server_token, t) and len(t) > best_exact[1]:
+                best_exact = (cache, len(t))
+            elif not strict and _is_loose_token(server_part, t) and len(t) > best_loose[1]:
+                best_loose = (cache, len(t))
+    return best_exact[0] if best_exact[0] is not None else best_loose[0]
 
 
 def _should_nudge(server_label: str) -> bool:
@@ -264,14 +376,28 @@ def _should_nudge(server_label: str) -> bool:
 
 
 def handle_mcp(tool_name: str) -> None:
-    policy = _mcp_policy()
+    policy, degraded = _mcp_policy()
     if policy == "off":
         sys.exit(0)
+
+    # Make a broken/partial install visible (009-A): logging is off and the policy
+    # is being read standalone. Throttled to once per marker so the high-frequency
+    # MCP path isn't spammed; any enforce block below still prints its own reason.
+    if degraded and _should_nudge("__skillguard_degraded__"):
+        print(
+            "⚠ SkillGuard: running in DEGRADED mode — the skillguard package could "
+            "not be imported (partial/broken install). Activity logging is off and "
+            "the MCP policy is read directly from settings. Reinstall to restore "
+            "full integration.",
+            file=sys.stderr,
+        )
 
     server_token = tool_name[len("mcp__") :]
     server_label = server_token.split("__", 1)[0] if "__" in server_token else server_token
     cmd = scan_cmd()
-    verdict = find_mcp_verdict(server_token)
+    # Under enforce, refuse loose cross-server matches (009-D): an ambiguous match
+    # must resolve toward "unscanned" rather than borrow another server's verdict.
+    verdict = find_mcp_verdict(server_token, strict=(policy == "enforce"))
 
     if verdict is None:
         if policy == "enforce":
