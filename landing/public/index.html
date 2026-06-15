@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SkillGuard — block unscanned skills and MCP servers</title>
-<meta name="description" content="Scan Claude Code skills and MCP servers for prompt injection, credential theft, and reverse shells — then block anything unscanned at runtime. Local by default.">
+<title>SkillGuard — scan every skill before Claude runs it</title>
+<meta name="description" content="Nobody reads the skills they install. SkillGuard scans skills and MCP servers for prompt injection, credential theft, and reverse shells — then blocks anything unscanned at the PreToolUse gate. Local by default.">
 <link rel="canonical" href="https://skillguard.sh/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233DDC97' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="SkillGuard — block unscanned skills and MCP servers">
-<meta property="og:description" content="Scan skills and MCP servers — block anything unscanned at runtime. Zero deps, local by default.">
+<meta property="og:title" content="SkillGuard — scan every skill before Claude runs it">
+<meta property="og:description" content="You install skills you've never read. SkillGuard scans them — then blocks anything unscanned before Claude executes it. Stdlib core, local by default.">
 <meta property="og:image" content="https://skillguard.sh/og.png">
 <meta property="og:url" content="https://skillguard.sh/">
 <meta name="twitter:card" content="summary_large_image">
@@ -251,8 +251,8 @@
   <header id="top">
     <div class="gate" role="img" aria-label="Animation: skills and MCP servers move toward SkillGuard. Clean ones pass; pretty-formatter is blocked for a reverse shell; a webhook MCP is blocked for exfiltration.">
       <div class="gate-labels" aria-hidden="true">
-        <span>skills + MCP</span>
-        <span>cleared for Claude</span>
+        <span>untrusted</span>
+        <span>cleared</span>
       </div>
       <div class="gate-track" aria-hidden="true">
         <div class="gate-post">
@@ -279,8 +279,8 @@
       </div>
     </div>
 
-    <h1>Block <span class="b">unscanned.</span></h1>
-    <p class="sub">Scans <b>skills and MCP servers</b> — then refuses to run what hasn't been scanned. <b>At runtime.</b></p>
+    <h1>Scan every skill. Block <span class="b">unscanned.</span></h1>
+    <p class="sub">You install markdown you've never opened. SkillGuard reads <b>every skill and MCP config</b> — then the PreToolUse hook refuses what hasn't cleared. <b>0 commands run.</b></p>
 
     <div class="install-box">
       <div class="lines">
@@ -289,40 +289,40 @@
       </div>
       <button id="copy-btn" type="button" aria-label="Copy install commands">Copy</button>
     </div>
-    <p class="meta">skills + MCP · zero deps · local by default · <a href="https://github.com/mannanj/skillguard">source</a></p>
+    <p class="meta">skills + MCP · stdlib core · no cloud upload · secrets never cached · <a href="https://github.com/mannanj/skillguard">source</a></p>
   </header>
 
   <section id="proof">
-    <h2>In the wild</h2>
+    <h2>Found in the wild</h2>
     <p>
-      <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting">Koi found 341 malicious skills</a> on ClawHub.
-      <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/">Snyk found critical issues in <b>13.4%</b></a>.
-      Claude Code skills and MCP servers share the same trust model: files you never read, running with your permissions.
+      <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting">Koi caught 341 malicious skills</a> on ClawHub — typosquats shipping infostealers.
+      <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/">Snyk flagged critical issues in <b>13.4%</b></a>.
+      Claude Code runs on the same blind trust: <b>SKILL.md you skipped, keys you didn't mean to share.</b>
     </p>
     <div style="overflow-x:auto">
       <table class="compare">
         <thead>
-          <tr><th></th><th>Scan-only tools</th><th>SkillGuard</th></tr>
+          <tr><th></th><th>Scan and forget</th><th>SkillGuard</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td>Blocks at runtime</td>
-            <td class="lose">No</td>
-            <td class="win">PreToolUse hook <span class="mark">✓</span></td>
+            <td>Stops it before execution</td>
+            <td class="lose">Report only</td>
+            <td class="win">PreToolUse gate <span class="mark">✓</span></td>
           </tr>
           <tr>
-            <td>MCP config scanning</td>
-            <td class="lose">Rare</td>
-            <td class="win">Built in <span class="mark">✓</span></td>
+            <td>Catches risky MCP configs</td>
+            <td class="lose">Skills only</td>
+            <td class="win">Skills + MCP <span class="mark">✓</span></td>
           </tr>
           <tr>
-            <td>Secrets in cache</td>
-            <td class="lose">Sometimes</td>
-            <td class="win">Never <span class="mark">✓</span></td>
+            <td>Secrets stay off disk</td>
+            <td class="lose">Sometimes leaked</td>
+            <td class="win">Redacted always <span class="mark">✓</span></td>
           </tr>
           <tr>
-            <td>Zero dependencies</td>
-            <td class="lose">Varies</td>
+            <td>Runs without extra deps</td>
+            <td class="lose">npm, pip, …</td>
             <td class="win">Stdlib core <span class="mark">✓</span></td>
           </tr>
         </tbody>
@@ -332,7 +332,7 @@
     <div class="term" id="demo-term">
       <div class="bar">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="title">skillguard — blocking pretty-formatter</span>
+        <span class="title">pretty-formatter refused · 0 commands ran</span>
       </div>
       <video id="demo-video" src="demo.mp4" poster="demo-poster.png" muted autoplay loop playsinline preload="metadata"
         aria-label="Terminal recording: SkillGuard scans pretty-formatter and blocks it for a reverse shell, credential exfiltration, and prompt injection."></video>
@@ -350,18 +350,18 @@
     <div class="grid3">
       <article class="card">
         <span class="ic">◎</span>
-        <h3>Scan</h3>
-        <p>Every skill file and every MCP config — launch command, endpoint, env-var <em>names</em>. 60+ local patterns; optional Cisco, Snyk, SkillAudit.</p>
+        <h3>Read everything</h3>
+        <p>Every <code>SKILL.md</code>, bundled script, and MCP launch config — command, endpoint, env-var <em>names</em>. 60+ readable local patterns; add Cisco, Snyk, or SkillAudit when you want a second opinion.</p>
       </article>
       <article class="card">
         <span class="ic">⛨</span>
-        <h3>Block</h3>
-        <p>A PreToolUse hook refuses unscanned skills and flags risky MCP tools before they run. Modified since last scan? Blocked until you re-scan.</p>
+        <h3>Refuse at the gate</h3>
+        <p>Unscanned skill? Blocked. Risky MCP server? Blocked. File changed since last scan? Blocked until you re-scan. Skipping is explicit — never the default.</p>
       </article>
       <article class="card">
         <span class="ic">◇</span>
-        <h3>Audit</h3>
-        <p>Local by default. Every pattern is readable source. Secrets are detected in memory only — never written to cache or history. False positives: one <code>--mark-fp</code>.</p>
+        <h3>Nothing secret on disk</h3>
+        <p>Local by default — your files don't leave the machine unless you enable a cloud engine. Secrets are caught in memory, redacted, and never written to cache or history. False positive? One <code>--mark-fp</code>.</p>
       </article>
     </div>
   </section>
@@ -369,28 +369,28 @@
   <section id="faq">
     <h2>FAQ</h2>
     <details>
-      <summary>What does it scan?</summary>
-      <div class="a">Claude Code skills (<code>SKILL.md</code> and bundled scripts) and every MCP server in your config — global, project, and plugin <code>.mcp.json</code> files.</div>
+      <summary>What actually gets scanned?</summary>
+      <div class="a">Every Claude Code skill (<code>SKILL.md</code> plus bundled scripts) and every MCP server in your configs — global, project, and plugin <code>.mcp.json</code> files.</div>
     </details>
     <details>
-      <summary>Does it block MCP tool calls?</summary>
-      <div class="a">Yes, when <code>mcp_policy</code> is <code>enforce</code> (the default): unscanned or flagged MCP servers are refused at the PreToolUse gate, same as skills.</div>
+      <summary>Will it block MCP tool calls?</summary>
+      <div class="a">Yes — with <code>mcp_policy: enforce</code> (the default), unscanned or flagged MCP servers hit the same PreToolUse wall as bad skills.</div>
     </details>
     <details>
-      <summary>Are API keys stored?</summary>
-      <div class="a">No — env and header values are scanned in memory for inline secrets, then redacted; only variable <em>names</em> persist.</div>
+      <summary>Does it stash my API keys?</summary>
+      <div class="a">No. Env and header values are scanned in memory, then redacted — only variable <em>names</em> ever hit cache or history.</div>
     </details>
     <details>
-      <summary>What detection engines?</summary>
-      <div class="a"><code>local</code> is stdlib-only and instant; add <code>cisco</code>, <code>snyk</code>, or <code>skillaudit</code> when you want a second opinion. Missing deps skip gracefully.</div>
+      <summary>Which engines run?</summary>
+      <div class="a"><code>local</code> is stdlib-only and instant. Layer on <code>cisco</code>, <code>snyk</code>, or <code>skillaudit</code> for a second opinion — missing optional deps just skip.</div>
     </details>
     <details>
-      <summary>Install without the plugin?</summary>
-      <div class="a"><code>curl -fsSL https://skillguard.sh/install | sh</code> or <code>pip install -e .</code> from a clone — then wire the hook in <code>settings.json</code>.</div>
+      <summary>No plugin marketplaces — how do I install?</summary>
+      <div class="a"><code>curl -fsSL https://skillguard.sh/install | sh</code> or <code>pip install -e .</code> from a clone, then wire the hook in <code>settings.json</code>.</div>
     </details>
     <details>
-      <summary>License?</summary>
-      <div class="a">AGPL-3.0 for the community build; <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md">commercial licenses</a> if you need to ship without copyleft.</div>
+      <summary>What's the license?</summary>
+      <div class="a">AGPL-3.0 for the community build. <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md">Commercial licenses</a> if you need to ship without copyleft.</div>
     </details>
   </section>
 
@@ -400,7 +400,7 @@
       <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE">AGPL-3.0</a>
       <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md">Commercial</a>
     </div>
-    <p class="sig">made by Mannan · for the Claude Code community</p>
+    <p class="sig">made by Mannan · for people who install skills faster than they read them</p>
   </footer>
 </div>
 
