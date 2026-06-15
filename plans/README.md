@@ -38,7 +38,7 @@ file with no test on its main path. So the sequence is:
 | 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | DONE |
 | 008.5| Naming authority + shared doc-table heuristic (forward-architecture seams) | P2 | S | 001, 002, 007 | DONE |
 | 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | DONE |
-| 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | TODO |
+| 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (one-line rationale)
 
@@ -286,6 +286,24 @@ Full forward-architecture assessment:
   (standalone-policy neuter, strict-bypass, min-length drop, cap removal, blindspot
   neuter — all CAUGHT). No new module → `install.sh` `MODULES` unchanged. Verified
   green: ruff clean, ruff-format clean, mypy clean (34 files), **187 → 205** pass.
+- **2026-06-15** — Plan 010 executed on `main`: added a contributor `CLAUDE.md`
+  at the repo root (131 lines) describing the **settled** architecture — the
+  `@runtime_checkable` `Engine` Protocol + single `ENGINE_REGISTRY` (with
+  `McpConfigEngine` deliberately unregistered/appended-only), the `cli.py`-facade
+  module layout incl. the `mcp/` package (`secrets.py` as the lone redaction
+  authority, `introspect.py` as the lone untrusted-code executor) and `render/`,
+  the `branding.py` naming authority + `hook.py`'s deliberate standalone mirror
+  (incl. the 009-A `(policy, degraded)` fail-closed path and 009-D
+  exact/strict matching), the secret-redaction invariant (raw scanned in memory,
+  only redacted reaches disk; 009-C in-memory blind-spot re-scan), severity
+  ordering as `model.py`-only, and the version/install-sync rules. **Every claim
+  re-verified against live code first** (the plan predated 006–009): corrected
+  `__version__` to `cli.py` (not the plan's stale `cli.py:58`), version-sync to
+  **four** files (added `.claude-plugin/marketplace.json`), patterns to
+  `patterns.py` (CONTRIBUTING.md still says `cli.py`). Docs-only: no package
+  module added → `install.sh` `MODULES` unchanged, test count unchanged. **This
+  closes the refactor roadmap (001–010 all DONE).** Verified green: ruff clean,
+  ruff-format clean, mypy clean (34 files), **205** pass.
 
 ## Findings considered and rejected
 
