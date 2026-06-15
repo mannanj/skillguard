@@ -244,14 +244,17 @@ def _mcp_event(tool_name: str) -> str:
     return json.dumps({"tool_name": tool_name, "tool_input": {}})
 
 
-def _run_hook_mcp(hook_path, tmp_home, stdin_text, policy=None):
+def _run_hook_mcp(hook_path, tmp_home, stdin_text, policy=None, env_extra=None):
     env = dict(os.environ)
     env["HOME"] = str(tmp_home)
     env.pop("SKILLGUARD_ACTIVITY_LOG", None)
+    env.pop("SKILLGUARD_MCP_GLOB_CAP", None)
     if policy:
         env["SKILLGUARD_MCP_POLICY"] = policy
     else:
         env.pop("SKILLGUARD_MCP_POLICY", None)
+    if env_extra:
+        env.update(env_extra)
     return subprocess.run(
         [sys.executable, str(hook_path)],
         input=stdin_text,
@@ -339,3 +342,185 @@ def test_mcp_corrupted_verdict_enforce_blocks(hook_path, tmp_path):
     (d / "broken.json").write_text("{ not json :::")
     r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__broken__x"), policy="enforce")
     assert r.returncode == 2
+
+
+# ══ 009-A: degraded path (skillguard package unimportable) must not silently ══
+#         downgrade a configured `enforce` to the non-blocking `warn` default. ══
+#         Skills already fail CLOSED on any uncertainty; MCP must be symmetric.
+
+
+def _degraded_hook_path(hook_path: Path, tmp_home: Path) -> Path:
+    """Copy the hook into a sandbox and plant a *broken* ``skillguard`` package at
+    the path the hook prepends to ``sys.path`` (its parent.parent), so
+    ``from skillguard import config, store`` raises and the hook runs with
+    ``_HAVE_PKG=False`` — the exact degraded state 009-A is about (a partial
+    install, or a syntax error in config.py/store.py)."""
+    import shutil
+
+    sandbox = tmp_home / "sandbox"
+    sandbox.mkdir(parents=True, exist_ok=True)
+    dst = sandbox / "hook.py"
+    shutil.copy(hook_path, dst)
+    broken = tmp_home / "skillguard"  # == dst.parent.parent / "skillguard"
+    broken.mkdir(parents=True, exist_ok=True)
+    (broken / "__init__.py").write_text("raise ImportError('simulated broken install')\n")
+    return dst
+
+
+def test_mcp_degraded_enforce_blocks_unscanned(hook_path, tmp_path):
+    """A broken package install must NOT silently disable `enforce`: an unscanned
+    MCP under enforce still blocks, read standalone from the env var."""
+    _mcp_dir(tmp_path)
+    degraded = _degraded_hook_path(hook_path, tmp_path)
+    r = _run_hook_mcp(degraded, tmp_path, _mcp_event("mcp__ghost__do"), policy="enforce")
+    assert r.returncode == 2
+    assert "not been scanned" in r.stderr.lower()
+    # Not frustrating: the block must still surface the proceed/skip escape hatch.
+    assert "--skip-mcp" in r.stderr
+
+
+def test_mcp_degraded_enforce_reads_settings_file(hook_path, tmp_path):
+    """With no env override, the degraded hook must read `enforce` straight from
+    the flat _settings.json (no package needed) and block an unscanned server."""
+    cache = tmp_path / ".claude" / "skillguard-cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "_settings.json").write_text(json.dumps({"mcp_policy": "enforce"}))
+    _mcp_dir(tmp_path)
+    degraded = _degraded_hook_path(hook_path, tmp_path)
+    r = _run_hook_mcp(degraded, tmp_path, _mcp_event("mcp__ghost__do"), policy=None)
+    assert r.returncode == 2
+    assert "not been scanned" in r.stderr.lower()
+
+
+def test_mcp_degraded_warn_default_still_allows(hook_path, tmp_path):
+    """The fix must not over-block: with no configured policy (the `warn`
+    default), the degraded hook still allows + nudges, exactly as before."""
+    _mcp_dir(tmp_path)
+    degraded = _degraded_hook_path(hook_path, tmp_path)
+    r = _run_hook_mcp(degraded, tmp_path, _mcp_event("mcp__ghost__do"), policy=None)
+    assert r.returncode == 0
+    assert "unscanned" in r.stdout.lower()
+
+
+def test_mcp_degraded_emits_visible_notice(hook_path, tmp_path):
+    """The degradation itself must be visible (logging is off, policy is read
+    standalone) so the operator can fix the install."""
+    _mcp_dir(tmp_path)
+    degraded = _degraded_hook_path(hook_path, tmp_path)
+    r = _run_hook_mcp(degraded, tmp_path, _mcp_event("mcp__ghost__do"), policy="enforce")
+    assert "degraded" in r.stderr.lower()
+
+
+def test_skill_degraded_still_blocks_unscanned(hook_path, tmp_path):
+    """Consistency check: skills already fail CLOSED regardless of the package —
+    an unscanned skill blocks even on a broken install. Pins the symmetry 009-A
+    brings MCP into line with."""
+    _cache_dir(tmp_path)
+    degraded = _degraded_hook_path(hook_path, tmp_path)
+    r = _run_hook(degraded, tmp_path, _event("ghost-skill"))
+    assert r.returncode == 2
+    assert "never been scanned" in r.stderr
+
+
+# ══ 009-D: a loose token match must not let one server inherit a DIFFERENT ════
+#         server's clean verdict (a fail-open under enforce). ═══════════════════
+
+
+def test_mcp_enforce_refuses_loose_cross_attribution(hook_path, tmp_path):
+    """Under enforce, an unscanned server must NOT borrow another server's clean
+    verdict via a loose substring match — it resolves toward 'unscanned' (the
+    safe direction) and blocks."""
+    _write_mcp_verdict(tmp_path, "github", max_severity="clean", match_tokens=["github"])
+    r = _run_hook_mcp(
+        hook_path, tmp_path, _mcp_event("mcp__github_enterprise__run"), policy="enforce"
+    )
+    assert r.returncode == 2  # must block, not inherit 'github' clean
+    assert "not been scanned" in r.stderr.lower()
+
+
+def test_mcp_enforce_exact_prefix_still_resolves(hook_path, tmp_path):
+    """STOP-condition guard: a legitimate exact/prefix match STILL resolves under
+    enforce, so tightening doesn't over-block real clean servers."""
+    _write_mcp_verdict(tmp_path, "github", max_severity="clean", match_tokens=["github"])
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__github__run"), policy="enforce")
+    assert r.returncode == 0
+
+
+def test_mcp_warn_loose_match_stays_permissive(hook_path, tmp_path):
+    """The tightening is scoped to enforce: under the default warn policy (which
+    never blocks), a long loose match still resolves silently so warn isn't
+    flooded with new nudges (the plan's STOP condition)."""
+    _write_mcp_verdict(tmp_path, "github", max_severity="clean", match_tokens=["github"])
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__github_enterprise__run"), policy="warn")
+    assert r.returncode == 0
+    assert r.stdout.strip() == ""  # resolved to clean -> silent
+
+
+def test_mcp_short_token_does_not_loose_cross_attribute(hook_path, tmp_path):
+    """A too-short token (<4 chars) must not loose-match a longer different
+    server even under warn: 'api' must not silently vouch for 'api_prod'."""
+    _write_mcp_verdict(tmp_path, "api", max_severity="clean", match_tokens=["api"])
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__api_prod__call"), policy="warn")
+    assert r.returncode == 0  # warn never blocks
+    assert "unscanned" in r.stdout.lower()  # api_prod treated as unscanned -> nudge
+
+
+# ══ 009-B: find_mcp_verdict must not read+parse EVERY cache file on every call ═
+#         (latency-tail DoS). Fast-path the expected filename; bound the glob. ══
+
+
+def test_mcp_verdict_resolves_by_expected_filename_amid_many(hook_path, tmp_path):
+    """Fast path: a known server resolves via its expected verdict filename even
+    with many unrelated files present, without a full-dir scan."""
+    d = _mcp_dir(tmp_path)
+    for i in range(60):
+        (d / f"junk_{i:04d}.json").write_text(
+            json.dumps({"target_name": f"j{i}", "match_tokens": [f"junkserver{i}"]})
+        )
+    _write_mcp_verdict(tmp_path, "weather", max_severity="clean")
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__weather__forecast"), policy="warn")
+    assert r.returncode == 0
+    assert r.stdout.strip() == ""  # matched (silent clean), not treated as unscanned
+
+
+def test_mcp_glob_cap_bounds_the_fallback_scan(hook_path, tmp_path):
+    """Cap: the loose fallback is bounded. With the cap set low, a verdict that
+    sorts BEYOND the cap and is only loose-matchable is not scanned (treated as
+    unscanned); without the cap the same verdict resolves. Exact-named verdicts
+    are cap-independent (resolved by the fast path)."""
+    d = _mcp_dir(tmp_path)
+    for i in range(8):  # files that sort BEFORE the real one
+        (d / f"aaa_{i:04d}.json").write_text(
+            json.dumps({"target_name": f"a{i}", "match_tokens": [f"aaaaaserver{i}"]})
+        )
+    # Reachable only by a LOOSE match (filename != server token), sorts last.
+    (d / "zzz_real.json").write_text(
+        json.dumps(
+            {"target_name": "zzz_real", "match_tokens": ["coolserver"], "max_severity": "clean"}
+        )
+    )
+    capped = _run_hook_mcp(
+        hook_path,
+        tmp_path,
+        _mcp_event("mcp__coolserver_x__go"),
+        policy="warn",
+        env_extra={"SKILLGUARD_MCP_GLOB_CAP": "5"},
+    )
+    assert capped.returncode == 0
+    assert "unscanned" in capped.stdout.lower()  # beyond-cap verdict not scanned
+
+    uncapped = _run_hook_mcp(
+        hook_path, tmp_path, _mcp_event("mcp__coolserver_x__go"), policy="warn"
+    )
+    assert uncapped.stdout.strip() == ""  # default cap (4000): resolved via loose -> silent
+
+
+def test_safe_name_mirrors_package():
+    """The hook's standalone ``_safe_name`` must match the package's
+    ``mcp.safe_name`` (the verdict-filename authority) so the fast-path filename
+    probe targets the same files the scanner writes — pin them against drift."""
+    import skillguard.hook as hook
+    from skillguard.mcp import safe_name
+
+    for name in ["weather", "api-prod", "api_prod", "sun signal", "weird/../name", "", "ünïcode!"]:
+        assert hook._safe_name(name) == safe_name(name), name

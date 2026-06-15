@@ -27,8 +27,10 @@ from skillguard.mcp.secrets import (
     _header_has_inline_secret,
     _is_safe_ref,
     looks_secretish,
+    redacted_literals,
 )
 from skillguard.model import Finding, SkillInfo
+from skillguard.patterns import LOCAL_PATTERNS
 
 _CFG_REF = "mcp-config.json"
 
@@ -223,6 +225,34 @@ def _inline_secret_findings(mcp: McpServer) -> list[Finding]:
     return out
 
 
+def _redaction_blindspot_findings(mcp: McpServer) -> list[Finding]:
+    """Catch attack signals hiding inside credential-shaped literals (009-C).
+
+    Materialization redacts secret-looking values to ``<redacted-literal>`` before
+    the content engines scan the surface on disk, so a malicious token (e.g. an
+    exfil host or a payload) that also looks credential-shaped would be invisible
+    to those engines. Re-scan every redacted-to-disk literal's RAW value in memory
+    against the local-engine attack patterns. Findings reference only the location
+    and the matched category — the raw value (possibly a real secret) is never
+    echoed into a finding or onto disk."""
+    out, add = _collector()
+    for location, raw in redacted_literals(mcp):
+        seen: set[str] = set()
+        for category, severity, pattern, _desc in LOCAL_PATTERNS:
+            if category in seen:
+                continue
+            if pattern.search(raw):
+                seen.add(category)
+                add(
+                    severity,
+                    category,
+                    f"A redacted {location} matches the '{category}' attack pattern. "
+                    f"The literal is withheld from disk (it looks credential-shaped), so "
+                    f"the content scanner would otherwise miss it — review the raw config.",
+                )
+    return out
+
+
 def _exposure_findings(mcp: McpServer) -> list[Finding]:
     """Informational: what this server can read, plus the unparsed-config
     fallback when there is nothing to scan statically."""
@@ -253,6 +283,7 @@ def analyze_mcp_config(mcp: McpServer) -> list[Finding]:
         *_endpoint_findings(mcp),
         *_launch_findings(mcp),
         *_inline_secret_findings(mcp),
+        *_redaction_blindspot_findings(mcp),
         *_exposure_findings(mcp),
     ]
 

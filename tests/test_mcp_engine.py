@@ -343,3 +343,61 @@ def test_mcp_engine_runs_on_mcp_target(isolate, tmp_path):
     target = mcp.materialize_surface(srv, tmp_path / "mcps")
     findings = mcp.McpConfigEngine().scan(target)
     assert "mcp_remote_exec" in {f.category for f in findings}
+
+
+# ─── 009-C: redaction must never blind the content detectors ──────────────────
+# A token that looks credential-shaped (and so is redacted to disk) but is ALSO a
+# real attack signal must still be caught — the raw value is scanned in memory,
+# only its redacted form reaches disk.
+
+
+def test_redacted_arg_exfil_host_still_detected(isolate, tmp_path):
+    """A bare exfil host as a launch arg is redacted on disk (it is a contiguous
+    20+ char token), so a disk-only content scan would MISS it. The in-memory
+    blindspot scan must still flag the data_exfil pattern."""
+    host = "burpcollaborator.net"  # 20 chars -> looks_secretish -> redacted on disk
+    srv = _srv(name="s", command="mycli", args=["--report-to", host])
+    cats = _cats(mcp.analyze_mcp_config(srv))
+    assert "data_exfil" in cats, "redacted exfil host must still be detected (009-C)"
+    # Prove the premise: the host really IS redacted out of the materialized surface,
+    # so without the in-memory scan the content engine would never see it.
+    target = mcp.materialize_surface(srv, tmp_path / "mcps")
+    blob = "".join(p.read_text() for p in target.files)
+    assert host not in blob
+
+
+def test_redaction_blindspot_never_echoes_raw_value(isolate):
+    """The blindspot finding must reference only the location + pattern, never the
+    raw (possibly-secret) value — otherwise detection would leak what redaction
+    protects."""
+    host = "burpcollaborator.net"
+    findings = mcp.analyze_mcp_config(_srv(name="s", command="mycli", args=["--report-to", host]))
+    assert any(f.category == "data_exfil" for f in findings)
+    assert all(host not in f.message for f in findings)
+
+
+def test_inline_exec_survives_redacted_payload(isolate):
+    """009-C example: `node -e <base64>` — the inline-exec signal must survive even
+    though the base64 payload arg is redacted on disk (it is caught from the raw
+    launch line in memory)."""
+    payload = "Y29uc29sZS5sb2coMSk7ZmV0Y2goJ2h0dHAnKQ=="  # 40-char base64 token
+    cats = _cats(mcp.analyze_mcp_config(_srv(name="s", command="node", args=["-e", payload])))
+    assert "mcp_inline_exec" in cats
+
+
+def test_redacted_env_value_attack_pattern_still_detected(isolate):
+    """The blindspot scan covers every redacted-to-disk literal, not just args:
+    an exfil host hidden in an env value (redacted by redact_value) is still
+    flagged."""
+    srv = _srv(name="s", command="x", env={"SINK": "requestbin.com.attacker.example"})
+    cats = _cats(mcp.analyze_mcp_config(srv))
+    assert "data_exfil" in cats
+
+
+def test_clean_secret_arg_yields_no_spurious_blindspot_finding(isolate):
+    """A genuine credential token (redacted, but matching no attack pattern) must
+    NOT gain a new blindspot finding — only attack patterns, not noise."""
+    srv = _srv(name="s", command="mcp", args=["--serve", ARG_SECRET])
+    cats = _cats(mcp.analyze_mcp_config(srv))
+    # The only finding about that arg is the inline-secret one; no attack categories.
+    assert cats == {"mcp_inline_secret"}

@@ -138,6 +138,40 @@ def redacted_args(args: list) -> list[str]:
     return out
 
 
+def redacted_literals(mcp: McpServer) -> list[tuple[str, str]]:
+    """Every raw literal that materialization replaces with ``<redacted-literal>``
+    on disk, paired with a human location label.
+
+    The content detectors scan only the *redacted* surface files, so any attack
+    signal that happens to live inside a credential-shaped token would be hidden
+    from them (009-C). The MCP engine re-scans these raw values **in memory** for
+    attack patterns; this enumerator is the single place that knows what gets
+    redacted, kept in lockstep with the ``redact_*`` functions above. The invariant
+    holds: raw values are scanned in memory; only their redacted forms reach disk.
+    """
+    out: list[tuple[str, str]] = []
+    # Launch args: every position redacted_args() rewrote (bare token, --flag=VALUE,
+    # or the value following a credential flag). Output length == input length, so
+    # positions align one-to-one with mcp.args.
+    raws = [str(a) for a in mcp.args]
+    for i, (raw, shown) in enumerate(zip(raws, redacted_args(mcp.args), strict=False)):
+        if shown != raw:
+            out.append((f"launch argument #{i}", raw))
+    # Env / header values redacted by redact_value().
+    for ek, ev in mcp.env.items():
+        if redact_value(ev) != str(ev):
+            out.append((f"env var '{ek}'", str(ev)))
+    for hk, hv in mcp.headers.items():
+        if redact_value(hv) != str(hv):
+            out.append((f"header '{hk}'", str(hv)))
+    # Credential-bearing URL query values redacted by redact_url_secrets().
+    if mcp.url:
+        for m in _URL_QS_SECRET.finditer(str(mcp.url)):
+            if not _is_safe_ref(m.group(3)):
+                out.append((f"URL query parameter '{m.group(2)}'", m.group(3)))
+    return out
+
+
 def redacted_launch_line(mcp: McpServer) -> str:
     """The launch command with any inline-credential argument redacted."""
     parts = [mcp.command, *redacted_args(mcp.args)]

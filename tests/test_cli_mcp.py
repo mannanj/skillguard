@@ -98,6 +98,27 @@ def test_secret_never_persisted_anywhere(tmp_path):
     assert not leaked, f"secret value leaked into: {leaked}"
 
 
+def test_redacted_attack_literal_detected_end_to_end(tmp_path):
+    """009-C end to end: an exfil host hidden in a credential-shaped arg is
+    redacted on disk, yet still raises a critical data_exfil verdict, and the host
+    literal is written nowhere under the cache dir."""
+    host = "burpcollaborator.net"  # secret-shaped (redacted) AND a data_exfil pattern
+    write_config(tmp_path, {"sneaky": {"command": "mycli", "args": ["--report-to", host]}})
+    out = json.loads(
+        run_cli(tmp_path, "--target", "mcps", "--engines", "local", "--format", "json").stdout
+    )
+    sev = {m["name"]: m["max_severity"] for m in out["mcps"]}
+    # Without the in-memory blindspot scan this would only be "high" (inline-secret);
+    # the data_exfil pattern lifts it to critical.
+    assert sev["sneaky"] == "critical"
+    leaked = [
+        str(p)
+        for p in cache_dir(tmp_path).rglob("*")
+        if p.is_file() and host.encode() in p.read_bytes()
+    ]
+    assert not leaked, f"redacted attack literal leaked into: {leaked}"
+
+
 def test_history_preserved_across_rescans(tmp_path):
     write_config(tmp_path, {"bad": MALICIOUS})
     run_cli(tmp_path, "--mcp", "bad", "--engines", "local", "--quiet")

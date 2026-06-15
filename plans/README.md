@@ -37,7 +37,7 @@ file with no test on its main path. So the sequence is:
 | 007  | Decompose mcp.py into a package | P2 | L | 001, 002, 004 | DONE |
 | 008  | Harden MCP introspection (env minimization, SSRF guard, process lifecycle) | P2 | M | 001 | DONE |
 | 008.5| Naming authority + shared doc-table heuristic (forward-architecture seams) | P2 | S | 001, 002, 007 | DONE |
-| 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | TODO |
+| 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | DONE |
 | 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (one-line rationale)
@@ -78,6 +78,13 @@ hands off cleanly instead of dead-ending:
   candidate path in `hook.find_skill_mtime` and fail closed on unresolved.
 - **True sandboxing of `--mcp-introspect`** (plan 008 note) — container/seccomp; the
   `introspect.py` boundary is ready for it.
+- **First-run onboarding (simple/lovable/complete)** — the primitives all exist
+  (`--target all` full scan, `--show`/`--history`/`--activity`, `--skip`/`--skip-mcp`,
+  `--mark-fp`/`--unmark-fp`, re-scan), but there is no guided first-run experience
+  that *runs* the full system scan and walks the user through results, updates,
+  skips, and false-positive triage. `install.sh` only prints a suggested command.
+  This is a UX/product gap (not a security one), surfaced 2026-06-14 while closing
+  009; a wizard would sit on top of the existing CLI verbs, no engine changes.
 
 Full forward-architecture assessment:
 `.claude/checkin/2026-06-14-refactor-conformance-and-forward-architecture.md`.
@@ -243,6 +250,42 @@ Full forward-architecture assessment:
   roadmap to the product backlog (new "What's next after the refactor" section).
   Verified green: ruff clean, ruff-format clean, mypy clean (34 files),
   **177 → 187** pass.
+- **2026-06-14** — Plan 009 executed on branch `refactor/security-investigations`
+  (off `main` after 008.5 merged via PR #3). Investigate-then-fix; every symbol
+  re-grepped (the 006/007 decompositions moved them — `mcp.py` is now the `mcp/`
+  package, the policy/verdict logic lives in `hook.py`/`cache.py`/`paths.py`). The
+  two posture decisions were **surfaced to the maintainer and decided by them**:
+  009-A → fail-closed, 009-D → tighten. **009-A (hook fail-open):** `_mcp_policy()`
+  returned `"warn"` whenever the package was unimportable, silently downgrading a
+  configured `enforce` while skills fail closed. Fix: a standalone
+  `_standalone_mcp_policy()` reads the env var + flat `_settings.json` (neither
+  needs the package), so `enforce` survives a broken/partial install — now
+  symmetric with skills; a throttled stderr notice makes the degradation visible
+  and the block still surfaces the `--skip-mcp` escape hatch. Hook-contract
+  docstring updated. **009-B (cache-glob DoS):** `find_mcp_verdict` read+parsed
+  *every* `mcps/*.json` on every MCP call. Fix: O(1) fast-path probe of the
+  expected verdict filename (`_safe_name(server)` + `-`/`_` variants, mirroring
+  `mcp.safe_name`, pinned by a drift test) returning on an exact/prefix match;
+  bounded fallback glob capped at `MCP_GLOB_CAP` (4000, env-overridable) with a
+  loud stderr note when hit. **009-C (redaction blind spot, a real
+  false-negative):** a credential-shaped token (e.g. the exfil host
+  `burpcollaborator.net`, redacted as "secretish") blinded the content engines on
+  the disk surface — proven: the redacted `command.txt` lost a `data_exfil`
+  critical the raw text raised. Fix: `secrets.redacted_literals()` enumerates every
+  literal materialization redacts to disk, and a new `_redaction_blindspot_findings`
+  predicate re-scans each **raw** value in memory against `LOCAL_PATTERNS`, emitting
+  location-only findings (no raw value to disk). The `test_secret_never_persisted_anywhere`
+  invariant stays green. **009-D (loose token mis-attribution):** the substring
+  match let `mcp__api_prod__*` inherit an `api` server's clean verdict (verified the
+  real trigger is the underscore form, not the dash). Fix: exact/prefix preferred;
+  loose requires `MIN_LOOSE_TOKEN` length and is **refused entirely under enforce**
+  (`strict=True`), resolving ambiguity toward "unscanned" — the legitimate
+  prefix/exact case still resolves (STOP-condition guarded). +18 tests
+  (5 degraded-path, 4 token-match, 2 cache-cap, 5 redaction-blindspot, 1 safe_name
+  drift, 1 end-to-end leak-guard). Each fix mutation-proven RED→GREEN
+  (standalone-policy neuter, strict-bypass, min-length drop, cap removal, blindspot
+  neuter — all CAUGHT). No new module → `install.sh` `MODULES` unchanged. Verified
+  green: ruff clean, ruff-format clean, mypy clean (34 files), **187 → 205** pass.
 
 ## Findings considered and rejected
 
