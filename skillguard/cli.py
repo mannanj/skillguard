@@ -38,6 +38,7 @@ from skillguard import config, store  # noqa: F401  (store: patch seam for cli.s
 from skillguard._util import atomic_write_json as _atomic_write_json
 from skillguard.args import build_parser
 from skillguard.cache import (
+    write_ack_cache,
     write_cache,
     write_skip_cache,
 )
@@ -91,7 +92,7 @@ from skillguard.triage import (
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 CACHE_DIR = config.default_cache_dir()
 
@@ -119,6 +120,7 @@ __all__ = [
     "discover_mcps",
     "write_cache",
     "write_skip_cache",
+    "write_ack_cache",
     "_atomic_write_json",
     "apply_triage",
     "finding_fingerprint",

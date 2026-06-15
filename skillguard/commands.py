@@ -19,7 +19,7 @@ from __future__ import annotations
 import argparse
 
 from skillguard import config, store
-from skillguard.cache import write_skip_cache
+from skillguard.cache import write_ack_cache, write_skip_cache
 from skillguard.paths import cache_dir, db_path
 from skillguard.render.colors import bold, dim, reset, severity_color
 from skillguard.render.reports import _fmt_ts, emit
@@ -220,6 +220,37 @@ def show_command(name: str, fmt: str) -> int:
     return render_show(data, fmt)
 
 
+def _acknowledge(name: str, kind: str) -> int:
+    """Record an explicit risk acknowledgment (``--ack`` / ``--ack-mcp``) so the
+    hook allows a scanned-risky target. Unlike skip, this requires a prior scan;
+    if there is none, tell the user to scan first and exit non-zero."""
+    scan_flag = "--mcp" if kind == "mcp" else "--skill"
+    try:
+        verdict = write_ack_cache(name, kind)
+    except ValueError as exc:
+        print(f"Cannot acknowledge: {exc}.")
+        print(f"Scan it first: skillguard {scan_flag} {name}")
+        return 1
+    sev = verdict.get("acknowledged_severity", "unknown")
+    findings = verdict.get("finding_count", 0)
+    log_activity(
+        actor="user",
+        action="acknowledge",
+        target_kind=kind,
+        target_name=name,
+        outcome="ok",
+        severity=sev,
+        detail=f"risk acknowledged ({findings} finding(s), max {sev}) — hook will allow",
+    )
+    label = "MCP" if kind == "mcp" else "skill"
+    print(
+        f"Acknowledged risk for {label} '{name}' "
+        f"({findings} finding(s), max severity: {sev}). The hook will now ALLOW it."
+    )
+    print(f"This is cleared automatically if you re-scan: skillguard {scan_flag} {name}")
+    return 0
+
+
 # ─── Early-exit dispatch (no-scan subcommands) ───────────────────────────────
 
 
@@ -276,6 +307,10 @@ def _dispatch_early_exit(args: argparse.Namespace) -> int | None:
         print(f"Marked MCP '{args.skip_mcp}' as skipped.")
         print(f"To scan it properly: skillguard --mcp {args.skip_mcp}")
         return 0
+    if args.ack:
+        return _acknowledge(args.ack, "skill")
+    if args.ack_mcp:
+        return _acknowledge(args.ack_mcp, "mcp")
     if args.mark_fp:
         mark_fp_command(args.mark_fp)
         log_activity(

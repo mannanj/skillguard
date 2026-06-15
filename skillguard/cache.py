@@ -13,6 +13,7 @@ so keep it byte-compatible.
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
 
 from skillguard._util import atomic_write_json as _atomic_write_json
@@ -116,3 +117,34 @@ def write_skip_cache(skill_name: str, kind: str = "skill") -> None:
         findings=[],
     )
     _atomic_write_json(path, verdict)
+
+
+def write_ack_cache(name: str, kind: str = "skill") -> dict:
+    """Record an explicit human acknowledgment of a *scanned* target's risk so the
+    hook allows it despite critical/high findings.
+
+    This is deliberately distinct from skip (``write_skip_cache``): skip means
+    "don't gate this, I'm not scanning it"; ack means "I scanned this, I saw the
+    findings, and I accept the risk." So ack presupposes a real scan and is merged
+    INTO the existing verdict — it never discards the findings. Because a re-scan
+    rewrites the verdict via ``build_verdict`` (which carries no ack field), the
+    acknowledgment is cleared automatically the next time the target is scanned, so
+    a changed-and-rescanned target must be acknowledged afresh.
+
+    Returns the updated verdict. Raises ``ValueError`` if the target was never
+    scanned or was only skipped — there is nothing to acknowledge in either case.
+    """
+    path = cache_path_for(name, kind)
+    try:
+        verdict = json.loads(path.read_text())
+        if not isinstance(verdict, dict):
+            raise ValueError
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"'{name}' has never been scanned — nothing to acknowledge") from exc
+    if verdict.get("skipped"):
+        raise ValueError(f"'{name}' is marked skipped, not scanned — nothing to acknowledge")
+    verdict["risk_acknowledged"] = True
+    verdict["acknowledged_at"] = utcnow_iso()
+    verdict["acknowledged_severity"] = verdict.get("max_severity", "unknown")
+    _atomic_write_json(path, verdict)
+    return verdict

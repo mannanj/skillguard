@@ -392,14 +392,14 @@ def test_mcp_degraded_enforce_reads_settings_file(hook_path, tmp_path):
     assert "not been scanned" in r.stderr.lower()
 
 
-def test_mcp_degraded_warn_default_still_allows(hook_path, tmp_path):
-    """The fix must not over-block: with no configured policy (the `warn`
-    default), the degraded hook still allows + nudges, exactly as before."""
+def test_mcp_degraded_defaults_to_enforce_blocks_unscanned(hook_path, tmp_path):
+    """With no policy configured, the degraded hook must default to `enforce`
+    (the package default) and block unscanned servers — the warn era is over."""
     _mcp_dir(tmp_path)
     degraded = _degraded_hook_path(hook_path, tmp_path)
     r = _run_hook_mcp(degraded, tmp_path, _mcp_event("mcp__ghost__do"), policy=None)
-    assert r.returncode == 0
-    assert "unscanned" in r.stdout.lower()
+    assert r.returncode == 2
+    assert "not been scanned" in r.stderr.lower()
 
 
 def test_mcp_degraded_emits_visible_notice(hook_path, tmp_path):
@@ -524,3 +524,95 @@ def test_safe_name_mirrors_package():
 
     for name in ["weather", "api-prod", "api_prod", "sun signal", "weird/../name", "", "ünïcode!"]:
         assert hook._safe_name(name) == safe_name(name), name
+
+
+# ══ Skill severity gate (critical/high block unless risk acknowledged) ════════
+#     Mirrors the MCP gate; escape hatch is --ack (distinct from --skip).
+
+
+def _high_cache(name: str, mtime: float = 0.0) -> dict:
+    return {
+        "skill_name": name,
+        "scanned_at": "2026-06-03T12:00:00+00:00",
+        "skill_mtime_epoch": mtime,
+        "engines_used": ["local"],
+        "skipped": False,
+        "max_severity": "high",
+        "finding_count": 2,
+        "triaged_fp_count": 0,
+        "findings_summary": ["[local/high] reverse shell in x:1"],
+        "findings": [],
+    }
+
+
+def _crit_cache(name: str, mtime: float = 0.0) -> dict:
+    d = _high_cache(name, mtime)
+    d["max_severity"] = "critical"
+    d["finding_count"] = 3
+    d["findings_summary"] = ["[local/critical] data exfil in x:1"]
+    return d
+
+
+def _acked_cache(name: str, sev: str = "high", mtime: float = 0.0) -> dict:
+    d = _high_cache(name, mtime) if sev != "critical" else _crit_cache(name, mtime)
+    d["max_severity"] = sev
+    d["risk_acknowledged"] = True
+    d["acknowledged_at"] = "2026-06-14T00:00:00+00:00"
+    d["acknowledged_severity"] = sev
+    return d
+
+
+def test_skill_scanned_high_blocks(hook_path, tmp_path):
+    _write_cache_entry(tmp_path, "risky", _high_cache("risky"))
+    r = _run_hook(hook_path, tmp_path, _event("risky"))
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stderr
+    assert "high" in r.stderr
+    assert "--ack risky" in r.stderr
+    assert "--skip risky" in r.stderr
+
+
+def test_skill_scanned_critical_blocks(hook_path, tmp_path):
+    _write_cache_entry(tmp_path, "evil", _crit_cache("evil"))
+    r = _run_hook(hook_path, tmp_path, _event("evil"))
+    assert r.returncode == 2
+    assert "BLOCKED" in r.stderr
+    assert "critical" in r.stderr
+    assert "--ack evil" in r.stderr
+
+
+def test_skill_scanned_high_with_ack_allows(hook_path, tmp_path):
+    _write_cache_entry(tmp_path, "risky", _acked_cache("risky", "high"))
+    r = _run_hook(hook_path, tmp_path, _event("risky"))
+    assert r.returncode == 0
+    assert "RISK ACKNOWLEDGED" in r.stdout
+    assert "high" in r.stdout
+
+
+def test_skill_scanned_medium_allows_without_ack(hook_path, tmp_path):
+    """Non-block severities must pass even without ack (the gate is only crit/high)."""
+    med = _high_cache("med")
+    med["max_severity"] = "medium"
+    med["finding_count"] = 1
+    _write_cache_entry(tmp_path, "med", med)
+    r = _run_hook(hook_path, tmp_path, _event("med"))
+    assert r.returncode == 0
+    assert "RISK ACKNOWLEDGED" not in r.stdout
+
+
+# ══ MCP ack flow under enforce (symmetric to skill) ═══════════════════════════
+
+
+def test_mcp_scanned_bad_enforce_with_ack_allows(hook_path, tmp_path):
+    _write_mcp_verdict(tmp_path, "evil", max_severity="high", finding_count=3)
+    # Manually inject the ack flag into the written verdict (simulates --ack-mcp).
+    p = _mcp_dir(tmp_path) / "evil.json"
+    v = json.loads(p.read_text())
+    v["risk_acknowledged"] = True
+    v["acknowledged_at"] = "2026-06-14T00:00:00+00:00"
+    v["acknowledged_severity"] = "high"
+    p.write_text(json.dumps(v))
+    r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__evil__run"), policy="enforce")
+    assert r.returncode == 0
+    # MCP allows stay silent on stdout even when risky+acked (high-frequency path).
+    assert r.stdout.strip() == ""

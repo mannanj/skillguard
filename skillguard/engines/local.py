@@ -7,7 +7,11 @@ from __future__ import annotations
 
 from skillguard.discovery import rel_to
 from skillguard.model import Finding, SkillInfo
-from skillguard.patterns import LOCAL_PATTERNS, is_markdown_table_row
+from skillguard.patterns import (
+    LOCAL_PATTERNS,
+    is_markdown_table_row,
+    is_vendor_install_pipe,
+)
 
 
 class LocalEngine:
@@ -45,6 +49,8 @@ class LocalEngine:
                             continue
                         # Skip if the line is inside a markdown table header or description
                         if is_markdown_table_row(stripped):
+                            continue
+                        if category == "shell_pipe" and is_vendor_install_pipe(line):
                             continue
 
                         rel_path = rel_to(file_path, skill.path)

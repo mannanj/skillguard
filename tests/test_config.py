@@ -43,8 +43,8 @@ def test_invalid_env_value_falls_back_to_file(tmp_path: Path, monkeypatch):
 # ── mcp_policy ────────────────────────────────────────────────────────────────
 
 
-def test_mcp_policy_defaults_warn(tmp_path: Path):
-    assert config.mcp_policy(tmp_path) == "warn"
+def test_mcp_policy_defaults_enforce(tmp_path: Path):
+    assert config.mcp_policy(tmp_path) == "enforce"
 
 
 def test_set_mcp_policy_persists(tmp_path: Path):
@@ -70,7 +70,7 @@ def test_settings_file_corruption_is_tolerated(tmp_path: Path):
     config.settings_path(tmp_path).write_text("{ broken json :::")
     # Falls back to defaults rather than raising.
     assert config.activity_logging_enabled(tmp_path) is True
-    assert config.mcp_policy(tmp_path) == "warn"
+    assert config.mcp_policy(tmp_path) == "enforce"
 
 
 def test_settings_coexist(tmp_path: Path):

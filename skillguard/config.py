@@ -18,10 +18,12 @@ Two toggles live here:
     ``SKILLGUARD_ACTIVITY_LOG=off``. Persist it with:
     ``skillguard --set-activity-logging off``.
 
-  * ``mcp_policy`` (default **warn**) — how the hook treats MCP tool calls:
+  * ``mcp_policy`` (default **enforce**) — how the hook treats MCP tool calls:
     ``off`` (ignore), ``warn`` (allow but warn on unscanned/risky), or
-    ``enforce`` (block, symmetric with skills). Env override:
-    ``SKILLGUARD_MCP_POLICY=enforce``.
+    ``enforce`` (block unscanned + critical/high, symmetric with skills). The
+    default is ``enforce`` so an MCP server is gated out of the box, matching the
+    skill posture; relax it with ``skillguard --set-mcp-policy warn`` or the env
+    override ``SKILLGUARD_MCP_POLICY=warn``.
 
 This module imports only the dependency-free ``_util`` helper from the package,
 so both the CLI and the dependency-light hook can use it without a circular
@@ -45,7 +47,7 @@ VALID_MCP_POLICIES = ("off", "warn", "enforce")
 
 DEFAULTS = {
     "activity_logging": True,
-    "mcp_policy": "warn",
+    "mcp_policy": "enforce",
 }
 
 

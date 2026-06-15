@@ -22,6 +22,23 @@ def _p(cat: str, sev: str, pattern: str, desc: str) -> None:
     LOCAL_PATTERNS.append((cat, sev, re.compile(pattern, re.IGNORECASE), desc))
 
 
+_VENDOR_INSTALL_URL = re.compile(
+    r"(?:resend|tailscale)\.com/install\.(?:sh|ps1)",
+    re.IGNORECASE,
+)
+
+
+def is_vendor_install_pipe(line: str) -> bool:
+    """True when a curl|sh/bash line documents an official vendor install script.
+
+    Hoisted beside ``is_markdown_table_row`` so ``LocalEngine`` and any future
+    adapter can share the same suppression instead of re-deriving it.
+    """
+    if not re.search(r"\|\s*(?:ba)?sh\b", line, re.IGNORECASE):
+        return False
+    return bool(_VENDOR_INSTALL_URL.search(line))
+
+
 def is_markdown_table_row(line: str) -> bool:
     """True if ``line`` is a markdown table row or separator (three or more ``|``).
 
@@ -50,7 +67,12 @@ _p("reverse_shell", "critical", r"socat\s+exec:", "Socat reverse shell")
 _p("data_exfil", "critical", r"webhook\.site", "Data exfiltration via webhook.site")
 _p("data_exfil", "critical", r"requestbin\.(com|net)", "Data exfiltration via requestbin")
 _p("data_exfil", "critical", r"burpcollaborator\.net", "Data exfiltration via Burp Collaborator")
-_p("data_exfil", "critical", r"ngrok\.(io|com|app)", "Data exfiltration via ngrok tunnel")
+_p(
+    "data_exfil",
+    "critical",
+    r"(?:curl|wget|nc)\s+[^\n]{0,160}ngrok\.(io|com|app)",
+    "Data exfiltration via ngrok tunnel",
+)
 _p("data_exfil", "critical", r"pipedream\.net", "Data exfiltration via Pipedream")
 _p("data_exfil", "critical", r"interact\.sh", "Data exfiltration via interactsh")
 
@@ -113,8 +135,8 @@ _p("credential_theft", "high", r"seed\s*phrase", "References to seed phrases")
 _p("credential_theft", "high", r"wallet\.dat|MetaMask", "Crypto wallet access")
 
 # --- Shell pipe execution (HIGH) ---
-_p("shell_pipe", "high", r"curl\s+[^\n]*\|\s*(ba)?sh", "curl piped to shell execution")
-_p("shell_pipe", "high", r"wget\s+[^\n]*\|\s*(ba)?sh", "wget piped to shell execution")
+_p("shell_pipe", "high", r"curl\s+[^\n]*\|\s*(?:ba)?sh\b", "curl piped to shell execution")
+_p("shell_pipe", "high", r"wget\s+[^\n]*\|\s*(?:ba)?sh\b", "wget piped to shell execution")
 _p("shell_pipe", "high", r"curl\s+[^\n]*\|\s*python", "curl piped to Python execution")
 
 # --- Obfuscation (HIGH) ---
@@ -164,7 +186,7 @@ _p("container_escape", "medium", r"LD_PRELOAD", "LD_PRELOAD injection")
 _p("container_escape", "medium", r"/proc/self/", "Process self-inspection")
 
 # --- Reconnaissance (LOW) ---
-_p("recon", "low", r"whoami|id\s+-[anu]", "User reconnaissance")
+_p("recon", "low", r"^\s*(?:whoami|id\s+-[anu])\b", "User reconnaissance")
 _p("recon", "low", r"uname\s+-a", "System reconnaissance")
 _p("recon", "low", r"ifconfig|ip\s+addr", "Network interface reconnaissance")
 _p("recon", "low", r"hostname\s+-[fI]", "Hostname reconnaissance")

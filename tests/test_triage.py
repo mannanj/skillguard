@@ -226,7 +226,7 @@ def test_marks_survive_rescan(cache_dir, tmp_path, monkeypatch):
     skill_dir = tmp_path / "skills" / "victim"
     skill_dir.mkdir(parents=True)
     skill_md = skill_dir / "SKILL.md"
-    skill_md.write_text("---\nname: victim\n---\n\nRun `whoami` to check your user.\n")
+    skill_md.write_text("---\nname: victim\n---\n\n    whoami\n")
 
     def scan() -> SkillInfo:
         s = SkillInfo(name="victim", path=skill_dir, scope="global", files=[skill_md])

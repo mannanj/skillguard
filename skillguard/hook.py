@@ -9,12 +9,14 @@ Skills (matcher ``Skill``):
   - Corrupted cache entry     → BLOCK (exit 2), fail closed — never silently allow
   - Skill changed since scan  → BLOCK (exit 2), re-scan required (TOCTOU guard)
   - Skipped (never scanned)   → PASS but show reminder every time
-  - Scanned                   → PASS with one-liner status (last date, result)
+  - Scanned critical/high     → BLOCK (exit 2) unless ``risk_acknowledged`` (``--ack``)
+  - Scanned otherwise         → PASS with one-liner status (last date, result)
 
 MCP tools (matcher ``mcp__.*``), governed by the ``mcp_policy`` setting:
   - ``off``     → ignore MCP tool calls entirely
   - ``warn``    → never block; nudge once per unscanned server; log every call
   - ``enforce`` → BLOCK unscanned servers and critical/high verdicts (exit 2)
+                  unless ``risk_acknowledged`` (``--ack-mcp``)
   Scanned-clean MCP allows are silent on stdout (MCP tools fire often) but are
   always recorded to the activity log.
 
@@ -57,6 +59,14 @@ NUDGE_DIR = MCP_CACHE_DIR / "_nudged"
 MCP_POLICY_ENV = "SKILLGUARD_MCP_POLICY"
 SETTINGS_NAME = "_settings.json"
 _VALID_MCP_POLICIES = ("off", "warn", "enforce")
+# Mirrors config.DEFAULTS["mcp_policy"]; pinned by tests/test_hook.py degraded-default
+# cases. The standalone reader must match so a broken install still gates MCP out of
+# the box (009-A).
+_DEFAULT_MCP_POLICY = "enforce"
+# Block-threshold POLICY for the hook gate — which severities require an explicit
+# human ack before allow. This is NOT severity *ordering* (which is worse); that lives
+# only in model.py.
+BLOCK_SEVERITIES = frozenset({"critical", "high"})
 
 # Optional package integration (settings + activity log). Never fatal.
 try:
@@ -99,12 +109,12 @@ def _standalone_mcp_policy() -> str:
         return env.strip().lower()
     try:
         data = json.loads((CACHE_DIR / SETTINGS_NAME).read_text())
-        val = str(data.get("mcp_policy", "warn")).lower()
+        val = str(data.get("mcp_policy", _DEFAULT_MCP_POLICY)).lower()
         if val in _VALID_MCP_POLICIES:
             return val
     except (OSError, json.JSONDecodeError, AttributeError, TypeError):
         pass
-    return "warn"
+    return _DEFAULT_MCP_POLICY
 
 
 def _mcp_policy() -> "tuple[str, bool]":
@@ -225,6 +235,37 @@ def handle_skill(skill_name: str) -> None:
     finding_count = cache.get("finding_count", 0)
     triaged = cache.get("triaged_fp_count", 0)
     fp_note = f" ({triaged} triaged FP)" if triaged else ""
+
+    if max_sev in BLOCK_SEVERITIES:
+        if cache.get("risk_acknowledged"):
+            _log(
+                "hook_allow",
+                target_kind="skill",
+                target_name=skill_name,
+                outcome="allow",
+                severity=max_sev,
+                detail=f"risk acknowledged | {finding_count} finding(s), max {max_sev}",
+            )
+            print(
+                f"✓ SkillGuard: {skill_name} — RISK ACKNOWLEDGED — "
+                f"{finding_count} finding(s), max: {max_sev}{fp_note} | scanned {date_str}"
+            )
+            sys.exit(0)
+        _log(
+            "hook_block",
+            target_kind="skill",
+            target_name=skill_name,
+            outcome="block",
+            severity=max_sev,
+            detail=f"{finding_count} finding(s), max {max_sev}",
+        )
+        block(
+            f"⚠ SkillGuard: BLOCKED — '{skill_name}' has {finding_count} finding(s) "
+            f"(max: {max_sev}).\n"
+            f"  Review:      {cmd} --show {short_name}\n"
+            f"  Allow risk:  {cmd} --ack {short_name}\n"
+            f"  Or skip:     {cmd} --skip {short_name}"
+        )
 
     if max_sev == "clean":
         _log(
@@ -440,7 +481,7 @@ def handle_mcp(tool_name: str) -> None:
     max_sev = verdict.get("max_severity", "clean")
     finding_count = verdict.get("finding_count", 0)
 
-    if policy == "enforce" and max_sev in ("critical", "high"):
+    if policy == "enforce" and max_sev in BLOCK_SEVERITIES and not verdict.get("risk_acknowledged"):
         _log(
             "hook_block",
             target_kind="mcp",
@@ -450,9 +491,11 @@ def handle_mcp(tool_name: str) -> None:
             detail=f"{finding_count} finding(s), max {max_sev}",
         )
         block(
-            f"⚠ SkillGuard: MCP '{name}' has {finding_count} finding(s) (max: {max_sev}).\n"
+            f"⚠ SkillGuard: BLOCKED — MCP '{name}' has {finding_count} finding(s) "
+            f"(max: {max_sev}).\n"
             f"  Review:      {cmd} --show {name}\n"
-            f"  Allow anyway: {cmd} --skip-mcp {name}"
+            f"  Allow risk:  {cmd} --ack-mcp {name}\n"
+            f"  Or skip:     {cmd} --skip-mcp {name}"
         )
 
     # Allow. Scanned MCP allows are silent on stdout (MCP tools fire often) but

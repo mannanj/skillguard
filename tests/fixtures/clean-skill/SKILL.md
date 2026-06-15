@@ -33,6 +33,24 @@ To fetch the optional public style guide, the formatter performs a plain GET:
 
 Note that this is a normal download to a file — it is never piped to a shell.
 
+## Deploy verification (must not flag curl|shasum)
+
+    shasum -a256 site/index.html ; curl -s https://example.pages.dev | shasum -a256
+
+## CLI subcommands (must not flag recon)
+
+    wrangler whoami && wrangler deploy
+
+## Webhook tunnel docs (must not flag ngrok CLI usage)
+
+    ngrok http --domain=myagent.ngrok.io 3000
+    brew install ngrok
+
+## Vendor install docs (must not flag shell_pipe)
+
+    curl -fsSL https://resend.com/install.sh | bash
+    curl -fsSL https://tailscale.com/install.sh | sh
+
 ## Usage
 
 Run `scripts/format.py path/to/doc.md` to format a document in place.

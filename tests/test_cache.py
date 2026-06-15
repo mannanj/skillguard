@@ -16,6 +16,7 @@ from skillguard.cli import (
     Finding,
     SkillInfo,
     _atomic_write_json,
+    write_ack_cache,
     write_cache,
     write_skip_cache,
 )
@@ -109,6 +110,42 @@ def test_write_skip_cache(cache_dir):
     assert data["max_severity"] == "skipped"
     assert data["finding_count"] == 0
     assert data["engines_used"] == []
+
+
+def test_write_ack_cache_merges_risk_acknowledged(cache_dir, tmp_path):
+    """Ack must merge into an existing *scanned* verdict (high/crit), set flags,
+    and NOT drop the findings or change max_severity. Re-scan later clears it."""
+    # First create a real scanned high verdict.
+    skill = _skill_with_findings(tmp_path, "high")
+    write_cache(skill, ["local"])
+    p = cache_dir / "victim.json"
+    data0 = json.loads(p.read_text())
+    assert "risk_acknowledged" not in data0
+
+    write_ack_cache("victim")
+    data = json.loads(p.read_text())
+    assert data["risk_acknowledged"] is True
+    assert "acknowledged_at" in data
+    assert data["acknowledged_severity"] == "high"
+    # findings and severity preserved
+    assert data["max_severity"] == "high"
+    assert data["finding_count"] == 1
+    assert data["findings"]  # the real list is there
+
+    # Idempotent re-ack keeps it.
+    write_ack_cache("victim")
+    data2 = json.loads(p.read_text())
+    assert data2["risk_acknowledged"] is True
+
+
+def test_write_ack_cache_rejects_never_scanned_or_skipped(cache_dir, tmp_path):
+    with pytest.raises(ValueError, match="never been scanned"):
+        write_ack_cache("ghost")
+
+    # Write a skip, then ack must refuse.
+    write_skip_cache("lazyskip")
+    with pytest.raises(ValueError, match="skipped, not scanned"):
+        write_ack_cache("lazyskip")
 
 
 # ── _atomic_write_json ────────────────────────────────────────────────────────

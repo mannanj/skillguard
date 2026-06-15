@@ -77,6 +77,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Mark an MCP server as skipped (for the hook's enforce policy)",
     )
     parser.add_argument(
+        "--ack",
+        metavar="NAME",
+        help="Acknowledge a scanned skill's critical/high findings so the hook ALLOWS "
+        "it (records that you accepted the risk; automatically cleared on re-scan)",
+    )
+    parser.add_argument(
+        "--ack-mcp",
+        metavar="NAME",
+        dest="ack_mcp",
+        help="Acknowledge a scanned MCP server's critical/high findings so the "
+        "enforce-policy hook ALLOWS it (cleared on re-scan)",
+    )
+    parser.add_argument(
         "--mark-fp",
         metavar="NAME",
         dest="mark_fp",
@@ -122,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--set-mcp-policy",
         dest="set_mcp_policy",
         choices=list(config.VALID_MCP_POLICIES),
-        help="Set how the hook treats MCP tool calls: off | warn | enforce (default warn)",
+        help="Set how the hook treats MCP tool calls: off | warn | enforce (default enforce)",
     )
     parser.add_argument("--quiet", action="store_true", help="Minimal output (for hooks/scripts)")
     parser.add_argument(
