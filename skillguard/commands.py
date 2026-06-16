@@ -258,6 +258,15 @@ def _print_review_target(verdict: dict, index: int, total: int) -> None:
     print(action_help())
 
 
+def _confirm_ack() -> bool:
+    print("Type allow to acknowledge risk, or press Enter to cancel.")
+    try:
+        return input("> ").strip().lower() == "allow"
+    except EOFError:
+        print()
+        return False
+
+
 def review_command() -> int:
     """Walk cached active findings one target at a time."""
     verdicts = sorted(
@@ -298,7 +307,11 @@ def review_command() -> int:
                 )
                 break
             if choice in ("a", "ack"):
-                return _acknowledge(name, kind)
+                if _confirm_ack():
+                    _acknowledge(name, kind)
+                    break
+                print("Acknowledgement cancelled.")
+                continue
             if choice in ("s", "show"):
                 show_command(name, "table")
                 continue
