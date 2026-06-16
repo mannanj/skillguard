@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SkillGuard - refuse unscanned skills and MCP servers</title>
-<meta name="description" content="SkillGuard scans Claude Code skills and MCP servers, then blocks unscanned, changed, or critical/high targets before Claude runs them. Local first, secrets redacted.">
+<title>SkillGuard - scan skills, block unscanned</title>
+<meta name="description" content="SkillGuard scans Claude Code skills and MCP servers before runtime, then blocks unscanned, changed, or critical/high targets. Local. Redacted.">
 <link rel="canonical" href="https://skillguard.sh/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D91F2F' stroke-width='2.2' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M12 7v7'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="SkillGuard - refuse unscanned skills and MCP servers">
-<meta property="og:description" content="Scan Claude Code skills and MCP servers, then block unscanned, changed, or critical/high targets at the PreToolUse gate.">
+<meta property="og:title" content="SkillGuard - scan skills, block unscanned">
+<meta property="og:description" content="Scan Claude Code skills and MCP servers, then block unscanned, changed, or critical/high targets before runtime.">
 <meta property="og:image" content="https://skillguard.sh/og.png">
 <meta property="og:url" content="https://skillguard.sh/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SkillGuard - refuse unscanned skills and MCP servers">
-<meta name="twitter:description" content="A local-first PreToolUse gate for Claude Code skills and MCP servers.">
+<meta name="twitter:title" content="SkillGuard - scan skills, block unscanned">
+<meta name="twitter:description" content="A local-first runtime gate for Claude Code skills and MCP servers.">
 <meta name="twitter:image" content="https://skillguard.sh/og.png">
 
 <style>
@@ -25,12 +25,10 @@
   --ink-2: #2a2a2a;
   --muted: #666666;
   --line: #d5d5d2;
-  --line-strong: #111111;
   --panel: #ffffff;
   --panel-dark: #151515;
   --red: #d91f2f;
   --red-dark: #9f111d;
-  --red-soft: #ffe6e9;
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --max: 1120px;
@@ -268,8 +266,6 @@ h1 span {
   overflow-wrap: anywhere;
 }
 
-.indent { padding-left: 1.25em; }
-
 .prompt { color: #ff7a86; user-select: none; }
 
 .install-note {
@@ -458,14 +454,14 @@ h2 {
 
 .proof-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0;
   border: 2px solid var(--ink);
   background: var(--panel);
 }
 
 .proof-card {
-  min-height: 210px;
+  min-height: 190px;
   padding: 22px;
   border-right: 2px solid var(--ink);
 }
@@ -752,37 +748,35 @@ footer {
   <section class="hero" aria-labelledby="hero-heading">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">PreToolUse refusal gate</p>
-        <h1 id="hero-heading">Refuse <span>unscanned.</span></h1>
-        <p class="sub">SkillGuard reads Claude Code skills and MCP servers, then blocks unscanned, changed, or critical/high targets before Claude runs them.</p>
+        <p class="eyebrow">Runtime gate</p>
+        <h1 id="hero-heading">Scan skills. <span>Block unscanned.</span></h1>
+        <p class="sub">SkillGuard checks Claude Code skills and MCP servers before Claude runs them. Unscanned, changed, and critical/high targets stop there.</p>
         <ul class="meta-row" aria-label="Supported surfaces and guarantees">
           <li>Skills</li>
           <li>MCP</li>
-          <li>Local first</li>
+          <li>Local</li>
           <li>Secrets redacted</li>
         </ul>
 
         <div class="install-box" id="install">
           <div class="install-head">
-            <span>Install and scan</span>
+            <span>Install</span>
             <button class="copy-btn" type="button" data-copy="curl -fsSL https://skillguard.sh/install | sh
-python3 ~/.claude/skillguard/cli.py \
-  --engines local" aria-label="Copy install commands">Copy</button>
+skillguard --target all --engines local" aria-label="Copy install commands">Copy</button>
           </div>
           <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
-<span class="prompt">$</span> python3 ~/.claude/skillguard/cli.py \
-<span class="indent">  --engines local</span></code></pre>
+<span class="prompt">$</span> skillguard --target all --engines local</code></pre>
         </div>
-        <p class="install-note">Prefer Claude Code plugins? Use the marketplace commands in <a href="#faq">FAQ</a>. The first scan covers skills and MCP servers.</p>
+        <p class="install-note">Scans skills and MCP servers. Plugin install is in <a href="#faq">FAQ</a>.</p>
       </div>
 
-      <div class="wall" role="img" aria-label="SkillGuard PreToolUse wall refusing the pretty-formatter skill before any command runs.">
+      <div class="wall" role="img" aria-label="SkillGuard refusing the pretty-formatter skill before any command runs.">
         <div class="wall-top">
-          <span>Runtime event: skill request</span>
+          <span>Skill request</span>
           <span class="status-red">Blocked</span>
         </div>
         <div class="wall-stage" aria-hidden="true">
-          <span class="wall-label">PreToolUse wall</span>
+          <span class="wall-label">Runtime gate</span>
           <div class="request-card">
             <div>
               <span class="request-name">pretty-formatter</span>
@@ -795,8 +789,8 @@ python3 ~/.claude/skillguard/cli.py \
           <dl class="receipt-grid">
             <dt>target</dt><dd>pretty-formatter</dd>
             <dt>finding</dt><dd class="red">critical / reverse_shell</dd>
-            <dt>action</dt><dd>exit 2 before execution</dd>
-            <dt>commands</dt><dd>0 ran</dd>
+            <dt>action</dt><dd>exit 2</dd>
+            <dt>ran</dt><dd>0 commands</dd>
           </dl>
         </div>
       </div>
@@ -805,37 +799,32 @@ python3 ~/.claude/skillguard/cli.py \
 
   <section aria-labelledby="proof-heading">
     <div class="wrap">
-      <p class="section-kicker">The shape of the risk</p>
-      <h2 id="proof-heading">Skill marketplaces already have a malware curve.</h2>
+      <p class="section-kicker">Risk</p>
+      <h2 id="proof-heading">Skill supply chains are already hostile.</h2>
       <div class="proof-grid">
         <article class="proof-card">
-          <span class="proof-num">824</span>
-          <h3>malicious skills after one Koi update</h3>
-          <p>Koi's ClawHavoc count rose from 341 to 824 as ClawHub grew.</p>
+          <span class="proof-num">341</span>
+          <h3>malicious skills found by Koi</h3>
+          <p>Typosquatted ClawHub skills installed infostealers for wallets, SSH keys, and env files.</p>
         </article>
         <article class="proof-card">
           <span class="proof-num">13.4%</span>
           <h3>critical issue rate in Snyk's audit</h3>
-          <p>Snyk found 534 of 3,984 audited skills had at least one critical issue.</p>
-        </article>
-        <article class="proof-card">
-          <span class="proof-num">1,467</span>
-          <h3>skills with at least one flaw</h3>
-          <p>That is the broader affected set in Snyk's public ToxicSkills report.</p>
+          <p>Snyk found 534 critical-risk skills in 3,984 audited.</p>
         </article>
       </div>
-      <p class="proof-note">Sources: <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting" rel="noopener">Koi ClawHavoc update</a> and <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/" rel="noopener">Snyk ToxicSkills study</a>. SkillGuard has reproduced third-party detections and blocks the same classes of risk at your local gate.</p>
+      <p class="proof-note">Sources: <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting" rel="noopener">Koi</a> and <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/" rel="noopener">Snyk</a>. SkillGuard scans for those failure modes before runtime.</p>
     </div>
   </section>
 
   <section aria-labelledby="demo-heading">
     <div class="wrap">
       <p class="section-kicker">Actual output</p>
-      <h2 id="demo-heading">The block is not a report you forget.</h2>
+      <h2 id="demo-heading">Block before execution.</h2>
       <div class="terminal" id="demo-terminal">
         <div class="terminal-bar" aria-hidden="true">
           <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="terminal-title">pretty-formatter refused / 0 commands ran</span>
+          <span class="terminal-title">pretty-formatter blocked / 0 commands ran</span>
         </div>
         <video id="demo-video" src="demo.mp4" poster="demo-poster.png" muted autoplay loop playsinline preload="metadata" aria-label="Terminal recording of SkillGuard scanning and blocking pretty-formatter."></video>
         <pre class="transcript" role="img" aria-label="SkillGuard scan output: pretty-formatter blocked for reverse shell, credential exfiltration, and prompt injection."><span class="prompt">$</span> skillguard --skill pretty-formatter
@@ -850,23 +839,23 @@ python3 ~/.claude/skillguard/cli.py \
 
   <section aria-labelledby="how-heading">
     <div class="wrap">
-      <p class="section-kicker">How it works</p>
-      <h2 id="how-heading">Read. Refuse. Record.</h2>
+      <p class="section-kicker">Mechanism</p>
+      <h2 id="how-heading">Read. Gate. Log.</h2>
       <div class="steps">
         <article class="step">
           <span class="step-num">1</span>
           <h3>Read</h3>
-          <p>Scan <code>SKILL.md</code>, bundled scripts, MCP configs, launch commands, endpoint metadata, and env/header names.</p>
+          <p>Scan <code>SKILL.md</code>, scripts, MCP configs, launch commands, endpoints, and env/header names.</p>
         </article>
         <article class="step">
           <span class="step-num">2</span>
-          <h3>Refuse</h3>
-          <p>The hook blocks unscanned, changed, or critical/high targets. A bypass has to be explicit.</p>
+          <h3>Gate</h3>
+          <p>Block unscanned, changed, critical, and high-risk targets unless you bypass explicitly.</p>
         </article>
         <article class="step">
           <span class="step-num">3</span>
-          <h3>Record</h3>
-          <p>History and activity stay local. Secret values are scanned in memory and redacted before anything persists.</p>
+          <h3>Log</h3>
+          <p>Keep local history. Inspect secrets in memory, then redact before persistence.</p>
         </article>
       </div>
     </div>
@@ -874,32 +863,28 @@ python3 ~/.claude/skillguard/cli.py \
 
   <section class="faq" id="faq" aria-labelledby="faq-heading">
     <div class="wrap">
-      <p class="section-kicker">Before install</p>
-      <h2 id="faq-heading">The details stay here.</h2>
+      <p class="section-kicker">Details</p>
+      <h2 id="faq-heading">Short answers.</h2>
       <div class="faq-list">
         <details>
           <summary>What gets scanned?</summary>
-          <div class="answer">Claude Code skills, bundled scripts, and MCP server surfaces from global, project, and plugin config files.</div>
+          <div class="answer">Claude Code skills, bundled scripts, and MCP server surfaces from global, project, and plugin config.</div>
         </details>
         <details>
-          <summary>MCP too?</summary>
-          <div class="answer">Yes. SkillGuard scans MCP launch surfaces and gates MCP tool calls through <code>mcp_policy</code>, which defaults to <code>enforce</code>.</div>
+          <summary>Does it block MCP calls?</summary>
+          <div class="answer">Yes. <code>mcp_policy</code> defaults to <code>enforce</code>, so unscanned or critical/high MCP servers are refused.</div>
         </details>
         <details>
           <summary>Do API keys touch disk?</summary>
-          <div class="answer">No. Env and header values are inspected in memory, then redacted; only names, findings, cache verdicts, and history records persist.</div>
+          <div class="answer">No. Env and header values are inspected in memory, then redacted before records persist.</div>
         </details>
         <details>
           <summary>What leaves my machine?</summary>
-          <div class="answer">The local engine is stdlib-only and offline; files leave your machine only when you enable an optional cloud engine.</div>
+          <div class="answer">Nothing with the local engine. Files leave only when you enable an optional cloud engine.</div>
         </details>
         <details>
           <summary>Prefer the Claude Code plugin?</summary>
           <div class="answer">Inside Claude Code, run <code>/plugin marketplace add mannanj/skillguard</code> and then <code>/plugin install skillguard@skillguard</code>.</div>
-        </details>
-        <details>
-          <summary>Can I ship it commercially?</summary>
-          <div class="answer">The community build is AGPL-3.0; <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">commercial licenses</a> are available when copyleft does not fit.</div>
         </details>
       </div>
     </div>
@@ -908,19 +893,17 @@ python3 ~/.claude/skillguard/cli.py \
   <section class="cta" aria-labelledby="cta-heading">
     <div class="wrap">
       <p class="section-kicker">Install</p>
-      <h2 id="cta-heading">Put the wall in front of Claude.</h2>
+      <h2 id="cta-heading">Block unscanned before Claude runs it.</h2>
       <div class="install-box">
         <div class="install-head">
-          <span>Copy commands</span>
+          <span>Install</span>
           <button class="copy-btn" type="button" data-copy="curl -fsSL https://skillguard.sh/install | sh
-python3 ~/.claude/skillguard/cli.py \
-  --engines local" aria-label="Copy install commands">Copy</button>
+skillguard --target all --engines local" aria-label="Copy install commands">Copy</button>
         </div>
         <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
-<span class="prompt">$</span> python3 ~/.claude/skillguard/cli.py \
-<span class="indent">  --engines local</span></code></pre>
+<span class="prompt">$</span> skillguard --target all --engines local</code></pre>
       </div>
-      <p class="license-line">Open source under <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>. Commercial license available for teams that need it.</p>
+      <p class="license-line"><a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>. Commercial licenses available.</p>
     </div>
   </section>
 </main>
