@@ -37,6 +37,7 @@ args.py
 cli.py
 agent_summary.py
 hook.py
+review_text.py
 config.py
 branding.py
 model.py

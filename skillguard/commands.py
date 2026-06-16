@@ -32,6 +32,7 @@ from skillguard.cache import write_ack_cache, write_skip_cache
 from skillguard.paths import cache_dir, db_path
 from skillguard.render.colors import bold, dim, reset, severity_color
 from skillguard.render.reports import _fmt_ts, emit
+from skillguard.review_text import action_help, finding_explanation
 from skillguard.triage import mark_fp_command, unmark_fp_command
 
 
@@ -249,10 +250,12 @@ def _print_review_target(verdict: dict, index: int, total: int) -> None:
         print(f"  {f.get('severity')} [{f.get('engine')}] {f.get('message')}{loc}")
         if f.get("context"):
             print(f"    {f.get('context')}")
+        for line in finding_explanation(f, target_kind=str(verdict.get("kind") or "skill")):
+            print(f"    {line}")
     remaining = len(findings) - min(len(findings), 5)
     if remaining:
         print(f"  ... {remaining} more")
-    print("Actions: [m] mark-fp  [a] ack  [s] show  [enter] next  [q] quit")
+    print(action_help())
 
 
 def review_command() -> int:
