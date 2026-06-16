@@ -263,6 +263,7 @@ def handle_skill(skill_name: str) -> None:
             f"⚠ SkillGuard: BLOCKED — '{skill_name}' has {finding_count} finding(s) "
             f"(max: {max_sev}).\n"
             f"  Review:      {cmd} --show {short_name}\n"
+            f"  Mark FP:     {cmd} --mark-fp {short_name}\n"
             f"  Allow risk:  {cmd} --ack {short_name}\n"
             f"  Or skip:     {cmd} --skip {short_name}"
         )

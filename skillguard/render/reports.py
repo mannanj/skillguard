@@ -87,6 +87,8 @@ def report_table(
                 )
                 if f.file:
                     print(f"           {dim()}{f.file}:{f.line}{reset()}")
+                if f.context:
+                    print(f"           {dim()}{f.context}{reset()}")
         print()
 
     # Medium findings (compact)
@@ -100,6 +102,10 @@ def report_table(
                     print(
                         f"  {severity_color('medium')}MEDIUM{reset()}   {skill.name} — [{f.engine}] {f.message}"
                     )
+                    if f.file:
+                        print(f"           {dim()}{f.file}:{f.line}{reset()}")
+                    if f.context:
+                        print(f"           {dim()}{f.context}{reset()}")
         print()
 
     # Low/info advisories — supply-chain inventory and notes. Counted always,
@@ -131,6 +137,10 @@ def report_table(
             bad = sum(1 for t in skills if t.max_severity in ("critical", "high"))
             print(
                 f"{severity_color('high')}⚠ {bad} {noun}(s) have HIGH+ findings — review recommended{reset()}"
+            )
+            print(
+                f"{dim()}Next: skillguard --show <name> | "
+                f"skillguard --mark-fp <name> after review{reset()}"
             )
     print()
 

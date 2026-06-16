@@ -570,6 +570,7 @@ def test_skill_scanned_high_blocks(hook_path, tmp_path):
     assert "high" in r.stderr
     assert "--ack risky" in r.stderr
     assert "--skip risky" in r.stderr
+    assert "--mark-fp risky" in r.stderr
 
 
 def test_skill_scanned_critical_blocks(hook_path, tmp_path):

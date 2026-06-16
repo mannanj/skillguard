@@ -39,6 +39,24 @@ def is_vendor_install_pipe(line: str) -> bool:
     return bool(_VENDOR_INSTALL_URL.search(line))
 
 
+def is_explicit_non_finding_line(line: str) -> bool:
+    """True when prose explicitly labels an example as non-actionable.
+
+    This is deliberately narrow. It catches documentation guardrails such as
+    "not a finding" without treating every security-themed paragraph as safe.
+    """
+    lower = line.lower()
+    return any(
+        phrase in lower
+        for phrase in (
+            "not a finding",
+            "must not flag",
+            "should not flag",
+            "false positive",
+        )
+    )
+
+
 def is_markdown_table_row(line: str) -> bool:
     """True if ``line`` is a markdown table row or separator (three or more ``|``).
 
@@ -48,6 +66,12 @@ def is_markdown_table_row(line: str) -> bool:
     or trailing whitespace, so callers may pass a stripped or raw line.
     """
     return "|" in line and line.count("|") >= 3
+
+
+def is_package_cache_cleanup(line: str) -> bool:
+    """True for common package-manager cache cleanup, not destructive deletion."""
+    lower = line.lower()
+    return bool(re.search(r"\brm\s+-rf\s+/var/lib/apt/lists/?\*", lower))
 
 
 # --- Reverse shells & RCE (CRITICAL) ---
@@ -105,10 +129,10 @@ _p("prompt_injection", "high", r"new\s+system\s+prompt", "Prompt injection: new 
 _p(
     "prompt_injection",
     "high",
-    r"override\s+(your\s+)?(instructions|rules|guidelines)",
+    r"override\s+your\s+(instructions|rules|guidelines)",
     "Prompt injection: override rules",
 )
-_p("prompt_injection", "high", r"jailbreak", "Prompt injection: jailbreak reference")
+_p("prompt_injection", "high", r"\bjailbreak\s+mode\b", "Prompt injection: jailbreak mode")
 
 # --- Environment variable exfiltration (HIGH) ---
 _p("env_exfil", "high", r"cat\s+(/etc/passwd|/etc/shadow)", "Reading system password files")
@@ -130,7 +154,12 @@ _p("credential_theft", "high", r"~/.gcloud/", "Accessing GCloud credentials")
 _p("credential_theft", "high", r"~/.kube/config", "Accessing Kubernetes config")
 _p("credential_theft", "high", r"~/.npmrc", "Accessing npm auth token")
 _p("credential_theft", "high", r"~/.netrc", "Accessing netrc credentials")
-_p("credential_theft", "high", r"keychain|KeychainAccess", "Accessing system keychain")
+_p(
+    "credential_theft",
+    "high",
+    r"KeychainAccess|security\s+(?:find-generic-password|find-internet-password|dump-keychain|unlock-keychain)\b",
+    "Accessing system keychain",
+)
 _p("credential_theft", "high", r"seed\s*phrase", "References to seed phrases")
 _p("credential_theft", "high", r"wallet\.dat|MetaMask", "Crypto wallet access")
 
@@ -140,7 +169,18 @@ _p("shell_pipe", "high", r"wget\s+[^\n]*\|\s*(?:ba)?sh\b", "wget piped to shell 
 _p("shell_pipe", "high", r"curl\s+[^\n]*\|\s*python", "curl piped to Python execution")
 
 # --- Obfuscation (HIGH) ---
-_p("obfuscation", "high", r"(?:base64\s+--?d|atob|b64decode)\s*[(\s]", "Base64 decoding execution")
+_p(
+    "obfuscation",
+    "high",
+    r"(?:eval|exec|Function)\s*\([^)]*(?:base64\.b64decode|b64decode|atob)\s*\(",
+    "Base64 decoding execution",
+)
+_p(
+    "obfuscation",
+    "high",
+    r"base64\s+--?(?:d|decode)\b[^\n]*\|\s*(?:ba)?sh\b",
+    "Base64 decoding piped to shell",
+)
 _p(
     "obfuscation",
     "high",
@@ -174,7 +214,12 @@ _p("network", "medium", r"tcpdump\s+", "Packet capture")
 _p("network", "medium", r"dns\s+exfil|dns\s+tunnel", "DNS exfiltration/tunneling reference")
 
 # --- Dangerous operations (MEDIUM) ---
-_p("dangerous_op", "medium", r"rm\s+-rf\s+/(?!tmp)", "Recursive deletion from root")
+_p(
+    "dangerous_op",
+    "medium",
+    r"rm\s+-rf\s+/(?!tmp\b|var/lib/apt/lists\b)",
+    "Recursive deletion from root",
+)
 _p("dangerous_op", "medium", r"chmod\s+777\s+", "World-writable permissions")
 _p("dangerous_op", "medium", r"dd\s+if=.*of=/dev/", "Disk overwrite with dd")
 _p("dangerous_op", "medium", r":(){ :\|:& };:", "Fork bomb")
@@ -188,5 +233,5 @@ _p("container_escape", "medium", r"/proc/self/", "Process self-inspection")
 # --- Reconnaissance (LOW) ---
 _p("recon", "low", r"^\s*(?:whoami|id\s+-[anu])\b", "User reconnaissance")
 _p("recon", "low", r"uname\s+-a", "System reconnaissance")
-_p("recon", "low", r"ifconfig|ip\s+addr", "Network interface reconnaissance")
+_p("recon", "low", r"\bifconfig\b|\bip\s+addr\b", "Network interface reconnaissance")
 _p("recon", "low", r"hostname\s+-[fI]", "Hostname reconnaissance")

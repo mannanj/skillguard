@@ -9,9 +9,11 @@ venv/
 .DS_Store
 .claude/session-memory/
 .claude/handoff/
+.superpowers/
 task-brand-names.md
 demo/*.mp4
 demo/*.webm
 landing/demo.mp4
 landing/og.png
 demo/fixture-home/.claude/skillguard-cache/
+local-backups/
