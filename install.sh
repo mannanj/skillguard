@@ -14,10 +14,6 @@ set -eu
 REPO="https://github.com/mannanj/skillguard"
 DEST="$HOME/.claude/skillguard"
 SETTINGS="$HOME/.claude/settings.json"
-BIN_DIR="$HOME/.local/bin"
-SHIM="$BIN_DIR/skillguard"
-ZSHRC="$HOME/.zshrc"
-SHELL_INTEGRATION="$DEST/shell.sh"
 
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required"; exit 1; }
 
@@ -132,66 +128,8 @@ tmp.replace(settings_path)
 print("  hook registered")
 PYEOF
 
-echo "→ Adding skillguard command to $SHIM"
-mkdir -p "$BIN_DIR"
-cat > "$SHIM" <<'SHEOF'
-#!/bin/sh
-exec python3 "$HOME/.claude/skillguard/cli.py" "$@"
-SHEOF
-chmod 755 "$SHIM"
-
-echo "→ Installing codex/claude launch summary integration"
-cat > "$SHELL_INTEGRATION" <<'SHEOF'
-# SkillGuard shell integration. Sourced by ~/.zshrc.
-case ":$PATH:" in
-  *":$HOME/.local/bin:"*) ;;
-  *) export PATH="$HOME/.local/bin:$PATH" ;;
-esac
-
-_skillguard_agent_should_summarize() {
-  [ "${SKILLGUARD_AGENT_SUMMARY:-1}" = "0" ] && return 1
-  if [ "${SKILLGUARD_AGENT_SUMMARY_FORCE:-0}" != "1" ]; then
-    [ -t 0 ] && [ -t 1 ] || return 1
-  fi
-  case "${1:-}" in
-    --version|-V|version|--help|-h|help|plugin|plugins|mcp|auth)
-      return 1
-      ;;
-  esac
-  return 0
-}
-
-_skillguard_agent_summary() {
-  _skillguard_agent_should_summarize "$@" || return 0
-  if command -v skillguard >/dev/null 2>&1; then
-    command skillguard --agent-summary 2>/dev/null || true
-  elif [ -x "$HOME/.local/bin/skillguard" ]; then
-    "$HOME/.local/bin/skillguard" --agent-summary 2>/dev/null || true
-  fi
-}
-
-claude() {
-  _skillguard_agent_summary "$@"
-  command claude "$@"
-}
-
-codex() {
-  _skillguard_agent_summary "$@"
-  command codex "$@"
-}
-SHEOF
-
-touch "$ZSHRC"
-if ! grep -F "# >>> skillguard >>>" "$ZSHRC" >/dev/null 2>&1; then
-    {
-        printf '\n# >>> skillguard >>>\n'
-        printf 'source "$HOME/.claude/skillguard/shell.sh"\n'
-        printf '# <<< skillguard <<<\n'
-    } >> "$ZSHRC"
-    echo "  added SkillGuard shell integration to $ZSHRC"
-else
-    echo "  SkillGuard shell integration already present in $ZSHRC"
-fi
+echo "→ Installing skillguard command and codex/claude launch summary integration"
+python3 "$DEST/cli.py" --install-shell-integration
 
 echo "→ Done. Scan your skills now:"
 echo "    skillguard --engines local"

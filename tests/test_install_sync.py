@@ -80,9 +80,13 @@ def test_install_creates_path_shim_and_agent_shell_integration(tmp_path):
 
     assert shim.exists()
     assert os.access(shim, os.X_OK)
-    assert 'exec python3 "$HOME/.claude/skillguard/cli.py" "$@"' in shim.read_text()
+    shim_text = shim.read_text()
+    assert "exec python3 " in shim_text
+    assert ".claude/skillguard/cli.py" in shim_text
+    assert '"$@"' in shim_text
     assert shell.exists()
     assert "skillguard --agent-summary" in shell.read_text()
+    assert "_skillguard_agent_should_summarize" in shell.read_text()
     assert "claude()" in shell.read_text()
     assert "codex()" in shell.read_text()
     assert 'source "$HOME/.claude/skillguard/shell.sh"' in zshrc.read_text()

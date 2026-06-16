@@ -18,10 +18,14 @@ import time
 from pathlib import Path
 
 
-def _run_hook(hook_path: Path, tmp_home: Path, stdin_text: str) -> subprocess.CompletedProcess:
+def _run_hook(
+    hook_path: Path, tmp_home: Path, stdin_text: str, env_extra: dict | None = None
+) -> subprocess.CompletedProcess:
     """Invoke the hook as a subprocess with HOME overridden to tmp_home."""
     env = dict(os.environ)
     env["HOME"] = str(tmp_home)
+    if env_extra:
+        env.update(env_extra)
     return subprocess.run(
         [sys.executable, str(hook_path)],
         input=stdin_text,
@@ -69,6 +73,20 @@ def test_never_scanned_blocks(hook_path, tmp_path):
     result = _run_hook(hook_path, tmp_path, _event("ghost-skill"))
     assert result.returncode == 2
     assert "never been scanned" in result.stderr
+
+
+def test_never_scanned_skill_prints_cli_setup_hint_when_not_on_path(hook_path, tmp_path):
+    _cache_dir(tmp_path)
+    result = _run_hook(
+        hook_path,
+        tmp_path,
+        _event("ghost-skill"),
+        env_extra={"PATH": "/usr/bin:/bin"},
+    )
+
+    assert result.returncode == 2
+    assert "Install CLI:" in result.stderr
+    assert "--install-shell-integration" in result.stderr
 
 
 # ── (b) corrupted cache JSON → exit 2 (fail closed) ───────────────────────────
@@ -285,6 +303,21 @@ def test_mcp_unscanned_enforce_blocks(hook_path, tmp_path):
     r = _run_hook_mcp(hook_path, tmp_path, _mcp_event("mcp__ghost__do"), policy="enforce")
     assert r.returncode == 2
     assert "not been scanned" in r.stderr.lower()
+
+
+def test_unscanned_mcp_prints_cli_setup_hint_when_not_on_path(hook_path, tmp_path):
+    _mcp_dir(tmp_path)
+    r = _run_hook_mcp(
+        hook_path,
+        tmp_path,
+        _mcp_event("mcp__ghost__do"),
+        policy="enforce",
+        env_extra={"PATH": "/usr/bin:/bin"},
+    )
+
+    assert r.returncode == 2
+    assert "Install CLI:" in r.stderr
+    assert "--install-shell-integration" in r.stderr
 
 
 def test_mcp_policy_off_ignores(hook_path, tmp_path):

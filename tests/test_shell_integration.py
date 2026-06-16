@@ -61,3 +61,29 @@ def test_shell_banner_is_suppressed_for_version_and_help(tmp_path):
     assert "SkillGuard: fake banner" not in help_out.stdout
     assert "codex --version" in version.stdout
     assert "claude --help" in help_out.stdout
+
+
+def test_install_shell_integration_command_writes_shim_shell_and_zshrc(tmp_path):
+    env = dict(os.environ)
+    env["HOME"] = str(tmp_path)
+
+    r = subprocess.run(
+        [
+            "python3",
+            str(Path(__file__).resolve().parent.parent / "skillguard" / "cli.py"),
+            "--install-shell-integration",
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(tmp_path),
+    )
+
+    assert r.returncode == 0, r.stderr
+    shim = tmp_path / ".local" / "bin" / "skillguard"
+    shell = tmp_path / ".claude" / "skillguard" / "shell.sh"
+    zshrc = tmp_path / ".zshrc"
+    assert shim.exists()
+    assert shell.exists()
+    assert 'source "$HOME/.claude/skillguard/shell.sh"' in zshrc.read_text()
+    assert "SkillGuard shell integration installed" in r.stdout

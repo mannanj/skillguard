@@ -38,7 +38,7 @@ Then scan everything once:
 skillguard --engines local        # instant, zero dependencies
 ```
 
-The curl/local installer also creates `~/.local/bin/skillguard`, so terminal use is just `skillguard ...`. Installed as a Claude plugin only? The hook still prints the exact `python3 .../cli.py` fallback if `skillguard` is not on PATH.
+The curl/local installer also creates `~/.local/bin/skillguard`, so terminal use is just `skillguard ...`. Installed as a Claude plugin only? The hook still prints the exact `python3 .../cli.py --install-shell-integration` setup command if `skillguard` is not on PATH.
 
 From now on, every skill invocation shows a one-line verdict — and unscanned skills are blocked until you scan (or explicitly skip) them.
 
@@ -174,6 +174,14 @@ skillguard --review          # interactive: mark-fp, ack, show, next, quit
 ```
 
 Review dispositions use the same local files as the direct commands: `_triage.json` for false-positive marks, `skillguard.db` for activity/history. Disable the launch banner for one shell with `export SKILLGUARD_AGENT_SUMMARY=0`.
+
+The curl/local installer wires this automatically. Claude plugin installs cannot be assumed to run shell setup, so if `skillguard` is not on PATH, run the setup command printed by the hook:
+
+```bash
+python3 /path/to/skillguard/cli.py --install-shell-integration
+```
+
+After that, new interactive `codex` and `claude` launches show the cached summary.
 
 ## What it catches
 

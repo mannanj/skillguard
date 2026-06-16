@@ -135,6 +135,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Interactively review cached findings one target at a time and exit",
     )
     parser.add_argument(
+        "--install-shell-integration",
+        action="store_true",
+        help=(
+            "Install ~/.local/bin/skillguard plus codex/claude launch summary "
+            "shell integration and exit"
+        ),
+    )
+    parser.add_argument(
+        "--shell-only",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--set-activity-logging",
         dest="set_activity_logging",
         choices=["on", "off"],

@@ -87,6 +87,12 @@ def scan_cmd() -> str:
     return f"python3 {cli}"
 
 
+def cli_install_hint(cmd: str) -> str:
+    if cmd == "skillguard":
+        return ""
+    return f"\n  Install CLI:  {cmd} --install-shell-integration"
+
+
 def block(message: str) -> None:
     print(message, file=sys.stderr)
     sys.exit(2)
@@ -178,6 +184,7 @@ def handle_skill(skill_name: str) -> None:
             f"⚠ SkillGuard: '{skill_name}' has never been scanned.\n"
             f"  Option 1: {cmd} --skill {short_name}\n"
             f"  Option 2: {cmd} --skip {short_name}  (mark as skipped)"
+            f"{cli_install_hint(cmd)}"
         )
 
     # A torn or unreadable cache fails CLOSED.
@@ -194,6 +201,7 @@ def handle_skill(skill_name: str) -> None:
         block(
             f"⚠ SkillGuard: cache entry for '{skill_name}' is corrupted or unreadable.\n"
             f"  Re-scan to restore it: {cmd} --skill {short_name}"
+            f"{cli_install_hint(cmd)}"
         )
 
     scanned_at = cache.get("scanned_at", "unknown")
@@ -229,6 +237,7 @@ def handle_skill(skill_name: str) -> None:
                 f"⚠ SkillGuard: '{skill_name}' was MODIFIED after its last scan "
                 f"({date_str}).\n"
                 f"  Re-scan before use: {cmd} --skill {short_name}"
+                f"{cli_install_hint(cmd)}"
             )
 
     max_sev = cache.get("max_severity", "clean")
@@ -266,6 +275,7 @@ def handle_skill(skill_name: str) -> None:
             f"  Mark FP:     {cmd} --mark-fp {short_name}\n"
             f"  Allow risk:  {cmd} --ack {short_name}\n"
             f"  Or skip:     {cmd} --skip {short_name}"
+            f"{cli_install_hint(cmd)}"
         )
 
     if max_sev == "clean":
@@ -454,6 +464,7 @@ def handle_mcp(tool_name: str) -> None:
                 f"⚠ SkillGuard: MCP server '{server_label}' has not been scanned.\n"
                 f"  Scan it:    {cmd} --mcp {server_label}\n"
                 f"  Or allow:   {cmd} --skip-mcp {server_label}"
+                f"{cli_install_hint(cmd)}"
             )
         # warn: never block; nudge once, always log.
         _log(
@@ -497,6 +508,7 @@ def handle_mcp(tool_name: str) -> None:
             f"  Review:      {cmd} --show {name}\n"
             f"  Allow risk:  {cmd} --ack-mcp {name}\n"
             f"  Or skip:     {cmd} --skip-mcp {name}"
+            f"{cli_install_hint(cmd)}"
         )
 
     # Allow. Scanned MCP allows are silent on stdout (MCP tools fire often) but

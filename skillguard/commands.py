@@ -33,6 +33,7 @@ from skillguard.paths import cache_dir, db_path
 from skillguard.render.colors import bold, dim, reset, severity_color
 from skillguard.render.reports import _fmt_ts, emit
 from skillguard.review_text import action_help, finding_explanation
+from skillguard.shell_integration import install_shell_integration
 from skillguard.triage import mark_fp_command, unmark_fp_command
 
 
@@ -357,6 +358,13 @@ def _dispatch_early_exit(args: argparse.Namespace) -> int | None:
     """Handle the subcommands that run without scanning — read-only reports,
     settings toggles, and override marks. Returns the process exit code when one
     fires, or ``None`` to fall through to a scan."""
+    if args.install_shell_integration:
+        changed = install_shell_integration(shell_only=bool(getattr(args, "shell_only", False)))
+        print("SkillGuard shell integration installed:")
+        for key, value in changed.items():
+            print(f"  {key}: {value}")
+        return 0
+
     # ── Read-only report commands (no scanning) ──────────────────────────────
     if args.history is not None:
         return history_command(args.history, args.format)
