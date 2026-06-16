@@ -175,6 +175,14 @@ skillguard --agent-summary   # the same terse banner
 skillguard --review          # interactive: mark-fp, ack, show, next, quit
 ```
 
+When installed as a Claude plugin, `/skillguard:skillguard` is available from
+the plugin namespace. Running `skillguard --install-shell-integration` also
+writes a user-level `/skillguard` command at `~/.claude/commands/skillguard.md`.
+Both open the same review flow inside the agent chat: start with the cached
+summary, then choose `mark-fp`, `ack`, `show`, `next`, or `quit` without leaving
+the session. `/skillguard summary`, `/skillguard scan`, `/skillguard history`,
+and `/skillguard activity` route to the matching CLI views.
+
 Review dispositions use the same local files as the direct commands: `_triage.json` for false-positive marks, `skillguard.db` for activity/history. Disable the launch banner for one shell with `export SKILLGUARD_AGENT_SUMMARY=0`.
 
 The curl/local installer wires this automatically. Claude plugin installs cannot be assumed to run shell setup, so if `skillguard` is not on PATH, run the setup command printed by the hook:

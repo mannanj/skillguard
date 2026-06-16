@@ -82,8 +82,15 @@ def test_install_shell_integration_command_writes_shim_shell_and_zshrc(tmp_path)
     assert r.returncode == 0, r.stderr
     shim = tmp_path / ".local" / "bin" / "skillguard"
     shell = tmp_path / ".claude" / "skillguard" / "shell.sh"
+    command = tmp_path / ".claude" / "commands" / "skillguard.md"
     zshrc = tmp_path / ".zshrc"
     assert shim.exists()
     assert shell.exists()
+    assert command.exists()
+    command_text = command.read_text()
+    assert "allowed-tools:" in command_text
+    assert str(shim) in command_text
+    assert "--review" in command_text
+    assert "Type allow" in command_text
     assert 'source "$HOME/.claude/skillguard/shell.sh"' in zshrc.read_text()
     assert "SkillGuard shell integration installed" in r.stdout

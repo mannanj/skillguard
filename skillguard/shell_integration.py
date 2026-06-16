@@ -61,6 +61,63 @@ def write_skillguard_shim(path: Path, command: str | None = None) -> None:
     path.chmod(0o755)
 
 
+def user_slash_command_source(skillguard_path: Path) -> str:
+    command = str(skillguard_path).replace('"', '\\"')
+    return f"""---
+description: Review SkillGuard findings and scan state
+argument-hint: "[review|summary|scan|history|activity|show <target>]"
+allowed-tools: Bash("{command}":*)
+---
+
+# SkillGuard
+
+User arguments: $ARGUMENTS
+
+Use this exact SkillGuard command:
+
+```
+"{command}"
+```
+
+## Routing
+
+- No arguments, `review`, or `triage`: start the interactive review flow below.
+- `summary` or `status`: run `"{command}" --agent-summary`.
+- `scan`: run `"{command}" --target all --scope all --engines local`.
+- `history`: run `"{command}" --history 20`.
+- `activity`: run `"{command}" --activity 20`.
+- `show <target>`: run `"{command}" --show <target>`.
+
+If the user passes other SkillGuard CLI arguments, run them with this same command.
+
+## Interactive Review Flow
+
+1. Run `"{command}" --agent-summary`.
+2. Display the first active review item without mutating state:
+
+   ```
+   printf 'q\\n' | "{command}" --review
+   ```
+
+3. Ask the user what to do next. Offer exactly these actions:
+
+   - `mark-fp`: reviewed benign; run `printf 'm\\n' | "{command}" --review`
+   - `ack`: allow despite risk. Before running it, ask the user to Type allow. Only after the user replies `allow`, run `printf 'a\\nallow\\n' | "{command}" --review`
+   - `show`: show full target history; run `printf 's\\nq\\n' | "{command}" --review`
+   - `next`: move to the next target without changing state. Run one blank line per target to skip, then `q`. For example, to show the second target, run `printf '\\nq\\n' | "{command}" --review`
+   - `quit`: stop the review.
+
+4. After `mark-fp` or confirmed `ack`, run the cached summary again and continue the flow if there are still active findings.
+
+Keep the review conversational. Do not mark a finding false positive or acknowledge risk unless the user explicitly asks for that action.
+"""
+
+
+def write_user_slash_command(path: Path, skillguard_path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(user_slash_command_source(skillguard_path))
+
+
 def ensure_zshrc_sources(zshrc: Path, shell_path: Path) -> bool:
     zshrc.parent.mkdir(parents=True, exist_ok=True)
     if not zshrc.exists():
@@ -85,8 +142,11 @@ def install_shell_integration(home: Path | None = None, *, shell_only: bool = Fa
     if not shell_only:
         shim = root / ".local" / "bin" / "skillguard"
         write_skillguard_shim(shim)
+        command = root / ".claude" / "commands" / "skillguard.md"
+        write_user_slash_command(command, shim)
         zshrc = root / ".zshrc"
         changed["shim"] = str(shim)
+        changed["command"] = str(command)
         changed["zshrc"] = str(zshrc)
         changed["zshrc_updated"] = ensure_zshrc_sources(zshrc, shell)
     return changed

@@ -31,6 +31,8 @@ def main() -> None:
     for rel in ALLOW_FILES:
         if (ROOT / rel).exists():
             copy_file(rel)
+    if (ROOT / "commands").exists():
+        shutil.copytree(ROOT / "commands", OUT / "commands")
     shutil.copytree(ROOT / "skillguard", OUT / "skillguard")
     for junk in OUT.rglob("__pycache__"):
         shutil.rmtree(junk)
