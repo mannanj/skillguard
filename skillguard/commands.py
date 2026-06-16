@@ -17,6 +17,10 @@ re-exports ``log_activity`` (monkeypatched as ``cli.log_activity``) and calls
 from __future__ import annotations
 
 import argparse
+import json
+import sys
+from collections.abc import Iterable
+from pathlib import Path
 
 from skillguard import config, store
 from skillguard.cache import write_ack_cache, write_skip_cache
@@ -24,6 +28,10 @@ from skillguard.paths import cache_dir, db_path
 from skillguard.render.colors import bold, dim, reset, severity_color
 from skillguard.render.reports import _fmt_ts, emit
 from skillguard.triage import mark_fp_command, unmark_fp_command
+
+
+_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "clean": 5}
+_HIGH_PLUS = {"critical", "high"}
 
 
 def log_activity(**kwargs) -> None:
@@ -220,6 +228,156 @@ def show_command(name: str, fmt: str) -> int:
     return render_show(data, fmt)
 
 
+# ─── agent launch summary / review ───────────────────────────────────────────
+
+
+def _verdict_files() -> list[Path]:
+    """Return cached verdict JSON files, excluding SkillGuard's own metadata."""
+    base = cache_dir()
+    if not base.exists():
+        return []
+    files = [p for p in base.glob("*.json") if not p.name.startswith("_")]
+    mcp_dir = base / "mcps"
+    if mcp_dir.exists():
+        files.extend(p for p in mcp_dir.glob("*.json") if not p.name.startswith("_"))
+    return sorted(files)
+
+
+def _load_cached_verdicts() -> list[dict]:
+    verdicts: list[dict] = []
+    for path in _verdict_files():
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict):
+            data.setdefault("_cache_path", str(path))
+            verdicts.append(data)
+    return verdicts
+
+
+def _active_verdicts(verdicts: Iterable[dict]) -> list[dict]:
+    return [
+        v
+        for v in verdicts
+        if not v.get("skipped") and int(v.get("finding_count") or 0) > 0
+    ]
+
+
+def _high_plus_verdicts(verdicts: Iterable[dict]) -> list[dict]:
+    high = [v for v in _active_verdicts(verdicts) if v.get("max_severity") in _HIGH_PLUS]
+    return sorted(
+        high,
+        key=lambda v: (
+            _SEVERITY_RANK.get(str(v.get("max_severity")), 99),
+            str(v.get("target_name") or v.get("skill_name") or ""),
+        ),
+    )
+
+
+def _target_name(verdict: dict) -> str:
+    return str(verdict.get("target_name") or verdict.get("skill_name") or "<unknown>")
+
+
+def _finding_count(verdict: dict) -> int:
+    return int(verdict.get("finding_count") or 0)
+
+
+def agent_summary_command() -> int:
+    """Print a no-scan, launch-friendly summary from the verdict cache."""
+    verdicts = _load_cached_verdicts()
+    if not verdicts:
+        print("SkillGuard: no cached scan · run: skillguard --target skills --scope all --engines local")
+        return 0
+
+    active = _active_verdicts(verdicts)
+    high = _high_plus_verdicts(verdicts)
+    total_findings = sum(_finding_count(v) for v in active)
+    if not active:
+        print(f"SkillGuard: 0/{len(verdicts)} high+ · clean")
+        return 0
+
+    print(
+        f"SkillGuard: {len(high)}/{len(verdicts)} high+ · "
+        f"{total_findings} finding{'s' if total_findings != 1 else ''} · "
+        "skillguard --review"
+    )
+    if high:
+        names = [
+            f"{_target_name(v)} {v.get('max_severity')}({_finding_count(v)})"
+            for v in high[:3]
+        ]
+        more = len(high) - len(names)
+        suffix = f" +{more} more" if more else ""
+        print(f"  {'; '.join(names)}{suffix}")
+    return 0
+
+
+def _print_review_target(verdict: dict, index: int, total: int) -> None:
+    name = _target_name(verdict)
+    sev = str(verdict.get("max_severity") or "unknown")
+    count = _finding_count(verdict)
+    print(f"\n[{index}/{total}] {name} · {sev} · {count} finding(s)")
+    findings = [f for f in verdict.get("findings", []) if not f.get("triaged_fp")]
+    for f in findings[:5]:
+        loc = f" {f.get('file')}:{f.get('line')}" if f.get("file") else ""
+        print(f"  {f.get('severity')} [{f.get('engine')}] {f.get('message')}{loc}")
+        if f.get("context"):
+            print(f"    {f.get('context')}")
+    remaining = len(findings) - min(len(findings), 5)
+    if remaining:
+        print(f"  ... {remaining} more")
+    print("Actions: [m] mark-fp  [a] ack  [s] show  [enter] next  [q] quit")
+
+
+def review_command() -> int:
+    """Walk cached active findings one target at a time."""
+    verdicts = sorted(
+        _active_verdicts(_load_cached_verdicts()),
+        key=lambda v: (
+            _SEVERITY_RANK.get(str(v.get("max_severity")), 99),
+            _target_name(v),
+        ),
+    )
+    if not verdicts:
+        print("SkillGuard: no active cached findings.")
+        print("Run: skillguard --target skills --scope all --engines local")
+        return 0
+
+    for idx, verdict in enumerate(verdicts, start=1):
+        name = _target_name(verdict)
+        kind = str(verdict.get("kind") or "skill")
+        while True:
+            _print_review_target(verdict, idx, len(verdicts))
+            try:
+                choice = input("> ").strip().lower()
+            except EOFError:
+                print()
+                return 0
+            if choice in ("", "n", "next"):
+                break
+            if choice in ("q", "quit"):
+                return 0
+            if choice in ("m", "mark", "mark-fp"):
+                mark_fp_command(name)
+                log_activity(
+                    actor="user",
+                    action="mark_fp",
+                    target_kind=kind,
+                    target_name=name,
+                    outcome="ok",
+                    detail="findings marked false-positive via review",
+                )
+                break
+            if choice in ("a", "ack"):
+                return _acknowledge(name, kind)
+            if choice in ("s", "show"):
+                show_command(name, "table")
+                continue
+            print("Choose: m mark-fp, a ack, s show, enter next, q quit", file=sys.stderr)
+    return 0
+
+
 def _acknowledge(name: str, kind: str) -> int:
     """Record an explicit risk acknowledgment (``--ack`` / ``--ack-mcp``) so the
     hook allows a scanned-risky target. Unlike skip, this requires a prior scan;
@@ -265,6 +423,10 @@ def _dispatch_early_exit(args: argparse.Namespace) -> int | None:
         return activity_command(args.activity, args.format)
     if args.show:
         return show_command(args.show, args.format)
+    if args.agent_summary:
+        return agent_summary_command()
+    if args.review:
+        return review_command()
 
     # ── Settings ─────────────────────────────────────────────────────────────
     if args.set_activity_logging:

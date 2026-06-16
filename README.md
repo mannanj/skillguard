@@ -38,7 +38,7 @@ Then scan everything once:
 skillguard --engines local        # instant, zero dependencies
 ```
 
-Installed as a plugin only? `skillguard` isn't on your PATH — when the hook first blocks a skill, it prints the exact `python3 .../cli.py` command to run instead.
+The curl/local installer also creates `~/.local/bin/skillguard`, so terminal use is just `skillguard ...`. Installed as a Claude plugin only? The hook still prints the exact `python3 .../cli.py` fallback if `skillguard` is not on PATH.
 
 From now on, every skill invocation shows a one-line verdict — and unscanned skills are blocked until you scan (or explicitly skip) them.
 
@@ -157,6 +157,24 @@ skillguard --set-activity-logging off   # or: export SKILLGUARD_ACTIVITY_LOG=off
 
 This stops the *activity* log only. **Scan history is always recorded regardless** — turning logging off never loses scan data.
 
+## Agent launch review
+
+The installer can source a tiny zsh integration that shows cached risk before launching `codex` or `claude`:
+
+```bash
+SkillGuard: 2/67 high+ · 4 findings · skillguard --review
+  cloudflare critical(3); prompt-engineering-skill high(1)
+```
+
+It does **not** scan at launch; it only reads the last cache. Act on findings one target at a time:
+
+```bash
+skillguard --agent-summary   # the same terse banner
+skillguard --review          # interactive: mark-fp, ack, show, next, quit
+```
+
+Review dispositions use the same local files as the direct commands: `_triage.json` for false-positive marks, `skillguard.db` for activity/history. Disable the launch banner for one shell with `export SKILLGUARD_AGENT_SUMMARY=0`.
+
 ## What it catches
 
 | Category | Severity | Examples |
@@ -213,6 +231,7 @@ Formats: `--format table` (default, colored), `--format json`, `--format markdow
 | `SNYK_TOKEN` | — | Enables the Snyk engine |
 | `SKILLGUARD_MCP_POLICY` | `warn` | Hook policy for MCP tools: `off` \| `warn` \| `enforce` (persist with `--set-mcp-policy`) |
 | `SKILLGUARD_ACTIVITY_LOG` | `on` | Activity audit log on/off (persist with `--set-activity-logging`). Scan history is kept either way |
+| `SKILLGUARD_AGENT_SUMMARY` | `1` | Set to `0` to suppress the codex/claude launch banner |
 
 Persistent settings live in `~/.claude/skillguard-cache/_settings.json`; an env var overrides the persisted value for a single invocation.
 

@@ -125,6 +125,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show the full scan history for one target (skill or MCP) and exit",
     )
     parser.add_argument(
+        "--agent-summary",
+        action="store_true",
+        help="Show a terse cached-risk summary for agent launch wrappers and exit",
+    )
+    parser.add_argument(
+        "--review",
+        action="store_true",
+        help="Interactively review cached findings one target at a time and exit",
+    )
+    parser.add_argument(
         "--set-activity-logging",
         dest="set_activity_logging",
         choices=["on", "off"],

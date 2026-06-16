@@ -6,12 +6,18 @@
 # What this script does (and nothing else):
 #   1. Copies the skillguard package to ~/.claude/skillguard/
 #   2. Registers the PreToolUse hook in ~/.claude/settings.json (atomic, via python3)
-#   3. Backs up settings.json first
+#   3. Adds a ~/.local/bin/skillguard shim for terminal use
+#   4. Adds a small zsh integration so `codex`/`claude` show cached findings first
+#   5. Backs up settings.json first
 set -eu
 
 REPO="https://github.com/mannanj/skillguard"
 DEST="$HOME/.claude/skillguard"
 SETTINGS="$HOME/.claude/settings.json"
+BIN_DIR="$HOME/.local/bin"
+SHIM="$BIN_DIR/skillguard"
+ZSHRC="$HOME/.zshrc"
+SHELL_INTEGRATION="$DEST/shell.sh"
 
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required"; exit 1; }
 
@@ -123,6 +129,54 @@ tmp.replace(settings_path)
 print("  hook registered")
 PYEOF
 
+echo "→ Adding skillguard command to $SHIM"
+mkdir -p "$BIN_DIR"
+cat > "$SHIM" <<'SHEOF'
+#!/bin/sh
+exec python3 "$HOME/.claude/skillguard/cli.py" "$@"
+SHEOF
+chmod 755 "$SHIM"
+
+echo "→ Installing codex/claude launch summary integration"
+cat > "$SHELL_INTEGRATION" <<'SHEOF'
+# SkillGuard shell integration. Sourced by ~/.zshrc.
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
+_skillguard_agent_summary() {
+  [ "${SKILLGUARD_AGENT_SUMMARY:-1}" = "0" ] && return 0
+  if command -v skillguard >/dev/null 2>&1; then
+    command skillguard --agent-summary 2>/dev/null || true
+  elif [ -x "$HOME/.local/bin/skillguard" ]; then
+    "$HOME/.local/bin/skillguard" --agent-summary 2>/dev/null || true
+  fi
+}
+
+claude() {
+  _skillguard_agent_summary
+  command claude "$@"
+}
+
+codex() {
+  _skillguard_agent_summary
+  command codex "$@"
+}
+SHEOF
+
+touch "$ZSHRC"
+if ! grep -F "# >>> skillguard >>>" "$ZSHRC" >/dev/null 2>&1; then
+    {
+        printf '\n# >>> skillguard >>>\n'
+        printf 'source "$HOME/.claude/skillguard/shell.sh"\n'
+        printf '# <<< skillguard <<<\n'
+    } >> "$ZSHRC"
+    echo "  added SkillGuard shell integration to $ZSHRC"
+else
+    echo "  SkillGuard shell integration already present in $ZSHRC"
+fi
+
 echo "→ Done. Scan your skills now:"
-echo "    python3 $DEST/cli.py --engines local"
+echo "    skillguard --engines local"
 echo "  Unscanned skills will be blocked the next time Claude tries to use them."

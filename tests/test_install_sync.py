@@ -17,6 +17,8 @@ the plugin's matcher set.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,3 +56,42 @@ def test_registers_every_plugin_matcher():
         f"install.sh does not register these matchers that the plugin gates: {missing}. "
         f"Keep the matcher tuple in install.sh in sync with hooks/hooks.json."
     )
+
+
+def test_install_creates_path_shim_and_agent_shell_integration(tmp_path):
+    """The non-pip install path should leave users with a plain `skillguard`
+    command and opt-in shell functions for agent launch summaries."""
+    env = dict(os.environ)
+    env["HOME"] = str(tmp_path)
+    env["SKILLGUARD_SRC"] = str(ROOT)
+
+    r = subprocess.run(
+        ["sh", str(ROOT / "install.sh")],
+        cwd=str(ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert r.returncode == 0, r.stderr
+    shim = tmp_path / ".local" / "bin" / "skillguard"
+    shell = tmp_path / ".claude" / "skillguard" / "shell.sh"
+    zshrc = tmp_path / ".zshrc"
+
+    assert shim.exists()
+    assert os.access(shim, os.X_OK)
+    assert 'exec python3 "$HOME/.claude/skillguard/cli.py" "$@"' in shim.read_text()
+    assert shell.exists()
+    assert "skillguard --agent-summary" in shell.read_text()
+    assert "claude()" in shell.read_text()
+    assert "codex()" in shell.read_text()
+    assert 'source "$HOME/.claude/skillguard/shell.sh"' in zshrc.read_text()
+
+    version = subprocess.run(
+        [str(shim), "--version"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert version.returncode == 0, version.stderr
+    assert "skillguard 0.3.1" in version.stdout
