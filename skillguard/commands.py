@@ -17,21 +17,22 @@ re-exports ``log_activity`` (monkeypatched as ``cli.log_activity``) and calls
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from collections.abc import Iterable
-from pathlib import Path
 
 from skillguard import config, store
+from skillguard.agent_summary import (
+    SEVERITY_RANK,
+    active_verdicts,
+    finding_count,
+    load_cached_verdicts,
+    render_agent_summary,
+    target_name,
+)
 from skillguard.cache import write_ack_cache, write_skip_cache
 from skillguard.paths import cache_dir, db_path
 from skillguard.render.colors import bold, dim, reset, severity_color
 from skillguard.render.reports import _fmt_ts, emit
 from skillguard.triage import mark_fp_command, unmark_fp_command
-
-
-_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "clean": 5}
-_HIGH_PLUS = {"critical", "high"}
 
 
 def log_activity(**kwargs) -> None:
@@ -231,92 +232,16 @@ def show_command(name: str, fmt: str) -> int:
 # ─── agent launch summary / review ───────────────────────────────────────────
 
 
-def _verdict_files() -> list[Path]:
-    """Return cached verdict JSON files, excluding SkillGuard's own metadata."""
-    base = cache_dir()
-    if not base.exists():
-        return []
-    files = [p for p in base.glob("*.json") if not p.name.startswith("_")]
-    mcp_dir = base / "mcps"
-    if mcp_dir.exists():
-        files.extend(p for p in mcp_dir.glob("*.json") if not p.name.startswith("_"))
-    return sorted(files)
-
-
-def _load_cached_verdicts() -> list[dict]:
-    verdicts: list[dict] = []
-    for path in _verdict_files():
-        try:
-            data = json.loads(path.read_text())
-        except (OSError, json.JSONDecodeError):
-            continue
-        if isinstance(data, dict):
-            data.setdefault("_cache_path", str(path))
-            verdicts.append(data)
-    return verdicts
-
-
-def _active_verdicts(verdicts: Iterable[dict]) -> list[dict]:
-    return [
-        v
-        for v in verdicts
-        if not v.get("skipped") and int(v.get("finding_count") or 0) > 0
-    ]
-
-
-def _high_plus_verdicts(verdicts: Iterable[dict]) -> list[dict]:
-    high = [v for v in _active_verdicts(verdicts) if v.get("max_severity") in _HIGH_PLUS]
-    return sorted(
-        high,
-        key=lambda v: (
-            _SEVERITY_RANK.get(str(v.get("max_severity")), 99),
-            str(v.get("target_name") or v.get("skill_name") or ""),
-        ),
-    )
-
-
-def _target_name(verdict: dict) -> str:
-    return str(verdict.get("target_name") or verdict.get("skill_name") or "<unknown>")
-
-
-def _finding_count(verdict: dict) -> int:
-    return int(verdict.get("finding_count") or 0)
-
-
 def agent_summary_command() -> int:
     """Print a no-scan, launch-friendly summary from the verdict cache."""
-    verdicts = _load_cached_verdicts()
-    if not verdicts:
-        print("SkillGuard: no cached scan · run: skillguard --target skills --scope all --engines local")
-        return 0
-
-    active = _active_verdicts(verdicts)
-    high = _high_plus_verdicts(verdicts)
-    total_findings = sum(_finding_count(v) for v in active)
-    if not active:
-        print(f"SkillGuard: 0/{len(verdicts)} high+ · clean")
-        return 0
-
-    print(
-        f"SkillGuard: {len(high)}/{len(verdicts)} high+ · "
-        f"{total_findings} finding{'s' if total_findings != 1 else ''} · "
-        "skillguard --review"
-    )
-    if high:
-        names = [
-            f"{_target_name(v)} {v.get('max_severity')}({_finding_count(v)})"
-            for v in high[:3]
-        ]
-        more = len(high) - len(names)
-        suffix = f" +{more} more" if more else ""
-        print(f"  {'; '.join(names)}{suffix}")
+    print(render_agent_summary(load_cached_verdicts()))
     return 0
 
 
 def _print_review_target(verdict: dict, index: int, total: int) -> None:
-    name = _target_name(verdict)
+    name = target_name(verdict)
     sev = str(verdict.get("max_severity") or "unknown")
-    count = _finding_count(verdict)
+    count = finding_count(verdict)
     print(f"\n[{index}/{total}] {name} · {sev} · {count} finding(s)")
     findings = [f for f in verdict.get("findings", []) if not f.get("triaged_fp")]
     for f in findings[:5]:
@@ -333,10 +258,10 @@ def _print_review_target(verdict: dict, index: int, total: int) -> None:
 def review_command() -> int:
     """Walk cached active findings one target at a time."""
     verdicts = sorted(
-        _active_verdicts(_load_cached_verdicts()),
+        active_verdicts(load_cached_verdicts()),
         key=lambda v: (
-            _SEVERITY_RANK.get(str(v.get("max_severity")), 99),
-            _target_name(v),
+            SEVERITY_RANK.get(str(v.get("max_severity")), 99),
+            target_name(v),
         ),
     )
     if not verdicts:
@@ -345,7 +270,7 @@ def review_command() -> int:
         return 0
 
     for idx, verdict in enumerate(verdicts, start=1):
-        name = _target_name(verdict)
+        name = target_name(verdict)
         kind = str(verdict.get("kind") or "skill")
         while True:
             _print_review_target(verdict, idx, len(verdicts))

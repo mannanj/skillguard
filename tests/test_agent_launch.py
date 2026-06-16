@@ -85,9 +85,11 @@ def test_agent_summary_points_to_interactive_review(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "SkillGuard:" in r.stdout
     assert "2/3 high+" in r.stdout
+    assert "3 skills" in r.stdout
     assert "4 findings" in r.stdout
+    assert "latest 2026-06-16 12:00 UTC" in r.stdout
     assert "skillguard --review" in r.stdout
-    assert "cloudflare critical(3)" in r.stdout
+    assert "cloudflare skill critical(3)" in r.stdout
 
 
 def test_agent_summary_handles_empty_cache(tmp_path):
@@ -95,7 +97,7 @@ def test_agent_summary_handles_empty_cache(tmp_path):
 
     assert r.returncode == 0
     assert "no cached scan" in r.stdout
-    assert "skillguard --target skills" in r.stdout
+    assert "skillguard --target all" in r.stdout
 
 
 def test_review_quit_shows_one_target_at_a_time(tmp_path):
