@@ -38,6 +38,7 @@ cli.py
 agent_summary.py
 hook.py
 review_text.py
+shell_integration.py
 config.py
 branding.py
 model.py
@@ -147,8 +148,21 @@ case ":$PATH:" in
   *) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
 
+_skillguard_agent_should_summarize() {
+  [ "${SKILLGUARD_AGENT_SUMMARY:-1}" = "0" ] && return 1
+  if [ "${SKILLGUARD_AGENT_SUMMARY_FORCE:-0}" != "1" ]; then
+    [ -t 0 ] && [ -t 1 ] || return 1
+  fi
+  case "${1:-}" in
+    --version|-V|version|--help|-h|help|plugin|plugins|mcp|auth)
+      return 1
+      ;;
+  esac
+  return 0
+}
+
 _skillguard_agent_summary() {
-  [ "${SKILLGUARD_AGENT_SUMMARY:-1}" = "0" ] && return 0
+  _skillguard_agent_should_summarize "$@" || return 0
   if command -v skillguard >/dev/null 2>&1; then
     command skillguard --agent-summary 2>/dev/null || true
   elif [ -x "$HOME/.local/bin/skillguard" ]; then
@@ -157,12 +171,12 @@ _skillguard_agent_summary() {
 }
 
 claude() {
-  _skillguard_agent_summary
+  _skillguard_agent_summary "$@"
   command claude "$@"
 }
 
 codex() {
-  _skillguard_agent_summary
+  _skillguard_agent_summary "$@"
   command codex "$@"
 }
 SHEOF
