@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "skillguard",
-      "source": "./",
+      "source": "./dist/skillguard-plugin",
       "description": "Scan Claude Code skills and MCP servers for malicious code — before Claude runs them. Blocks unscanned skills and gates MCP tools via a PreToolUse hook.",
       "version": "0.3.1",
       "author": {
