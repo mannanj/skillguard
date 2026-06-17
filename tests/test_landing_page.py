@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LANDING_HTML = ROOT / "landing" / "public" / "index.html"
 DOCS_HTML = ROOT / "landing" / "public" / "docs" / "index.html"
 MASCOT_SVG = ROOT / "landing" / "public" / "gandalf-mascot.svg"
+LANDING_WORKER = ROOT / "landing" / "src" / "index.js"
 
 
 def _html() -> str:
@@ -16,6 +17,10 @@ def _html() -> str:
 
 def _docs_html() -> str:
     return DOCS_HTML.read_text(encoding="utf-8")
+
+
+def _worker() -> str:
+    return LANDING_WORKER.read_text(encoding="utf-8")
 
 
 class LandingPageTests(unittest.TestCase):
@@ -61,6 +66,31 @@ class LandingPageTests(unittest.TestCase):
         self.assertNotIn("SkillGuard - trust your agent tools", html)
         self.assertNotIn("<span>Trust</span>your agent tools", html)
         self.assertNotIn("guarding against malicious behavior", html)
+
+    def test_source_nav_uses_github_icon(self) -> None:
+        html = _html()
+
+        self.assertIn('class="source-nav github-nav"', html)
+        self.assertIn('href="https://github.com/mannanj/skillguard"', html)
+        self.assertIn('aria-label="View source on GitHub"', html)
+        self.assertIn('class="github-icon"', html)
+
+    def test_github_stars_badge_is_dynamic(self) -> None:
+        html = _html()
+
+        self.assertIn('id="githubStars"', html)
+        self.assertIn('aria-label="GitHub stars"', html)
+        self.assertIn('fetch("/api/github-repo"', html)
+        self.assertIn("formatStars", html)
+
+    def test_worker_caches_github_repo_metadata(self) -> None:
+        worker = _worker()
+
+        self.assertIn('url.pathname === "/api/github-repo"', worker)
+        self.assertIn("https://api.github.com/repos/mannanj/skillguard", worker)
+        self.assertIn("stargazers_count", worker)
+        self.assertIn("caches.default", worker)
+        self.assertIn("Cache-Control", worker)
 
     def test_landing_page_has_conversion_skill_hooks(self) -> None:
         html = _html()

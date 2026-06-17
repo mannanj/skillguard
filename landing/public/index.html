@@ -132,6 +132,18 @@
                 left: 0;
             }
 
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+
             .wrap {
                 width: min(var(--max), calc(100% - 40px));
                 margin: 0 auto;
@@ -213,6 +225,26 @@
                 font-weight: 900;
             }
 
+            .nav-links .github-nav {
+                display: inline-grid;
+                place-items: center;
+                width: 34px;
+                height: 34px;
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
+            }
+
+            .nav-links .github-nav:hover {
+                border-color: var(--red);
+                color: #fff;
+            }
+
+            .github-icon {
+                width: 18px;
+                height: 18px;
+                fill: currentColor;
+            }
+
             .hero {
                 min-height: min(760px, calc(100vh - 116px));
                 padding: 34px 0 44px;
@@ -287,6 +319,12 @@
             .badge strong {
                 padding: 0 12px;
                 color: #fff;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .stars-value {
+                min-width: 3.4ch;
+                text-align: right;
             }
 
             .claim {
@@ -608,10 +646,6 @@
                     gap: 12px;
                 }
 
-                .nav-links .source-nav {
-                    display: none;
-                }
-
                 .mascot {
                     width: min(205px, 56vw);
                 }
@@ -643,10 +677,6 @@
                 .badge strong {
                     min-height: 31px;
                     padding: 0 8px;
-                }
-
-                .badge:last-child {
-                    grid-column: 1 / -1;
                 }
 
                 .claim {
@@ -703,11 +733,23 @@
                     >
                     <a href="/docs/">Docs</a>
                     <a
-                        class="source-nav"
+                        class="source-nav github-nav"
                         href="https://github.com/mannanj/skillguard"
+                        aria-label="View source on GitHub"
                         rel="noopener"
-                        >Source</a
                     >
+                        <svg
+                            class="github-icon"
+                            aria-hidden="true"
+                            focusable="false"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 1 8 3.86c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+                            />
+                        </svg>
+                        <span class="sr-only">Source on GitHub</span>
+                    </a>
                 </nav>
             </div>
         </header>
@@ -744,6 +786,15 @@
                         >
                         <span class="badge"
                             ><span>runs</span><strong>local</strong></span
+                        >
+                        <span class="badge" aria-label="GitHub stars"
+                            ><span>stars</span
+                            ><strong
+                                id="githubStars"
+                                class="stars-value"
+                                aria-live="polite"
+                                >...</strong
+                            ></span
                         >
                         <span class="badge"
                             ><span>proof</span><strong>0 commands</strong></span
@@ -975,6 +1026,48 @@ gandalf --target all --engines local"
                     }
                 }
 
+                function formatStars(count) {
+                    var value = Number(count);
+                    if (!Number.isFinite(value) || value < 0) {
+                        return "";
+                    }
+                    if (value >= 1000) {
+                        return (value / 1000)
+                            .toFixed(value < 10000 ? 1 : 0)
+                            .replace(/\.0$/, "") + "k";
+                    }
+                    return String(value);
+                }
+
+                function hydrateGithubStars() {
+                    var githubStars = document.getElementById("githubStars");
+                    if (!githubStars || !window.fetch) {
+                        return;
+                    }
+                    fetch("/api/github-repo", {
+                        headers: { Accept: "application/json" },
+                    })
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error("github unavailable");
+                            }
+                            return response.json();
+                        })
+                        .then(function (repo) {
+                            var count = Number(repo.stargazers_count);
+                            var label = formatStars(count);
+                            if (!label) {
+                                return;
+                            }
+                            githubStars.textContent = label;
+                            githubStars.setAttribute(
+                                "title",
+                                count.toLocaleString() + " GitHub stars",
+                            );
+                        })
+                        .catch(function () {});
+                }
+
                 var installs = {
                     shell: {
                         title: "Shell",
@@ -1116,6 +1209,7 @@ gandalf --target all --engines local"
 
                 applyLandingVariant();
                 setInstall("shell");
+                hydrateGithubStars();
             })();
         </script>
     </body>
