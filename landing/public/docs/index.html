@@ -6,7 +6,7 @@
         <title>Gandalf docs - commands</title>
         <meta
             name="description"
-            content="Command reference for Gandalf skill and MCP runtime checks."
+            content="Command reference for Gandalf agent skill and MCP runtime checks."
         />
         <style>
             :root {
@@ -156,6 +156,43 @@
                 font-family: var(--mono);
             }
 
+            footer {
+                padding: 34px 0;
+                border-top: 1px solid var(--line);
+                background: var(--bg);
+            }
+
+            .footer-inner {
+                display: flex;
+                justify-content: flex-start;
+                align-items: center;
+                gap: 18px;
+                flex-wrap: wrap;
+            }
+
+            .footer-links {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                font-family: var(--mono);
+                font-size: 12px;
+                text-transform: uppercase;
+            }
+
+            .footer-links a {
+                color: var(--ink);
+                text-decoration: none;
+                border-bottom: 2px solid transparent;
+            }
+
+            .footer-links a:hover {
+                border-color: var(--red);
+            }
+
+            .footer-links span {
+                color: var(--quiet);
+            }
+
             @media (max-width: 640px) {
                 .wrap {
                     width: min(100% - 28px, var(--max));
@@ -204,6 +241,12 @@
                     </thead>
                     <tbody>
                         <tr>
+                            <td>
+                                <code>curl -fsSL https://gandalf.sh/install | sh</code>
+                            </td>
+                            <td>Install the Gandalf CLI and hook helper.</td>
+                        </tr>
+                        <tr>
                             <td><code>gandalf --target all</code></td>
                             <td>Scan skills and MCP servers.</td>
                         </tr>
@@ -235,5 +278,28 @@
                 </table>
             </div>
         </main>
+        <footer>
+            <div class="wrap footer-inner">
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="/docs/">Docs</a>
+                    <a
+                        href="https://github.com/mannanj/skillguard"
+                        rel="noopener"
+                        >Source</a
+                    >
+                    <a
+                        href="https://github.com/mannanj/skillguard/blob/main/LICENSE"
+                        rel="noopener"
+                        >AGPL</a
+                    >
+                    <a
+                        href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md"
+                        rel="noopener"
+                        >Commercial</a
+                    >
+                    <span>Made by <a href="https://mannan.is" rel="noopener">Mannan</a></span>
+                </nav>
+            </div>
+        </footer>
     </body>
 </html>
