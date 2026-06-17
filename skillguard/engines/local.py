@@ -9,9 +9,12 @@ from skillguard.discovery import rel_to
 from skillguard.model import Finding, SkillInfo
 from skillguard.patterns import (
     LOCAL_PATTERNS,
+    is_cloudflared_service_management,
     is_explicit_non_finding_line,
     is_markdown_table_row,
     is_package_cache_cleanup,
+    is_placeholder_webhook_site,
+    is_prompt_injection_education_line,
     is_vendor_install_pipe,
 )
 
@@ -54,7 +57,13 @@ class LocalEngine:
                             continue
                         if is_explicit_non_finding_line(stripped):
                             continue
+                        if category == "data_exfil" and is_placeholder_webhook_site(line):
+                            continue
+                        if category == "prompt_injection" and is_prompt_injection_education_line(line):
+                            continue
                         if category == "shell_pipe" and is_vendor_install_pipe(line):
+                            continue
+                        if category == "persistence" and is_cloudflared_service_management(line):
                             continue
                         if category == "dangerous_op" and is_package_cache_cleanup(line):
                             continue

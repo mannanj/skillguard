@@ -23,7 +23,12 @@ def _p(cat: str, sev: str, pattern: str, desc: str) -> None:
 
 
 _VENDOR_INSTALL_URL = re.compile(
-    r"(?:resend|tailscale)\.com/install\.(?:sh|ps1)",
+    r"(?:resend|tailscale)\.com/install\.(?:sh|ps1)|code-server\.dev/install\.sh",
+    re.IGNORECASE,
+)
+
+_PLACEHOLDER_WEBHOOK_SITE = re.compile(
+    r"webhook\.site/(?:\.\.\.|…)(?:[\"'`)\],}\s;]|$)",
     re.IGNORECASE,
 )
 
@@ -37,6 +42,35 @@ def is_vendor_install_pipe(line: str) -> bool:
     if not re.search(r"\|\s*(?:ba)?sh\b", line, re.IGNORECASE):
         return False
     return bool(_VENDOR_INSTALL_URL.search(line))
+
+
+def is_placeholder_webhook_site(line: str) -> bool:
+    """True for non-routable ``webhook.site/...`` documentation placeholders.
+
+    Real webhook.site collector paths still flag; only the literal ellipsis
+    placeholder is suppressed.
+    """
+    return bool(_PLACEHOLDER_WEBHOOK_SITE.search(line))
+
+
+def is_cloudflared_service_management(line: str) -> bool:
+    """True for Cloudflare Tunnel service lifecycle examples.
+
+    Keep the generic systemd rule active for unknown services; only suppress
+    lines where every systemctl lifecycle command targets ``cloudflared``.
+    """
+    commands = re.findall(
+        r"\bsystemctl\s+(?:enable|start|restart)\s+([^\s;&|]+)",
+        line,
+        flags=re.IGNORECASE,
+    )
+    return bool(commands) and all(service.lower() == "cloudflared" for service in commands)
+
+
+def is_prompt_injection_education_line(line: str) -> bool:
+    """True for explicit prompt-injection teaching examples, not directives."""
+    lower = line.strip().lower()
+    return lower.startswith(("**classic scenario:**", "classic scenario:"))
 
 
 def is_explicit_non_finding_line(line: str) -> bool:
