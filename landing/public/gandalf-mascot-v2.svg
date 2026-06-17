@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 640" role="img" aria-labelledby="title desc">
+  <title id="title">Gandalf mascot sticker</title>
+  <desc id="desc">A cartoon Gandalf-style wizard guard with glasses, a pointed hat, a long beard, robe shoulders, and a staff, drawn with a thick white sticker outline.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g id="white-sticker-outline" fill="none" stroke="#fff">
+      <path d="M560 166c-33-48-78-80-136-95-70-18-132-7-185 34-33 25-59 61-77 107-28 8-47 23-58 46-10 22-8 44 7 66 12 19 31 31 56 37 1 28 8 55 21 80-38 24-67 60-86 108 50 20 100 28 150 23 37 36 78 54 123 54 47 0 90-18 130-54 49 5 95-3 138-24-18-51-49-89-91-113 12-24 19-50 20-78 25-8 43-22 53-42 11-21 10-42-3-63-11-18-28-31-52-39 0-17-4-33-10-47z" stroke-width="56"/>
+      <path d="M171 236c61-42 123-68 187-76 68-9 133 4 195 39 24 14 42 28 55 43-56-17-111-25-166-23-96 3-185 28-267 74-14-21-16-40-4-57z" stroke-width="52"/>
+      <path d="M198 198c27-68 80-111 158-130 81-19 158-5 231 43-32-5-66-6-102-2-93 10-178 44-254 101-15 12-27 8-33-12z" stroke-width="52"/>
+      <path d="M578 170c17 30 22 61 14 93 35 8 57 29 66 64" stroke-width="42"/>
+      <path d="M576 166c6-29 3-57-9-84" stroke-width="34"/>
+      <path d="M575 154l38-46" stroke-width="28"/>
+      <path d="M589 260c5 91 5 183 0 275" stroke-width="42"/>
+      <path d="M589 536c-11 18-25 27-43 27" stroke-width="34"/>
+    </g>
+
+    <path d="M589 260c5 91 5 183 0 275" stroke="#080a0d" stroke-width="28"/>
+    <path d="M589 260c5 91 5 183 0 275" stroke="#7b603c" stroke-width="16"/>
+    <path d="M578 170c17 30 22 61 14 93 35 8 57 29 66 64" stroke="#080a0d" stroke-width="26"/>
+    <path d="M578 170c17 30 22 61 14 93 35 8 57 29 66 64" stroke="#7b603c" stroke-width="13"/>
+    <path d="M576 166c6-29 3-57-9-84" stroke="#080a0d" stroke-width="22"/>
+    <path d="M576 166c6-29 3-57-9-84" stroke="#7b603c" stroke-width="11"/>
+    <path d="M575 154l38-46" stroke="#080a0d" stroke-width="18"/>
+    <path d="M575 154l38-46" stroke="#7b603c" stroke-width="9"/>
+    <circle cx="615" cy="105" r="14" fill="#f4f7fb" stroke="#080a0d" stroke-width="10"/>
+
+    <path d="M157 512c30-52 73-85 129-98l146 1c63 14 110 47 141 99-37 33-83 50-136 51l-161 1c-49 0-89-18-119-54z" fill="#2d3238" stroke="#080a0d" stroke-width="18"/>
+    <path d="M239 433c5 50 18 92 38 127" stroke="#f4f7fb" stroke-width="12"/>
+    <path d="M488 429c-5 51-21 94-49 129" stroke="#f4f7fb" stroke-width="12"/>
+    <path d="M313 443c-10 43-9 83 2 121" stroke="#111820" stroke-width="10"/>
+    <path d="M410 442c9 42 6 83-10 122" stroke="#111820" stroke-width="10"/>
+
+    <path d="M185 266c15-67 59-111 132-132 69-20 134-12 196 24 46 27 73 69 81 127 8 63-9 117-51 163-42 47-96 69-162 66-70-2-124-27-163-73-38-46-49-105-33-175z" fill="#f7f7f2" stroke="#080a0d" stroke-width="17"/>
+    <path d="M188 288c-28 4-48 15-59 33-12 19-11 38 2 57 12 17 33 26 64 27" fill="#f7f7f2" stroke="#080a0d" stroke-width="14"/>
+    <path d="M574 287c28 4 49 16 60 35 10 19 9 37-4 54-12 17-34 26-65 27" fill="#f7f7f2" stroke="#080a0d" stroke-width="14"/>
+
+    <path d="M224 341c37 20 76 29 117 26 13-1 23 8 30 26 8-18 20-27 36-26 43 2 82-7 119-26-2 60-14 110-37 150-26 45-65 79-117 102-56-24-97-58-123-102-23-40-32-90-25-150z" fill="#fff" stroke="#080a0d" stroke-width="15"/>
+    <path d="M294 379c-10 39-11 84-4 136" stroke="#cbd1d8" stroke-width="9"/>
+    <path d="M361 389c-5 53-3 111 8 174" stroke="#cbd1d8" stroke-width="9"/>
+    <path d="M430 379c6 43 1 88-14 136" stroke="#cbd1d8" stroke-width="9"/>
+    <path d="M268 445c17 11 34 15 52 13" stroke="#080a0d" stroke-width="9"/>
+    <path d="M423 458c23 2 43-3 60-16" stroke="#080a0d" stroke-width="9"/>
+
+    <path d="M164 236c65-49 131-78 198-86 74-10 144 5 211 43 27 15 47 32 60 49-55-17-113-25-173-23-98 2-190 27-276 73-19-18-26-37-20-56z" fill="#535760" stroke="#080a0d" stroke-width="17"/>
+    <path d="M191 195c27-72 83-116 168-133 85-18 166 0 244 53-42-8-84-8-128-2-92 12-175 45-250 99-16 11-27 6-34-17z" fill="#3c3f48" stroke="#080a0d" stroke-width="17"/>
+    <path d="M305 83c51-20 111-23 180-9" stroke="#f4f7fb" stroke-width="13"/>
+    <path d="M236 190c44-24 89-40 136-49" stroke="#f4f7fb" stroke-width="11"/>
+    <path d="M511 132c32 11 58 29 79 54" stroke="#f4f7fb" stroke-width="10"/>
+
+    <path d="M225 245c18-31 47-50 89-57" stroke="#080a0d" stroke-width="12"/>
+    <path d="M432 189c45 8 78 27 100 57" stroke="#080a0d" stroke-width="12"/>
+    <path d="M239 277c31-10 65-10 103 0" stroke="#080a0d" stroke-width="10"/>
+    <path d="M417 277c40-11 77-11 112 1" stroke="#080a0d" stroke-width="10"/>
+    <path d="M273 302c22-9 48-11 78-5" stroke="#080a0d" stroke-width="8"/>
+    <path d="M412 298c31-7 60-5 87 6" stroke="#080a0d" stroke-width="8"/>
+
+    <path d="M248 315c24-18 59-21 105-8 19 6 32 17 39 35-36 14-74 11-115-9-12-6-22-12-29-18z" fill="#f4f7fb" stroke="#080a0d" stroke-width="12"/>
+    <path d="M397 342c7-19 21-31 42-36 46-12 81-8 105 11-10 9-23 17-39 23-39 15-75 16-108 2z" fill="#f4f7fb" stroke="#080a0d" stroke-width="12"/>
+    <path d="M386 337c11-11 23-11 35 0" stroke="#080a0d" stroke-width="10"/>
+    <circle cx="324" cy="313" r="6" fill="#080a0d"/>
+    <circle cx="465" cy="313" r="6" fill="#080a0d"/>
+
+    <path d="M379 345c-7 18-4 32 9 42" stroke="#080a0d" stroke-width="9"/>
+    <path d="M335 405c26 16 55 18 87 4" stroke="#080a0d" stroke-width="12"/>
+    <path d="M320 442c37 22 77 23 120 1" stroke="#080a0d" stroke-width="10"/>
+    <path d="M226 361c13 7 27 9 43 6" stroke="#080a0d" stroke-width="7"/>
+    <path d="M506 368c16 2 31-1 45-9" stroke="#080a0d" stroke-width="7"/>
+
+    <path d="M189 250c-19 45-22 89-8 132" stroke="#f4f7fb" stroke-width="11"/>
+    <path d="M585 250c18 45 19 88 3 129" stroke="#080a0d" stroke-width="11"/>
+  </g>
+</svg>
