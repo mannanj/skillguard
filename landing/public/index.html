@@ -15,10 +15,9 @@
             as="image"
             fetchpriority="high"
         />
-        <link
-            rel="icon"
-            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230b0f14'/%3E%3Cpath d='M7 23V9h18v4H12v3h10v4H12v3h13v4H7Z' fill='%23f4f7fb'/%3E%3Cpath d='M21 8l4-4 3 3-4 4z' fill='%23ff3b4f'/%3E%3C/svg%3E"
-        />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-32x32.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Gandalf" />
@@ -27,13 +26,10 @@
             property="og:description"
             content="Gandalf blocks unsafe skills before they run."
         />
-        <meta
-            property="og:image"
-            content="https://gandalf.sh/gandalf-mascot.png"
-        />
+        <meta property="og:image" content="https://gandalf.sh/og.png" />
         <meta
             property="og:image:alt"
-            content="Gandalf cartoon mascot for a runtime security gate."
+            content="Full Gandalf mascot standing guard over unsafe agent tools."
         />
         <meta property="og:url" content="https://gandalf.sh/" />
         <meta name="twitter:card" content="summary_large_image" />
@@ -42,13 +38,10 @@
             name="twitter:description"
             content="Gandalf blocks unsafe skills before they run."
         />
-        <meta
-            name="twitter:image"
-            content="https://gandalf.sh/gandalf-mascot.png"
-        />
+        <meta name="twitter:image" content="https://gandalf.sh/og.png" />
         <meta
             name="twitter:image:alt"
-            content="Gandalf cartoon mascot for a runtime security gate."
+            content="Full Gandalf mascot standing guard over unsafe agent tools."
         />
 
         <style>
@@ -236,16 +229,54 @@
             }
 
             .nav-links .github-nav {
+                position: relative;
                 display: inline-grid;
                 place-items: center;
                 width: 22px;
                 height: 22px;
                 border: 0;
                 background: transparent;
+                transform-origin: center;
+                transition:
+                    color 140ms ease,
+                    transform 140ms ease;
             }
 
-            .nav-links .github-nav:hover {
+            .nav-links .github-nav:hover,
+            .nav-links .github-nav:focus-visible {
                 color: #fff;
+                transform: scale(1.18);
+            }
+
+            .nav-links .github-nav::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                top: calc(100% + 10px);
+                right: 0;
+                z-index: 60;
+                padding: 6px 8px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius-control);
+                background: var(--black);
+                color: var(--ink);
+                box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+                font-family: var(--mono);
+                font-size: 11px;
+                line-height: 1;
+                text-transform: none;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(-4px);
+                transition:
+                    opacity 140ms ease,
+                    transform 140ms ease;
+            }
+
+            .nav-links .github-nav:hover::after,
+            .nav-links .github-nav:focus-visible::after {
+                opacity: 1;
+                transform: translateY(0);
             }
 
             .github-icon {
@@ -353,7 +384,7 @@
 
             .sub {
                 max-width: 920px;
-                margin: 0 auto var(--hero-copy-element-gap);
+                margin: 0 auto calc(var(--hero-copy-element-gap) + 4px);
                 color: var(--ink);
                 font-size: clamp(1.1rem, 2.15vw, 1.55rem);
                 line-height: var(--hero-copy-line-height);
@@ -527,6 +558,7 @@
             .install-box {
                 position: relative;
                 isolation: isolate;
+                scroll-margin-top: 118px;
                 border: 1px solid transparent;
                 border-radius: var(--radius-panel);
                 overflow: hidden;
@@ -826,11 +858,13 @@
     <body data-conversion-goal="install-intent">
         <a class="skip-link" href="#main">Skip to content</a>
 
+        <!-- Static deploy: keep duplicated site chrome in sync across public HTML files. -->
         <header class="nav">
             <div class="wrap nav-inner">
                 <nav class="nav-links" aria-label="Primary">
+                    <a href="/#install">Install</a>
                     <a
-                        href="#faq"
+                        href="/#faq"
                         >FAQ</a
                     >
                     <a href="/docs/">Docs</a>
@@ -838,6 +872,7 @@
                         class="source-nav github-nav"
                         href="https://github.com/mannanj/skillguard"
                         aria-label="View source on GitHub"
+                        data-tooltip="View Source Code"
                         rel="noopener"
                     >
                         <svg

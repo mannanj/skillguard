@@ -3,11 +3,15 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Gandalf docs - commands</title>
+        <title>Gandalf docs - install, scan, and runtime checks</title>
         <meta
             name="description"
-            content="Command reference for Gandalf agent skill and MCP runtime checks."
+            content="Install Gandalf, run the first scan, configure MCP enforcement, and review runtime security findings."
         />
+        <link rel="canonical" href="https://gandalf.sh/docs/" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-32x32.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <style>
             :root {
                 --bg: #0b0f14;
@@ -19,7 +23,10 @@
                 --line-strong: #556373;
                 --red: #ff3b4f;
                 --green: #5ee08f;
+                --gold: #f0c75e;
                 --black: #05070a;
+                --radius-control: 6px;
+                --radius-panel: 8px;
                 --mono:
                     ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
                 --sans:
@@ -32,9 +39,19 @@
                 box-sizing: border-box;
             }
 
+            html {
+                scroll-behavior: smooth;
+            }
+
             body {
                 margin: 0;
-                background: var(--bg);
+                background:
+                    radial-gradient(
+                        circle at 50% 0,
+                        rgba(255, 59, 79, 0.14),
+                        transparent 28rem
+                    ),
+                    linear-gradient(180deg, #0b0f14 0, #0e141b 48rem, #0b0f14);
                 color: var(--ink);
                 font-family: var(--sans);
                 font-size: 17px;
@@ -49,9 +66,41 @@
                 text-underline-offset: 4px;
             }
 
-            a:focus-visible {
-                outline: 3px solid #f0c75e;
+            a:hover {
+                color: #fff;
+            }
+
+            a:focus-visible,
+            summary:focus-visible {
+                outline: 3px solid var(--gold);
                 outline-offset: 4px;
+            }
+
+            .skip-link {
+                position: absolute;
+                left: -999px;
+                top: 0;
+                z-index: 100;
+                background: var(--gold);
+                color: var(--black);
+                padding: 10px 14px;
+                font-weight: 900;
+            }
+
+            .skip-link:focus {
+                left: 0;
+            }
+
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
             }
 
             .wrap {
@@ -60,8 +109,13 @@
             }
 
             .nav {
-                border-bottom: 1px solid var(--line);
+                position: sticky;
+                top: 0;
+                z-index: 50;
                 background: rgba(11, 15, 20, 0.9);
+                border-bottom: 1px solid var(--line);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
             }
 
             .nav-inner {
@@ -72,43 +126,121 @@
                 gap: 20px;
             }
 
-            .brand,
-            .nav-links {
+            .home-group,
+            .nav-links,
+            .footer-links {
                 display: flex;
                 align-items: center;
                 gap: 18px;
                 font-family: var(--mono);
                 font-size: 12px;
-                font-weight: 900;
                 text-transform: uppercase;
             }
 
-            .brand {
-                color: var(--ink);
-                text-decoration: none;
+            .home-group {
+                gap: 10px;
             }
 
-            .brand-mark {
+            .home-icon-link {
                 display: inline-grid;
-                width: 28px;
-                height: 28px;
                 place-items: center;
-                border: 2px solid var(--ink);
-                background: var(--red);
-                box-shadow: 3px 3px 0 var(--ink);
+                width: 30px;
+                height: 30px;
+                border: 1px solid var(--line-strong);
+                border-radius: 999px;
+                background: var(--black);
+                overflow: hidden;
             }
 
-            .nav-links a {
+            .home-icon-link:hover {
+                border-color: var(--red);
+            }
+
+            .home-icon {
+                display: block;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .home-nav,
+            .nav-links a,
+            .footer-links a {
+                color: var(--ink);
                 text-decoration: none;
                 border-bottom: 2px solid transparent;
             }
 
-            .nav-links a:hover {
+            .home-nav:hover,
+            .nav-links a:hover,
+            .footer-links a:hover {
                 border-color: var(--red);
             }
 
+            .nav-links .github-nav {
+                position: relative;
+                display: inline-grid;
+                place-items: center;
+                width: 22px;
+                height: 22px;
+                border: 0;
+                background: transparent;
+                transform-origin: center;
+                transition:
+                    color 140ms ease,
+                    transform 140ms ease;
+            }
+
+            .nav-links .github-nav:hover,
+            .nav-links .github-nav:focus-visible {
+                color: #fff;
+                transform: scale(1.18);
+            }
+
+            .nav-links .github-nav::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                top: calc(100% + 10px);
+                right: 0;
+                z-index: 60;
+                padding: 6px 8px;
+                border: 1px solid var(--line-strong);
+                border-radius: var(--radius-control);
+                background: var(--black);
+                color: var(--ink);
+                box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+                font-family: var(--mono);
+                font-size: 11px;
+                line-height: 1;
+                text-transform: none;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(-4px);
+                transition:
+                    opacity 140ms ease,
+                    transform 140ms ease;
+            }
+
+            .nav-links .github-nav:hover::after,
+            .nav-links .github-nav:focus-visible::after {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            .github-icon {
+                width: 18px;
+                height: 18px;
+                fill: currentColor;
+            }
+
             main {
-                padding: 72px 0;
+                padding: 68px 0 0;
+            }
+
+            .docs-hero {
+                padding-bottom: 52px;
+                border-bottom: 1px solid var(--line);
             }
 
             .kicker {
@@ -120,13 +252,105 @@
                 text-transform: uppercase;
             }
 
+            .docs-hero .kicker {
+                font-size: 15px;
+                line-height: 1.2;
+            }
+
             h1 {
-                max-width: 880px;
-                margin: 0 0 28px;
-                font-size: clamp(3rem, 8vw, 6rem);
-                line-height: 0.95;
+                max-width: 900px;
+                margin: 0 0 22px;
+                font-size: clamp(2.9rem, 7vw, 5.8rem);
+                line-height: 0.96;
                 font-weight: 950;
                 letter-spacing: 0;
+            }
+
+            h2 {
+                margin: 0 0 14px;
+                font-size: clamp(1.6rem, 3vw, 2.4rem);
+                line-height: 1.08;
+                font-weight: 950;
+                letter-spacing: 0;
+            }
+
+            h3 {
+                margin: 0 0 8px;
+                font-size: 1.08rem;
+                line-height: 1.25;
+                font-weight: 950;
+            }
+
+            p {
+                margin: 0;
+            }
+
+            .lede {
+                max-width: 860px;
+                color: var(--muted);
+                font-size: 1.18rem;
+            }
+
+            .doc-link-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 14px;
+                margin-top: 24px;
+                font-family: var(--mono);
+                font-size: 12px;
+                text-transform: uppercase;
+            }
+
+            .docs-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 22px;
+                padding: 44px 0 18px;
+            }
+
+            .docs-section {
+                border-top: 1px solid var(--line-strong);
+                padding: 24px 0 8px;
+            }
+
+            .docs-section.full {
+                grid-column: 1 / -1;
+            }
+
+            .docs-section p,
+            .docs-section li {
+                color: var(--muted);
+            }
+
+            .docs-section p + p,
+            .note + .note {
+                margin-top: 12px;
+            }
+
+            .note-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px;
+                margin-top: 18px;
+            }
+
+            .note {
+                border: 1px solid var(--line);
+                border-radius: var(--radius-panel);
+                padding: 16px;
+                background: rgba(21, 28, 37, 0.62);
+            }
+
+            .note strong {
+                display: block;
+                margin-bottom: 8px;
+                color: var(--ink);
+            }
+
+            code {
+                color: var(--green);
+                font-family: var(--mono);
+                font-size: 0.94em;
             }
 
             .command-table {
@@ -140,7 +364,7 @@
             .command-table th,
             .command-table td {
                 border-bottom: 1px solid var(--line);
-                padding: 16px 0;
+                padding: 14px 0;
                 text-align: left;
                 vertical-align: top;
             }
@@ -151,9 +375,34 @@
                 text-transform: uppercase;
             }
 
-            .command-table code {
-                color: var(--green);
-                font-family: var(--mono);
+            .command-table td:first-child {
+                width: 38%;
+                padding-right: 18px;
+            }
+
+            .command-stack {
+                display: grid;
+                gap: 8px;
+                margin-top: 14px;
+            }
+
+            .command-stack code {
+                display: block;
+                overflow-x: auto;
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-control);
+                background: #05070a;
+                white-space: nowrap;
+            }
+
+            ul {
+                margin: 14px 0 0;
+                padding-left: 20px;
+            }
+
+            li + li {
+                margin-top: 8px;
             }
 
             footer {
@@ -170,36 +419,40 @@
                 flex-wrap: wrap;
             }
 
-            .footer-links {
-                display: flex;
-                align-items: center;
-                gap: 18px;
-                font-family: var(--mono);
-                font-size: 12px;
-                text-transform: uppercase;
-            }
-
-            .footer-links a {
-                color: var(--ink);
-                text-decoration: none;
-                border-bottom: 2px solid transparent;
-            }
-
-            .footer-links a:hover {
-                border-color: var(--red);
-            }
-
             .footer-links span {
                 color: var(--quiet);
             }
 
-            @media (max-width: 640px) {
+            @media (prefers-reduced-motion: reduce) {
+                html {
+                    scroll-behavior: auto;
+                }
+            }
+
+            @media (max-width: 760px) {
+                body {
+                    font-size: 16px;
+                }
+
                 .wrap {
                     width: min(100% - 28px, var(--max));
                 }
 
-                .brand span:last-child {
-                    display: none;
+                .nav-inner {
+                    min-height: 56px;
+                }
+
+                .nav-links {
+                    gap: 12px;
+                }
+
+                main {
+                    padding-top: 48px;
+                }
+
+                .docs-grid,
+                .note-grid {
+                    grid-template-columns: 1fr;
                 }
 
                 .command-table {
@@ -207,77 +460,309 @@
                     overflow-x: auto;
                     white-space: nowrap;
                 }
+
+                .command-table td:first-child {
+                    width: auto;
+                }
             }
         </style>
     </head>
     <body>
+        <a class="skip-link" href="#main">Skip to content</a>
+
+        <!-- Static deploy: keep duplicated site chrome in sync across public HTML files. -->
         <header class="nav">
             <div class="wrap nav-inner">
-                <a class="brand" href="/" aria-label="Gandalf home">
-                    <span class="brand-mark" aria-hidden="true">G</span>
-                    <span>Gandalf</span>
-                </a>
+                <div class="home-group">
+                    <a class="home-icon-link" href="/" aria-label="Gandalf home">
+                        <img
+                            class="home-icon"
+                            src="/favicon-32x32.png"
+                            width="32"
+                            height="32"
+                            alt=""
+                            aria-hidden="true"
+                        />
+                    </a>
+                    <a class="home-nav" href="/">Home</a>
+                </div>
                 <nav class="nav-links" aria-label="Primary">
-                    <a href="/">Home</a>
+                    <a href="#quick-install">Install</a>
                     <a
-                        href="https://github.com/mannanj/skillguard"
-                        rel="noopener"
-                        >Source</a
+                        href="/#faq"
+                        >FAQ</a
                     >
+                    <a href="/docs/">Docs</a>
+                    <a
+                        class="source-nav github-nav"
+                        href="https://github.com/mannanj/skillguard"
+                        aria-label="View source on GitHub"
+                        data-tooltip="View Source Code"
+                        rel="noopener"
+                    >
+                        <svg
+                            class="github-icon"
+                            aria-hidden="true"
+                            focusable="false"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 1 8 3.86c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+                            />
+                        </svg>
+                        <span class="sr-only">Source on GitHub</span>
+                    </a>
                 </nav>
             </div>
         </header>
 
-        <main>
-            <div class="wrap">
-                <p class="kicker">Docs</p>
-                <h1>Command reference</h1>
-                <table class="command-table">
-                    <thead>
-                        <tr>
-                            <th>Command</th>
-                            <th>What it does</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <code>curl -fsSL https://gandalf.sh/install | sh</code>
-                            </td>
-                            <td>Install the Gandalf CLI and hook helper.</td>
-                        </tr>
-                        <tr>
-                            <td><code>gandalf --target all</code></td>
-                            <td>Scan skills and MCP servers.</td>
-                        </tr>
-                        <tr>
-                            <td><code>gandalf --agent-summary</code></td>
-                            <td>Print the current high-risk summary.</td>
-                        </tr>
-                        <tr>
-                            <td><code>gandalf --review</code></td>
-                            <td>
-                                Review findings, false positives, and
-                                acknowledgements.
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><code>gandalf --activity</code></td>
-                            <td>Show scan and hook activity.</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <code>gandalf --install-agent-adapters .</code>
-                            </td>
-                            <td>
-                                Write repo adapters for the 13 supported agent
-                                surfaces.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <main id="main">
+            <section class="docs-hero" aria-label="Gandalf documentation overview">
+                <div class="wrap">
+                    <p class="kicker">Docs</p>
+                    <p class="lede">
+                        Gandalf scans agent skills and MCP servers before they
+                        run. Use this page for the first install, the first
+                        scan, review actions, and the policies that decide when
+                        runtime calls are allowed or blocked.
+                    </p>
+                    <div class="doc-link-row" aria-label="Docs links">
+                        <a href="#command-reference">Commands</a>
+                        <a href="#troubleshooting">Troubleshooting</a>
+                    </div>
+                </div>
+            </section>
+
+            <div class="wrap docs-grid">
+                <section class="docs-section" id="quick-install">
+                    <p class="kicker">Quick install</p>
+                    <h2>Install the plugin or CLI</h2>
+                    <p>
+                        Claude Code users should install the plugin from the
+                        marketplace. Codex users install the local CLI shim,
+                        then add the personal plugin entry.
+                    </p>
+                    <div class="command-stack" aria-label="Quick install commands">
+                        <code>/plugin marketplace add mannanj/gandalf</code>
+                        <code>/plugin install gandalf@gandalf</code>
+                        <code>/reload-plugins</code>
+                        <code>codex plugin add gandalf@personal</code>
+                    </div>
+                </section>
+
+                <section class="docs-section" id="first-scan">
+                    <p class="kicker">First scan</p>
+                    <h2>Build the first local verdict</h2>
+                    <p>
+                        Run a local scan once after installation. Gandalf scans
+                        configured skills and MCP servers, records the result in
+                        the local cache, and lets the hook read that verdict
+                        quickly at runtime.
+                    </p>
+                    <div class="command-stack">
+                        <code>gandalf --target all --engines local</code>
+                        <code>gandalf --target all</code>
+                    </div>
+                </section>
+
+                <section class="docs-section" id="claude-code-plugin">
+                    <p class="kicker">Claude Code</p>
+                    <h2>Use the plugin skill</h2>
+                    <p>
+                        In Claude Code, run <code>/gandalf:gandalf</code> or ask
+                        Claude to use Gandalf. The hook checks cached verdicts
+                        on skill and MCP calls before the tool runs.
+                    </p>
+                    <p>
+                        If the CLI is not on <code>PATH</code>, the hook prints
+                        the setup command that installs the stable local shim.
+                    </p>
+                </section>
+
+                <section class="docs-section" id="codex-plugin">
+                    <p class="kicker">Codex</p>
+                    <h2>Use the Codex plugin</h2>
+                    <p>
+                        Start a new Codex session after installation, then pick
+                        Gandalf from <code>/skills</code>, type
+                        <code>$gandalf</code>, or ask Codex to use Gandalf to
+                        review cached findings.
+                    </p>
+                    <p>
+                        Non-interactive runs can still use the CLI directly for
+                        summaries, review, and scan commands.
+                    </p>
+                </section>
+
+                <section class="docs-section full" id="command-reference">
+                    <p class="kicker">Reference</p>
+                    <h2>Command reference</h2>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>What it does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>gandalf --target all</code></td>
+                                <td>Scan skills and MCP servers.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --target all --engines local</code></td>
+                                <td>Scan everything with the offline local engine.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --agent-summary</code></td>
+                                <td>Print the cached high-risk launch summary.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --review</code></td>
+                                <td>Review active findings and choose next actions.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --activity</code></td>
+                                <td>Show scan, override, and hook activity.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --install-agent-adapters .</code></td>
+                                <td>
+                                    Write repo adapters for the supported agent
+                                    harnesses.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="docs-section full" id="mcp-checks">
+                    <p class="kicker">MCP checks</p>
+                    <h2>MCP checks and enforcement modes</h2>
+                    <p>
+                        Gandalf discovers configured MCP servers, materializes a
+                        redacted scan surface, and checks launch commands,
+                        endpoint metadata, env/header names, and optional
+                        model-facing tool descriptions.
+                    </p>
+                    <div class="note-grid">
+                        <div class="note">
+                            <strong>Default: warn</strong>
+                            <p>
+                                MCP policy defaults to <code>warn</code>. It
+                                nudges on unscanned servers and logs calls
+                                without blocking them.
+                            </p>
+                        </div>
+                        <div class="note">
+                            <strong>Enforce when ready</strong>
+                            <p>
+                                Use
+                                <code>gandalf --set-mcp-policy enforce</code>
+                                to block unscanned MCP servers and critical or
+                                high-risk verdicts.
+                            </p>
+                        </div>
+                    </div>
+                    <p>
+                        Static MCP scans never launch servers. Live introspection
+                        is opt-in because it connects to or launches the server
+                        to read tool descriptions:
+                    </p>
+                    <div class="command-stack">
+                        <code>gandalf --target mcps --mcp-introspect --engines local,skillaudit</code>
+                    </div>
+                </section>
+
+                <section class="docs-section" id="review-flow">
+                    <p class="kicker">Review flow</p>
+                    <h2>Review, acknowledge, and mark false positives</h2>
+                    <p>
+                        Use <code>gandalf --review</code> to walk active
+                        findings from an agent session. Choose
+                        <code>mark-fp</code> only after reviewing benign
+                        documentation-like matches. Choose <code>ack</code> when
+                        you saw the risk and explicitly want runtime to allow it.
+                    </p>
+                    <p>
+                        False-positive marks live in the local triage file and
+                        persist across rescans unless a new finding appears.
+                    </p>
+                </section>
+
+                <section class="docs-section" id="cache-rescan">
+                    <p class="kicker">Cache</p>
+                    <h2>Cache and rescan behavior</h2>
+                    <p>
+                        Verdicts and history are stored under the local Gandalf
+                        cache. Missing, corrupted, unreadable, or stale cache
+                        entries fail closed for skill calls.
+                    </p>
+                    <p>
+                        When a scanned skill or MCP config changes, scan it
+                        again so the runtime hook can compare against a fresh
+                        verdict.
+                    </p>
+                </section>
+
+                <section class="docs-section" id="engines-privacy">
+                    <p class="kicker">Engines</p>
+                    <h2>Local versus optional cloud engines</h2>
+                    <p>
+                        The local engine is offline and dependency-free. Optional
+                        cloud or third-party engines add coverage when enabled,
+                        but they may send scan content to those services.
+                    </p>
+                    <p>
+                        Use <code>--engines local</code> when nothing should
+                        leave the machine.
+                    </p>
+                </section>
+
+                <section class="docs-section" id="troubleshooting">
+                    <p class="kicker">Troubleshooting</p>
+                    <h2>Common failures</h2>
+                    <ul>
+                        <li>
+                            <strong>No cached scan:</strong> run
+                            <code>gandalf --target all --engines local</code>.
+                        </li>
+                        <li>
+                            <strong>Changed since scan:</strong> rescan the
+                            changed skill or MCP config before retrying.
+                        </li>
+                        <li>
+                            <strong>Expected MCP blocking:</strong> check
+                            <code>SKILLGUARD_MCP_POLICY</code> or run
+                            <code>gandalf --set-mcp-policy enforce</code>.
+                        </li>
+                        <li>
+                            <strong>Review noise:</strong> inspect the file, then
+                            use <code>mark-fp</code> only for a real false
+                            positive.
+                        </li>
+                    </ul>
+                </section>
+
+                <section class="docs-section" id="security-privacy">
+                    <p class="kicker">Security</p>
+                    <h2>Security and privacy notes</h2>
+                    <p>
+                        Gandalf reads skill files and MCP configuration. Static
+                        scans do not execute skill code or launch MCP servers.
+                        Secret values are read in memory for detection and are
+                        not written to scan surfaces, findings, cache, or
+                        history.
+                    </p>
+                    <p>
+                        Report bypasses, cache poisoning, secret persistence, or
+                        scanner execution bugs privately through the GitHub
+                        security advisory flow.
+                    </p>
+                </section>
             </div>
         </main>
+
         <footer>
             <div class="wrap footer-inner">
                 <nav class="footer-links" aria-label="Footer">
