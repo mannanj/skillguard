@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import re
+import struct
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LANDING_HTML = ROOT / "landing" / "public" / "index.html"
 DOCS_HTML = ROOT / "landing" / "public" / "docs" / "index.html"
-MASCOT_SVG = ROOT / "landing" / "public" / "gandalf-mascot.svg"
+MASCOT_PNG = ROOT / "landing" / "public" / "gandalf-mascot.png"
+LOCKUP_JPG = ROOT / "landing" / "public" / "gandalf-lockup.jpg"
 LANDING_WORKER = ROOT / "landing" / "src" / "index.js"
 
 
@@ -32,7 +34,7 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('content="Gandalf - Thou shall not pass."', html)
         self.assertIn('href="https://gandalf.sh/"', html)
         self.assertIn('aria-label="Gandalf home"', html)
-        self.assertIn('src="/gandalf-mascot.svg"', html)
+        self.assertIn('src="/gandalf-mascot.png"', html)
         self.assertIn(">Gandalf</h1>", html)
         self.assertIn("Thou shall not pass.", html)
         self.assertIn("Block unsafe skills before they run.", html)
@@ -135,16 +137,16 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn("<code>gandalf --activity</code>", html)
         self.assertIn("<code>gandalf --install-agent-adapters .</code>", html)
 
-    def test_mascot_asset_matches_black_white_cartoon_direction(self) -> None:
-        svg = MASCOT_SVG.read_text(encoding="utf-8")
+    def test_mascot_assets_are_optimized_web_images(self) -> None:
+        png = MASCOT_PNG.read_bytes()
+        jpg = LOCKUP_JPG.read_bytes()
 
-        self.assertIn("<title id=\"title\">Gandalf mascot</title>", svg)
-        self.assertIn("black and white cartoon wizard guard", svg)
-        self.assertIn("viewBox=\"0 0 720 560\"", svg)
-        self.assertIn("stroke=\"#070707\"", svg)
-        self.assertIn("fill=\"#fff\"", svg)
-        self.assertIn("glasses", svg)
-        self.assertNotIn("<text", svg)
+        self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertEqual(struct.unpack(">II", png[16:24]), (480, 588))
+        self.assertLess(MASCOT_PNG.stat().st_size, 300_000)
+
+        self.assertTrue(jpg.startswith(b"\xff\xd8\xff"))
+        self.assertLess(LOCKUP_JPG.stat().st_size, 150_000)
 
     def test_runtime_animation_has_been_removed(self) -> None:
         html = _html()
