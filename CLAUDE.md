@@ -6,6 +6,14 @@ skill/MCP invocations. This file is the fast on-ramp; deeper rationale lives in
 module docstrings and `CONTRIBUTING.md` / `SECURITY.md`. Read it before changing
 code, and keep it in sync when the engine set or module layout changes.
 
+## Landing page copy rule
+
+No fluff. The Gandalf landing page should stay terse and factual: no filler
+sections, no vague proof chips, no clever explanatory blocks, and no decorative
+claims. Use concrete product truth, install actions, command docs, and factual
+metadata only. Do not invent compatibility counts; only use numbers backed by
+repo data or live metadata.
+
 ## Build / test / lint
 
 A `.venv/` is checked in locally; prefix commands with `.venv/bin/` to use it.

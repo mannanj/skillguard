@@ -290,34 +290,37 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 10px;
+                gap: 8px;
                 flex-wrap: wrap;
                 margin: 22px auto 28px;
-                font-family: var(--mono);
-                font-size: 14px;
-                font-weight: 900;
+                font-family: var(--sans);
+                font-size: clamp(14px, 1.25vw, 18px);
+                font-weight: 850;
             }
 
             .badge {
                 display: inline-flex;
                 align-items: center;
-                min-height: 34px;
-                border: 1px solid var(--line-strong);
-                background: var(--panel);
+                min-height: 36px;
+                background: transparent;
                 color: var(--ink);
             }
 
             .badge span {
                 display: inline-flex;
                 align-items: center;
-                min-height: 34px;
-                padding: 0 10px;
-                background: rgba(255, 255, 255, 0.1);
+                min-height: 36px;
+                padding: 0 12px;
+                background: #565a60;
                 color: var(--ink);
             }
 
             .badge strong {
+                display: inline-flex;
+                align-items: center;
+                min-height: 36px;
                 padding: 0 12px;
+                background: #090d13;
                 color: #fff;
                 font-variant-numeric: tabular-nums;
             }
@@ -777,16 +780,7 @@
                         Thou shall not pass.
                     </p>
 
-                    <div class="badges" aria-label="Product facts">
-                        <span class="badge"
-                            ><span>checks</span><strong>skills</strong></span
-                        >
-                        <span class="badge"
-                            ><span>checks</span><strong>MCPs</strong></span
-                        >
-                        <span class="badge"
-                            ><span>runs</span><strong>local</strong></span
-                        >
+                    <div class="badges" aria-label="Project facts">
                         <span class="badge" aria-label="GitHub stars"
                             ><span>stars</span
                             ><strong
@@ -797,7 +791,11 @@
                             ></span
                         >
                         <span class="badge"
-                            ><span>proof</span><strong>0 commands</strong></span
+                            ><span>release</span><strong>v0.3.1</strong></span
+                        >
+                        <span class="badge"
+                            ><span>works with</span
+                            ><strong>13 agents</strong></span
                         >
                         <span class="badge"
                             ><span>license</span><strong>AGPL</strong></span

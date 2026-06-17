@@ -31,6 +31,7 @@ __init__.py
 _util.py
 args.py
 cli.py
+agent_adapters.py
 agent_skill.py
 agent_summary.py
 hook.py

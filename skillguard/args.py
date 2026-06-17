@@ -143,6 +143,17 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--install-agent-adapters",
+        nargs="?",
+        const=".",
+        default=None,
+        metavar="DIR",
+        help=(
+            "Write repo-level AGENTS.md, Gemini, and Aider adapter files for "
+            "SkillGuard's 13 supported agent surfaces"
+        ),
+    )
+    parser.add_argument(
         "--shell-only",
         action="store_true",
         help=argparse.SUPPRESS,

@@ -40,7 +40,6 @@ class LandingPageTests(unittest.TestCase):
             "Gandalf checks Claude Code skills and MCP servers",
             compact_html,
         )
-        self.assertIn("0 commands", html)
         self.assertIn("No scan. No run.", html)
         self.assertIn("curl -fsSL https://gandalf.sh/install | sh", html)
         self.assertIn("gandalf --target all --engines local", html)
@@ -50,6 +49,18 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('data-platform="shell"', html)
         self.assertIn('data-platform="claude"', html)
         self.assertIn('data-platform="codex"', html)
+        self.assertIn('aria-label="Project facts"', html)
+        self.assertIn("<span>stars</span", html)
+        self.assertIn("<span>release</span><strong>v0.3.1</strong>", html)
+        self.assertIn("<span>works with</span", html)
+        self.assertIn("<strong>13 agents</strong>", html)
+        self.assertIn("<span>license</span><strong>AGPL</strong>", html)
+        self.assertNotIn("<strong>2 agents</strong>", html)
+        self.assertNotIn("<strong>agent skills</strong>", html)
+        self.assertNotIn("<span>checks</span>", html)
+        self.assertNotIn("<span>runs</span>", html)
+        self.assertNotIn("<span>proof</span>", html)
+        self.assertNotIn("<strong>0 commands</strong>", html)
         self.assertIn('href="/docs/"', html)
         self.assertIn('class="install-box hero-install"', html)
         self.assertIn("<h2 id=\"faq-heading\">FAQ</h2>", html)
@@ -122,6 +133,7 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn("<code>gandalf --agent-summary</code>", html)
         self.assertIn("<code>gandalf --review</code>", html)
         self.assertIn("<code>gandalf --activity</code>", html)
+        self.assertIn("<code>gandalf --install-agent-adapters .</code>", html)
 
     def test_mascot_asset_matches_black_white_cartoon_direction(self) -> None:
         svg = MASCOT_SVG.read_text(encoding="utf-8")

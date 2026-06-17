@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from skillguard import config, store
+from skillguard.agent_adapters import write_project_agent_adapters
 from skillguard.agent_summary import (
     SEVERITY_RANK,
     active_verdicts,
@@ -361,6 +363,12 @@ def _dispatch_early_exit(args: argparse.Namespace) -> int | None:
     if args.install_shell_integration:
         changed = install_shell_integration(shell_only=bool(getattr(args, "shell_only", False)))
         print("SkillGuard shell integration installed:")
+        for key, value in changed.items():
+            print(f"  {key}: {value}")
+        return 0
+    if args.install_agent_adapters is not None:
+        changed = write_project_agent_adapters(Path(args.install_agent_adapters), "skillguard")
+        print("SkillGuard agent adapters installed:")
         for key, value in changed.items():
             print(f"  {key}: {value}")
         return 0
