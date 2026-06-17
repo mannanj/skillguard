@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 560" role="img" aria-labelledby="title desc">
+  <title id="title">Gandalf mascot</title>
+  <desc id="desc">A black and white cartoon wizard guard with glasses, a long beard, and a staff.</desc>
+  <defs>
+    <filter id="roughen">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="11" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#roughen)">
+    <path d="M216 197c22-79 79-128 159-143 101-18 189 27 225 112 26 62 20 146-24 205-36 47-92 72-166 75-83 4-152-22-196-73-37-43-50-107-34-160 7-23 18-44 36-16z" fill="#fff" stroke="#fff" stroke-width="48"/>
+    <path d="M186 198c-37 28-59 74-63 123-4 55 11 102 48 141 27 29 65 50 112 62 8-48 10-95 6-141-5-58-20-115-45-172-12-27-31-34-58-13z" fill="#fff" stroke="#fff" stroke-width="44"/>
+    <path d="M178 475c-35 22-62 46-80 72 58 0 112-20 162-61 30-25 52-54 66-86-50 16-100 41-148 75z" fill="#fff" stroke="#fff" stroke-width="34"/>
+    <path d="M424 436c17 38 39 67 67 87 35-23 52-53 50-90-37 7-76 8-117 3z" fill="#fff" stroke="#fff" stroke-width="32"/>
+    <path d="M249 89c47-47 119-67 216-55 73 9 129 34 168 76 19 20 31 42 37 66-74-35-151-51-231-49-85 2-158 25-218 68 1-40 10-75 28-106z" fill="#fff" stroke="#fff" stroke-width="34"/>
+    <path d="M234 75c56-32 128-45 217-39 51 4 104 18 159 44-45-38-97-63-157-75-57-11-110-4-158 20-35 18-55 35-61 50z" fill="#fff" stroke="#fff" stroke-width="28"/>
+
+    <path d="M216 197c22-79 79-128 159-143 101-18 189 27 225 112 26 62 20 146-24 205-36 47-92 72-166 75-83 4-152-22-196-73-37-43-50-107-34-160 7-23 18-44 36-16z" fill="#fff" stroke="#070707" stroke-width="18"/>
+    <path d="M186 198c-37 28-59 74-63 123-4 55 11 102 48 141 27 29 65 50 112 62 8-48 10-95 6-141-5-58-20-115-45-172-12-27-31-34-58-13z" fill="#070707" stroke="#070707" stroke-width="18"/>
+    <path d="M178 475c-35 22-62 46-80 72 58 0 112-20 162-61 30-25 52-54 66-86-50 16-100 41-148 75z" fill="#070707" stroke="#070707" stroke-width="16"/>
+    <path d="M424 436c17 38 39 67 67 87 35-23 52-53 50-90-37 7-76 8-117 3z" fill="#fff" stroke="#070707" stroke-width="14"/>
+
+    <path d="M249 89c47-47 119-67 216-55 73 9 129 34 168 76 19 20 31 42 37 66-74-35-151-51-231-49-85 2-158 25-218 68 1-40 10-75 28-106z" fill="#070707" stroke="#070707" stroke-width="18"/>
+    <path d="M234 75c56-32 128-45 217-39 51 4 104 18 159 44-45-38-97-63-157-75-57-11-110-4-158 20-35 18-55 35-61 50z" fill="#fff" stroke="#070707" stroke-width="15"/>
+    <path d="M341 54c-28 34-50 71-66 111" stroke="#fff" stroke-width="16"/>
+    <path d="M556 89c30 24 51 55 63 92" stroke="#fff" stroke-width="14"/>
+
+    <path d="M236 245c27-10 64-10 110 1" stroke="#070707" stroke-width="11"/>
+    <path d="M437 245c31-11 69-10 115 2" stroke="#070707" stroke-width="11"/>
+    <path d="M308 292c4 14 18 24 42 27 29 3 48-6 56-27" fill="#fff" stroke="#070707" stroke-width="13"/>
+    <path d="M450 293c6 19 25 29 57 29 29 0 48-10 56-29" fill="#fff" stroke="#070707" stroke-width="13"/>
+    <path d="M405 292c14-14 29-14 45 1" stroke="#070707" stroke-width="12"/>
+    <path d="M236 268c26-5 50-2 72 9" stroke="#070707" stroke-width="8"/>
+    <path d="M565 269c26 1 49 8 69 21" stroke="#070707" stroke-width="8"/>
+
+    <path d="M418 318c-5 18-2 31 10 39" stroke="#070707" stroke-width="8"/>
+    <path d="M370 381c31-19 68-20 110-2" stroke="#070707" stroke-width="12"/>
+    <path d="M372 414c31 12 64 14 99 5" stroke="#070707" stroke-width="9"/>
+    <path d="M289 343c12 4 25 5 40 3" stroke="#070707" stroke-width="7"/>
+    <path d="M514 344c15 4 29 5 43 2" stroke="#070707" stroke-width="7"/>
+    <path d="M260 403c42 48 95 73 160 76 58 3 106-14 144-51" stroke="#070707" stroke-width="12"/>
+
+    <path d="M170 242c-22 22-35 51-40 87-6 46 4 86 30 121" stroke="#fff" stroke-width="12"/>
+    <path d="M201 244c21 65 28 137 20 216" stroke="#fff" stroke-width="10"/>
+    <path d="M146 522c35-8 72-29 111-62" stroke="#fff" stroke-width="11"/>
+
+    <path d="M629 195c25 61 19 117-18 166" stroke="#070707" stroke-width="12"/>
+    <path d="M206 196c29-32 67-52 114-61" stroke="#070707" stroke-width="12"/>
+    <path d="M498 123c42 10 78 30 108 61" stroke="#070707" stroke-width="12"/>
+
+    <path d="M609 214l52-67" stroke="#070707" stroke-width="16"/>
+    <path d="M661 147l18-24" stroke="#070707" stroke-width="10"/>
+    <path d="M625 204l38 27" stroke="#070707" stroke-width="10"/>
+    <path d="M654 177l37 27" stroke="#070707" stroke-width="10"/>
+
+    <circle cx="331" cy="250" r="5" fill="#070707" stroke="none"/>
+    <circle cx="499" cy="249" r="5" fill="#070707" stroke="none"/>
+    <path d="M278 189c18-16 43-21 77-14" stroke="#070707" stroke-width="10"/>
+    <path d="M471 176c36-10 65-7 88 9" stroke="#070707" stroke-width="10"/>
+  </g>
+</svg>

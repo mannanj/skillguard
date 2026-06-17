@@ -6,7 +6,9 @@ import unittest
 from pathlib import Path
 
 
-LANDING_HTML = Path(__file__).resolve().parent.parent / "landing" / "public" / "index.html"
+ROOT = Path(__file__).resolve().parent.parent
+LANDING_HTML = ROOT / "landing" / "public" / "index.html"
+MASCOT_SVG = ROOT / "landing" / "public" / "gandalf-mascot.svg"
 
 
 def _html() -> str:
@@ -20,42 +22,51 @@ def _scan_items(html: str) -> list[dict[str, str]]:
 
 
 class LandingPageTests(unittest.TestCase):
-    def test_landing_copy_is_direct_and_install_focused(self) -> None:
+    def test_landing_copy_is_gandalf_first_and_install_focused(self) -> None:
         html = _html()
         compact_html = re.sub(r"\s+", " ", html)
 
-        self.assertIn("<title>SkillGuard - trust your agent tools</title>", html)
-        self.assertIn('content="SkillGuard - trust your agent tools"', html)
-        self.assertIn("<span>Trust</span>your agent tools", html)
+        self.assertIn("<title>Gandalf - Thou shall not pass.</title>", html)
+        self.assertIn('content="Gandalf - Thou shall not pass."', html)
+        self.assertIn('href="https://gandalf.sh/"', html)
+        self.assertIn('aria-label="Gandalf home"', html)
+        self.assertIn('src="/gandalf-mascot.svg"', html)
+        self.assertIn(">Gandalf</h1>", html)
+        self.assertIn("Thou shall not pass.", html)
+        self.assertIn("Block unsafe skills before they run.", html)
         self.assertIn(
-            "SkillGuard checks Agent Skills and MCP server",
-            html,
+            "Gandalf checks Claude Code skills and MCP servers",
+            compact_html,
         )
-        self.assertIn("guarding against malicious behavior", compact_html)
-        self.assertNotIn("guarding against prompt injection", html)
-        self.assertIn("/plugin marketplace add mannanj/skillguard", html)
-        self.assertIn("/plugin install skillguard@skillguard", html)
-        self.assertIn("/reload-plugins", html)
-        self.assertIn("codex plugin add skillguard@personal", html)
-        self.assertIn("Use: /skillguard:skillguard", html)
-        self.assertIn("Use: new Codex thread, /skills, $skillguard", html)
-        self.assertIn('class="install-box"', html)
-        self.assertIn('class="install-tabs"', html)
+        self.assertIn("0 commands ran.", html)
+        self.assertIn("No scan. No run.", html)
+        self.assertIn("curl -fsSL https://gandalf.sh/install | sh", html)
+        self.assertIn("gandalf --target all --engines local", html)
+        self.assertIn("/plugin marketplace add mannanj/gandalf", html)
+        self.assertIn("/plugin install gandalf@gandalf", html)
+        self.assertIn("codex plugin add gandalf@personal", html)
+        self.assertIn('data-platform="shell"', html)
         self.assertIn('data-platform="claude"', html)
         self.assertIn('data-platform="codex"', html)
-        self.assertNotIn('class="install-grid"', html)
-        self.assertIn('<h2 id="how-heading">How it works</h2>', html)
-        self.assertIn('<h2 id="faq-heading">FAQ</h2>', html)
-        self.assertIn('aria-label="SkillGuard home"', html)
-        self.assertIn('stroke="#D91F2F"', html)
-        self.assertIn("stroke='%23D91F2F'", html)
-        self.assertNotIn("#3DDC97", html)
-        self.assertNotIn("%233DDC97", html)
-        self.assertIn('d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z"', html)
-        self.assertNotIn('class="mark-box"', html)
-        self.assertNotIn('aria-hidden="true">!</span>', html)
+        self.assertIn("<h2 id=\"how-heading\">Scan. Decide. Enforce. Remember.</h2>", html)
+        self.assertIn("<h2 id=\"install-heading\">", html)
+        self.assertIn("<h2 id=\"faq-heading\">Sharp answers only.</h2>", html)
+        self.assertNotIn("SkillGuard - trust your agent tools", html)
+        self.assertNotIn("<span>Trust</span>your agent tools", html)
+        self.assertNotIn("guarding against malicious behavior", html)
 
-    def test_animation_keeps_original_wall_ui(self) -> None:
+    def test_mascot_asset_matches_black_white_cartoon_direction(self) -> None:
+        svg = MASCOT_SVG.read_text(encoding="utf-8")
+
+        self.assertIn("<title id=\"title\">Gandalf mascot</title>", svg)
+        self.assertIn("black and white cartoon wizard guard", svg)
+        self.assertIn("viewBox=\"0 0 720 560\"", svg)
+        self.assertIn("stroke=\"#070707\"", svg)
+        self.assertIn("fill=\"#fff\"", svg)
+        self.assertIn("glasses", svg)
+        self.assertNotIn("<text", svg)
+
+    def test_animation_keeps_runtime_gate_ui(self) -> None:
         html = _html()
 
         self.assertIn('class="wall"', html)
@@ -72,11 +83,10 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn("@keyframes good-one-pass", html)
         self.assertIn("@keyframes good-two-pass", html)
         self.assertIn("animation: bad-block 5s", html)
+        self.assertIn("Gandalf gating runtime calls", html)
         self.assertNotIn('class="scanner"', html)
         self.assertNotIn('class="scan-stage"', html)
         self.assertNotIn('class="skill-card"', html)
-        self.assertNotIn('class="scan-count"', html)
-        self.assertNotIn('class="reset-btn"', html)
         self.assertNotIn('id="scanCount"', html)
         self.assertNotIn('id="scanReset"', html)
 
@@ -85,7 +95,7 @@ class LandingPageTests(unittest.TestCase):
 
         self.assertEqual(len(items), 25)
         names = {item["name"] for item in items}
-        self.assertTrue({"docs-helper", "release-notes", "skillguard"}.issubset(names))
+        self.assertTrue({"docs-helper", "release-notes", "gandalf"}.issubset(names))
         self.assertTrue(
             {
                 "reverse-shell-helper",
@@ -99,7 +109,7 @@ class LandingPageTests(unittest.TestCase):
         self.assertGreaterEqual(sum(item["verdict"] == "blocked" for item in items), 8)
         self.assertTrue(all(item["summary"] for item in items))
 
-    def test_scan_animation_updates_old_wall_text_from_25_skill_items(self) -> None:
+    def test_scan_animation_updates_wall_text_from_skill_items(self) -> None:
         html = _html()
 
         self.assertIn('id="blockedName"', html)

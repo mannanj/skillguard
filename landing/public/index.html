@@ -3,60 +3,70 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>SkillGuard - trust your agent tools</title>
+        <title>Gandalf - Thou shall not pass.</title>
         <meta
             name="description"
-            content="SkillGuard checks Agent Skills and MCP server surfaces before runtime, guarding against malicious behavior."
+            content="Gandalf checks Claude Code skills and MCP servers before runtime, then blocks anything unscanned, changed, or high-risk."
         />
-        <link rel="canonical" href="https://skillguard.sh/" />
+        <link rel="canonical" href="https://gandalf.sh/" />
+        <link
+            rel="preload"
+            href="/gandalf-mascot.svg"
+            as="image"
+            fetchpriority="high"
+        />
         <link
             rel="icon"
-            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D91F2F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230b0f14'/%3E%3Cpath d='M7 23V9h18v4H12v3h10v4H12v3h13v4H7Z' fill='%23f4f7fb'/%3E%3Cpath d='M21 8l4-4 3 3-4 4z' fill='%23ff3b4f'/%3E%3C/svg%3E"
         />
 
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="SkillGuard" />
-        <meta
-            property="og:title"
-            content="SkillGuard - trust your agent tools"
-        />
+        <meta property="og:site_name" content="Gandalf" />
+        <meta property="og:title" content="Gandalf - Thou shall not pass." />
         <meta
             property="og:description"
-            content="Local-first checks for Agent Skills and MCP servers that guard against malicious behavior before runtime."
+            content="Block unsafe skills and MCP servers before they run."
         />
-        <meta property="og:image" content="https://skillguard.sh/og.png" />
+        <meta
+            property="og:image"
+            content="https://gandalf.sh/gandalf-mascot.svg"
+        />
         <meta
             property="og:image:alt"
-            content="SkillGuard blocking risky agent tools before runtime."
+            content="Gandalf cartoon mascot for a runtime security gate."
         />
-        <meta property="og:url" content="https://skillguard.sh/" />
+        <meta property="og:url" content="https://gandalf.sh/" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta
-            name="twitter:title"
-            content="SkillGuard - trust your agent tools"
-        />
+        <meta name="twitter:title" content="Gandalf - Thou shall not pass." />
         <meta
             name="twitter:description"
-            content="Local-first checks for Agent Skills and MCP servers that guard against malicious behavior before runtime."
+            content="Block unsafe skills and MCP servers before they run."
         />
-        <meta name="twitter:image" content="https://skillguard.sh/og.png" />
+        <meta
+            name="twitter:image"
+            content="https://gandalf.sh/gandalf-mascot.svg"
+        />
         <meta
             name="twitter:image:alt"
-            content="SkillGuard blocking risky agent tools before runtime."
+            content="Gandalf cartoon mascot for a runtime security gate."
         />
 
         <style>
             :root {
-                --paper: #f4f4f2;
-                --ink: #111111;
-                --ink-2: #2a2a2a;
-                --muted: #666666;
-                --line: #d5d5d2;
-                --panel: #ffffff;
-                --panel-dark: #151515;
-                --red: #d91f2f;
-                --red-dark: #9f111d;
-                --ok: #147a4c;
+                --bg: #0b0f14;
+                --bg-2: #111820;
+                --panel: #151c25;
+                --panel-2: #f4f7fb;
+                --ink: #f4f7fb;
+                --muted: #b8c2cf;
+                --quiet: #8290a0;
+                --line: #303b49;
+                --line-strong: #556373;
+                --red: #ff3b4f;
+                --red-dark: #c51d31;
+                --green: #5ee08f;
+                --gold: #f0c75e;
+                --black: #05070a;
                 --mono:
                     ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
                 --sans:
@@ -76,10 +86,12 @@
             body {
                 margin: 0;
                 background:
-                    linear-gradient(var(--line) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--line) 1px, transparent 1px),
-                    var(--paper);
-                background-size: 44px 44px;
+                    radial-gradient(
+                        circle at 50% 0,
+                        rgba(255, 59, 79, 0.16),
+                        transparent 28rem
+                    ),
+                    linear-gradient(180deg, #0b0f14 0, #0e141b 52rem, #0b0f14);
                 color: var(--ink);
                 font-family: var(--sans);
                 font-size: 17px;
@@ -91,17 +103,18 @@
             a {
                 color: var(--ink);
                 text-decoration-color: var(--red);
-                text-underline-offset: 3px;
+                text-underline-offset: 4px;
             }
+
             a:hover {
-                color: var(--red-dark);
+                color: #fff;
             }
 
             a:focus-visible,
             button:focus-visible,
             summary:focus-visible {
-                outline: 3px solid var(--red);
-                outline-offset: 3px;
+                outline: 3px solid var(--gold);
+                outline-offset: 4px;
             }
 
             .skip-link {
@@ -109,11 +122,12 @@
                 left: -999px;
                 top: 0;
                 z-index: 100;
-                background: var(--red);
-                color: #fff;
+                background: var(--gold);
+                color: var(--black);
                 padding: 10px 14px;
-                font-weight: 800;
+                font-weight: 900;
             }
+
             .skip-link:focus {
                 left: 0;
             }
@@ -127,8 +141,8 @@
                 position: sticky;
                 top: 0;
                 z-index: 50;
-                background: rgba(244, 244, 242, 0.88);
-                border-bottom: 2px solid var(--ink);
+                background: rgba(11, 15, 20, 0.9);
+                border-bottom: 1px solid var(--line);
                 backdrop-filter: blur(12px);
                 -webkit-backdrop-filter: blur(12px);
             }
@@ -148,82 +162,437 @@
                 color: var(--ink);
                 text-decoration: none;
                 font-family: var(--mono);
-                font-size: 15px;
-                font-weight: 800;
-                text-transform: uppercase;
-            }
-
-            .brand svg {
-                display: block;
-                flex: 0 0 auto;
-            }
-
-            .nav-links {
-                display: flex;
-                align-items: center;
-                gap: 18px;
-                font-family: var(--mono);
-                font-size: 13px;
-                text-transform: uppercase;
-            }
-
-            .nav-links a {
-                color: var(--ink);
-                text-decoration: none;
-                border-bottom: 2px solid transparent;
-            }
-            .nav-links a:hover {
-                border-color: var(--red);
-            }
-
-            .hero {
-                padding: 72px 0 58px;
-                border-bottom: 2px solid var(--ink);
-            }
-
-            .hero-grid {
-                display: grid;
-                grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
-                gap: 42px;
-                align-items: center;
-            }
-
-            .hero-grid > * {
-                min-width: 0;
-            }
-
-            h1 {
-                max-width: 680px;
-                margin: 0 0 22px;
-                font-size: 78px;
-                line-height: 0.93;
+                font-size: 14px;
                 font-weight: 900;
                 letter-spacing: 0;
                 text-transform: uppercase;
             }
 
-            h1 span {
-                color: var(--red);
+            .brand-mark {
+                display: inline-grid;
+                place-items: center;
+                width: 28px;
+                height: 28px;
+                border: 2px solid var(--ink);
+                color: var(--ink);
+                background: var(--red);
+                box-shadow: 3px 3px 0 var(--ink);
+                font-family: var(--mono);
+                font-size: 15px;
+                line-height: 1;
+            }
+
+            .nav-links,
+            .footer-links {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                font-family: var(--mono);
+                font-size: 12px;
+                text-transform: uppercase;
+            }
+
+            .nav-links a,
+            .footer-links a {
+                color: var(--ink);
+                text-decoration: none;
+                border-bottom: 2px solid transparent;
+            }
+
+            .nav-links a:hover,
+            .footer-links a:hover {
+                border-color: var(--red);
+            }
+
+            .nav-links .primary-link {
+                padding: 8px 12px;
+                border: 2px solid var(--ink);
+                background: var(--ink);
+                color: var(--black);
+                box-shadow: 3px 3px 0 var(--red);
+                font-weight: 900;
+            }
+
+            .hero {
+                min-height: min(760px, calc(100vh - 116px));
+                padding: 34px 0 44px;
+                border-bottom: 1px solid var(--line);
+                display: flex;
+                align-items: center;
+            }
+
+            .hero-inner {
+                width: 100%;
+                text-align: center;
+            }
+
+            .mascot {
                 display: block;
+                width: min(300px, 56vw);
+                height: auto;
+                margin: 0 auto 10px;
+                filter: drop-shadow(0 18px 42px rgba(0, 0, 0, 0.5));
+            }
+
+            h1 {
+                margin: 0;
+                font-size: clamp(4.2rem, 12vw, 8.75rem);
+                line-height: 0.9;
+                font-weight: 950;
+                letter-spacing: 0;
+            }
+
+            .tagline {
+                max-width: 820px;
+                margin: 16px auto 0;
+                padding-top: 20px;
+                border-top: 1px solid var(--line-strong);
+                color: var(--ink);
+                font-size: clamp(1.5rem, 4vw, 2.25rem);
+                line-height: 1.2;
+                font-style: italic;
+                font-weight: 800;
+            }
+
+            .badges {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin: 22px auto 28px;
+                font-family: var(--mono);
+                font-size: 14px;
+                font-weight: 900;
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                min-height: 34px;
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
+                color: var(--ink);
+            }
+
+            .badge span {
+                display: inline-flex;
+                align-items: center;
+                min-height: 34px;
+                padding: 0 10px;
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--ink);
+            }
+
+            .badge strong {
+                padding: 0 12px;
+                color: #fff;
+            }
+
+            .claim {
+                max-width: 900px;
+                margin: 0 auto 16px;
+                font-size: clamp(2rem, 5vw, 3.25rem);
+                line-height: 1.04;
+                font-weight: 950;
+                letter-spacing: 0;
             }
 
             .sub {
-                max-width: 670px;
-                margin: 0 0 28px;
-                color: var(--ink-2);
-                font-size: 21px;
-                line-height: 1.42;
+                max-width: 920px;
+                margin: 0 auto 22px;
+                color: var(--muted);
+                font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+                line-height: 1.55;
+            }
+
+            .hero-actions {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 18px;
+                flex-wrap: wrap;
+                margin: 22px 0;
+            }
+
+            .button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 48px;
+                padding: 0 18px;
+                border: 2px solid var(--ink);
+                background: var(--red);
+                color: #fff;
+                box-shadow: 5px 5px 0 var(--ink);
+                font-family: var(--mono);
+                font-size: 13px;
+                font-weight: 900;
+                text-decoration: none;
+                text-transform: uppercase;
+            }
+
+            .button:hover {
+                background: var(--red-dark);
+                color: #fff;
+            }
+
+            .source-link {
+                color: var(--muted);
+                font-family: var(--mono);
+                font-size: 13px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .terminal {
+                width: min(860px, 100%);
+                margin: 24px auto 0;
+                overflow: hidden;
+                border: 1px solid var(--line-strong);
+                background: #05070a;
+                text-align: left;
+                box-shadow: 8px 8px 0 rgba(255, 59, 79, 0.35);
+            }
+
+            .terminal-head {
+                display: flex;
+                justify-content: space-between;
+                gap: 14px;
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--line);
+                color: var(--quiet);
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            pre {
+                margin: 0;
+                padding: 16px;
+                overflow-x: auto;
+                font-family: var(--mono);
+                font-size: 14px;
+                line-height: 1.75;
+                white-space: pre-wrap;
                 overflow-wrap: anywhere;
             }
 
+            .prompt {
+                color: var(--quiet);
+                user-select: none;
+            }
+
+            .red {
+                color: #ff7180;
+                font-weight: 900;
+            }
+
+            .green {
+                color: var(--green);
+                font-weight: 900;
+            }
+
+            section {
+                padding: 72px 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .strip {
+                padding: 20px 0;
+                background: var(--panel);
+            }
+
+            .strip-grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 1px;
+                background: var(--line);
+                border: 1px solid var(--line);
+            }
+
+            .strip-item {
+                min-height: 70px;
+                display: grid;
+                place-items: center;
+                padding: 12px;
+                background: var(--bg);
+                color: var(--ink);
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 900;
+                text-align: center;
+                text-transform: uppercase;
+            }
+
+            .kicker {
+                margin: 0 0 12px;
+                color: var(--red);
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            h2 {
+                max-width: 860px;
+                margin: 0 0 24px;
+                font-size: clamp(2rem, 5vw, 3.2rem);
+                line-height: 1.04;
+                font-weight: 950;
+                letter-spacing: 0;
+            }
+
+            h3 {
+                margin: 0 0 10px;
+                color: var(--ink);
+                font-size: 1.15rem;
+                line-height: 1.2;
+                font-weight: 950;
+            }
+
+            p {
+                margin: 0;
+            }
+
+            .copy {
+                max-width: 860px;
+                color: var(--muted);
+                font-size: 1.15rem;
+            }
+
+            .copy + .copy {
+                margin-top: 16px;
+            }
+
+            .two-col {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 22px;
+                margin-top: 26px;
+            }
+
+            .panel,
             .install-box {
-                width: 100%;
-                min-width: 0;
-                max-width: 720px;
-                background: var(--panel-dark);
-                color: #f7f7f7;
-                border: 2px solid var(--ink);
-                box-shadow: 8px 8px 0 var(--red);
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
+            }
+
+            .panel {
+                padding: 24px;
+                min-height: 190px;
+            }
+
+            .panel p {
+                color: var(--muted);
+            }
+
+            .panel code {
+                color: var(--green);
+                font-family: var(--mono);
+                font-size: 0.92em;
+            }
+
+            .before-after {
+                display: grid;
+                grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+                gap: 22px;
+                align-items: stretch;
+                margin-top: 28px;
+            }
+
+            .example {
+                padding: 24px;
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
+            }
+
+            .example h3 {
+                color: var(--red);
+                font-family: var(--mono);
+                font-size: 13px;
+                text-transform: uppercase;
+            }
+
+            .example p {
+                color: var(--muted);
+            }
+
+            .example pre {
+                margin-top: 16px;
+                border: 1px solid var(--line);
+                background: var(--black);
+            }
+
+            .numbers {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 18px;
+                margin-top: 28px;
+            }
+
+            .number {
+                padding: 24px;
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
+            }
+
+            .number strong {
+                display: block;
+                margin-bottom: 8px;
+                color: #fff;
+                font-size: clamp(2.2rem, 5vw, 3.6rem);
+                line-height: 1;
+                font-weight: 950;
+            }
+
+            .number span {
+                color: var(--muted);
+            }
+
+            .steps {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+                margin-top: 30px;
+            }
+
+            .step {
+                min-height: 210px;
+                padding: 20px;
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
+            }
+
+            .step-num {
+                display: inline-grid;
+                place-items: center;
+                width: 34px;
+                height: 34px;
+                margin-bottom: 18px;
+                background: var(--red);
+                color: #fff;
+                font-family: var(--mono);
+                font-weight: 950;
+            }
+
+            .step p {
+                color: var(--muted);
+            }
+
+            .install-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+                gap: 26px;
+                align-items: start;
+                margin-top: 28px;
+            }
+
+            .install-box {
+                overflow: hidden;
+                background: #05070a;
+                box-shadow: 8px 8px 0 rgba(255, 59, 79, 0.35);
             }
 
             .install-head {
@@ -231,26 +600,29 @@
                 align-items: center;
                 justify-content: space-between;
                 gap: 12px;
-                border-bottom: 1px solid #3a3a3a;
+                border-bottom: 1px solid var(--line);
                 padding: 10px 12px;
                 font-family: var(--mono);
                 font-size: 12px;
+                font-weight: 900;
                 text-transform: uppercase;
             }
 
             .copy-btn,
             .tab-btn {
                 appearance: none;
-                border: 1px solid #f7f7f7;
+                min-height: 34px;
+                border: 1px solid var(--line-strong);
                 background: transparent;
-                color: #f7f7f7;
+                color: var(--ink);
                 padding: 6px 10px;
                 font-family: var(--mono);
                 font-size: 12px;
-                font-weight: 800;
+                font-weight: 900;
                 cursor: pointer;
                 text-transform: uppercase;
             }
+
             .copy-btn:hover,
             .copy-btn.copied,
             .tab-btn:hover,
@@ -260,21 +632,10 @@
                 color: #fff;
             }
 
-            .install-box pre {
-                margin: 0;
-                padding: 16px 14px 8px;
-                overflow-x: auto;
-                font-family: var(--mono);
-                font-size: 14px;
-                line-height: 1.8;
-                white-space: pre-wrap;
-                overflow-wrap: anywhere;
-            }
-
             .install-use {
                 margin: 0;
-                padding: 0 14px 14px;
-                color: #d4d4d4;
+                padding: 0 16px 16px;
+                color: var(--muted);
                 font-family: var(--mono);
                 font-size: 12px;
                 line-height: 1.55;
@@ -282,28 +643,16 @@
 
             .install-tabs {
                 display: flex;
+                flex-wrap: wrap;
                 gap: 8px;
                 padding: 10px 12px;
-                border-top: 1px solid #3a3a3a;
-            }
-
-            .tab-btn {
-                border-color: #777;
-                color: #d4d4d4;
-            }
-
-            .prompt {
-                color: #ff7a86;
-                user-select: none;
+                border-top: 1px solid var(--line);
             }
 
             .wall {
-                width: 100%;
-                min-width: 0;
-                background: var(--panel);
-                border: 2px solid var(--ink);
-                box-shadow: 10px 10px 0 var(--ink);
                 overflow: hidden;
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
             }
 
             .wall-top {
@@ -311,11 +660,11 @@
                 grid-template-columns: 1fr auto;
                 align-items: center;
                 gap: 12px;
-                border-bottom: 2px solid var(--ink);
+                border-bottom: 1px solid var(--line-strong);
                 padding: 12px 14px;
                 font-family: var(--mono);
                 font-size: 12px;
-                font-weight: 800;
+                font-weight: 900;
                 text-transform: uppercase;
             }
 
@@ -329,8 +678,8 @@
                 position: relative;
                 height: 260px;
                 overflow: hidden;
-                --block-stop: clamp(22px, calc(50% - 270px), 172px);
-                --pass-mid: calc(50% + 22px);
+                --block-stop: clamp(22px, calc(50% - 260px), 150px);
+                --pass-mid: calc(50% + 20px);
                 background:
                     linear-gradient(
                         90deg,
@@ -340,9 +689,9 @@
                     ),
                     repeating-linear-gradient(
                         0deg,
-                        #fff,
-                        #fff 19px,
-                        #eeeeec 20px
+                        #101720,
+                        #101720 19px,
+                        #16202b 20px
                     );
             }
 
@@ -350,10 +699,10 @@
                 position: absolute;
                 top: 18px;
                 left: calc(50% + 16px);
+                color: var(--red);
                 font-family: var(--mono);
                 font-size: 11px;
-                font-weight: 800;
-                color: var(--red);
+                font-weight: 900;
                 text-transform: uppercase;
             }
 
@@ -361,10 +710,11 @@
                 position: absolute;
                 left: 22px;
                 top: 84px;
-                width: 250px;
-                border: 2px solid var(--ink);
-                background: #fff;
-                box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
+                width: 245px;
+                border: 1px solid var(--line-strong);
+                background: var(--panel-2);
+                color: var(--black);
+                box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.34);
                 font-family: var(--mono);
                 opacity: 0;
             }
@@ -372,18 +722,19 @@
             .good-one {
                 top: 60px;
             }
+
             .good-two {
                 top: 150px;
             }
 
             .request-card::before {
-                content: "Skill";
+                content: "runtime call";
                 display: block;
-                background: var(--ink);
+                background: var(--black);
                 color: #fff;
                 padding: 7px 9px;
                 font-size: 11px;
-                font-weight: 800;
+                font-weight: 900;
                 text-transform: uppercase;
             }
 
@@ -394,51 +745,52 @@
             .request-name {
                 display: block;
                 margin-bottom: 7px;
-                font-size: 15px;
-                font-weight: 800;
+                font-size: 14px;
+                font-weight: 900;
                 overflow-wrap: anywhere;
             }
 
             .request-risk {
                 display: inline-block;
                 border: 2px solid var(--red);
-                color: var(--red);
+                color: var(--red-dark);
                 padding: 3px 6px;
                 font-size: 11px;
-                font-weight: 800;
+                font-weight: 900;
                 text-transform: uppercase;
             }
 
             .request-risk.ok {
-                border-color: var(--ok);
-                color: var(--ok);
+                border-color: #168a50;
+                color: #116d40;
             }
 
             .stamp {
                 position: absolute;
-                right: 30px;
+                right: 26px;
                 top: 82px;
                 border: 5px solid var(--red);
                 color: var(--red);
                 padding: 11px 14px;
                 font-family: var(--mono);
-                font-size: 30px;
-                font-weight: 900;
+                font-size: 27px;
+                font-weight: 950;
                 text-transform: uppercase;
                 transform: rotate(-9deg) scale(1);
                 opacity: 0;
             }
 
             .stamp-pass {
-                border-color: var(--ok);
-                color: var(--ok);
-                font-size: 24px;
+                border-color: var(--green);
+                color: var(--green);
+                font-size: 21px;
                 transform: rotate(6deg) scale(1);
             }
 
             .stamp-good-one {
                 top: 55px;
             }
+
             .stamp-good-two {
                 top: 145px;
             }
@@ -448,30 +800,35 @@
                     animation: bad-block 5s cubic-bezier(0.45, 0, 0.18, 1)
                         infinite;
                 }
+
                 .good-one {
                     animation: good-one-pass 5s
                         cubic-bezier(0.45, 0, 0.18, 1) infinite;
                 }
+
                 .good-two {
                     animation: good-two-pass 5s
                         cubic-bezier(0.45, 0, 0.18, 1) infinite;
                 }
+
                 .stamp-block {
                     animation: block-stamp 5s steps(1, end) infinite;
                 }
+
                 .stamp-good-one {
                     animation: pass-one-stamp 5s steps(1, end) infinite;
                 }
+
                 .stamp-good-two {
                     animation: pass-two-stamp 5s steps(1, end) infinite;
                 }
             }
 
             .receipt {
-                border-top: 2px solid var(--ink);
+                border-top: 1px solid var(--line-strong);
                 padding: 16px;
-                background: var(--panel-dark);
-                color: #f7f7f7;
+                background: #05070a;
+                color: var(--ink);
                 font-family: var(--mono);
                 font-size: 13px;
             }
@@ -483,20 +840,13 @@
             }
 
             .receipt dt {
-                color: #a6a6a6;
+                color: var(--quiet);
             }
+
             .receipt dd {
                 margin: 0;
                 line-height: 1.45;
                 overflow-wrap: anywhere;
-            }
-            .receipt .red {
-                color: #ff7a86;
-                font-weight: 800;
-            }
-            .receipt .ok {
-                color: #83d9a8;
-                font-weight: 800;
             }
 
             @keyframes bad-block {
@@ -505,28 +855,28 @@
                     opacity: 0;
                     transform: translateY(0);
                 }
+
                 7% {
                     opacity: 1;
                 }
+
                 15% {
                     left: 22px;
                     opacity: 1;
                 }
+
                 27% {
                     left: var(--block-stop);
                     opacity: 1;
                     transform: translateY(0);
                 }
-                34% {
-                    left: var(--block-stop);
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+
                 40% {
                     left: var(--block-stop);
                     opacity: 0;
                     transform: translateY(14px);
                 }
+
                 100% {
                     left: var(--block-stop);
                     opacity: 0;
@@ -541,18 +891,22 @@
                     opacity: 0;
                     transform: translateY(0);
                 }
+
                 46% {
                     left: 22px;
                     opacity: 1;
                 }
+
                 58% {
                     left: var(--pass-mid);
                     opacity: 1;
                 }
+
                 68% {
                     left: calc(100% + 32px);
                     opacity: 0;
                 }
+
                 100% {
                     left: calc(100% + 32px);
                     opacity: 0;
@@ -566,18 +920,22 @@
                     opacity: 0;
                     transform: translateY(0);
                 }
+
                 70% {
                     left: 22px;
                     opacity: 1;
                 }
+
                 82% {
                     left: var(--pass-mid);
                     opacity: 1;
                 }
+
                 94% {
                     left: calc(100% + 32px);
                     opacity: 0;
                 }
+
                 100% {
                     left: calc(100% + 32px);
                     opacity: 0;
@@ -589,10 +947,12 @@
                 26% {
                     opacity: 0;
                 }
+
                 27%,
                 38% {
                     opacity: 1;
                 }
+
                 39%,
                 100% {
                     opacity: 0;
@@ -604,10 +964,12 @@
                 56% {
                     opacity: 0;
                 }
+
                 57%,
                 65% {
                     opacity: 1;
                 }
+
                 66%,
                 100% {
                     opacity: 0;
@@ -619,98 +981,58 @@
                 80% {
                     opacity: 0;
                 }
+
                 81%,
                 91% {
                     opacity: 1;
                 }
+
                 92%,
                 100% {
                     opacity: 0;
                 }
             }
 
-            section {
-                padding: 70px 0;
-                border-bottom: 2px solid var(--ink);
+            .command-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 24px;
+                font-family: var(--mono);
+                font-size: 13px;
             }
 
-            .section-kicker {
-                margin: 0 0 12px;
-                font-family: var(--mono);
-                font-size: 12px;
+            .command-table th,
+            .command-table td {
+                border-bottom: 1px solid var(--line);
+                padding: 12px 0;
+                text-align: left;
+                vertical-align: top;
+            }
+
+            .command-table th {
+                color: var(--quiet);
                 font-weight: 900;
                 text-transform: uppercase;
-                color: var(--red);
             }
 
-            h2 {
-                margin: 0 0 28px;
-                max-width: 780px;
-                font-size: 44px;
-                line-height: 1.04;
-                font-weight: 900;
-                letter-spacing: 0;
-                text-transform: uppercase;
-            }
-
-            .steps {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 18px;
-            }
-
-            .step {
-                background: var(--panel);
-                border: 2px solid var(--ink);
-                padding: 22px 22px 24px;
-                min-height: 190px;
-            }
-
-            .step-num {
-                display: inline-grid;
-                place-items: center;
-                width: 38px;
-                height: 38px;
-                margin-bottom: 18px;
-                background: var(--ink);
-                color: #fff;
+            .command-table code {
+                color: var(--green);
                 font-family: var(--mono);
-                font-weight: 900;
-            }
-
-            .step p {
-                margin: 0;
-                color: var(--muted);
-            }
-            .step code,
-            .faq code {
-                font-family: var(--mono);
-                font-size: 0.9em;
-                color: var(--red-dark);
             }
 
             .faq {
-                background: var(--panel-dark);
-                color: #f7f7f7;
-            }
-
-            .faq h2 {
-                color: #fff;
-            }
-
-            .faq code {
-                color: #ff7a86;
+                background: #070a0f;
             }
 
             .faq-list {
-                border: 2px solid #f7f7f7;
-                background: #191919;
-                box-shadow: 8px 8px 0 var(--red);
+                border: 1px solid var(--line-strong);
+                background: var(--panel);
             }
 
             details {
-                border-bottom: 2px solid #f7f7f7;
+                border-bottom: 1px solid var(--line-strong);
             }
+
             details:last-child {
                 border-bottom: 0;
             }
@@ -719,32 +1041,39 @@
                 cursor: pointer;
                 list-style: none;
                 padding: 18px 20px;
-                font-size: 19px;
-                font-weight: 900;
-                text-transform: uppercase;
+                font-size: 18px;
+                font-weight: 950;
             }
+
             summary::-webkit-details-marker {
                 display: none;
             }
+
             summary::after {
                 content: "+";
                 float: right;
                 color: var(--red);
                 font-family: var(--mono);
             }
+
             details[open] summary::after {
                 content: "-";
             }
 
             .answer {
-                max-width: 870px;
+                max-width: 860px;
                 padding: 0 20px 18px;
-                color: #c8c8c8;
+                color: var(--muted);
+            }
+
+            .answer code {
+                color: var(--green);
+                font-family: var(--mono);
             }
 
             footer {
                 padding: 34px 0;
-                background: var(--paper);
+                background: var(--bg);
             }
 
             .footer-inner {
@@ -755,63 +1084,65 @@
                 flex-wrap: wrap;
             }
 
-            .footer-links {
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                flex-wrap: wrap;
-                font-family: var(--mono);
-                font-size: 12px;
-                text-transform: uppercase;
-            }
-
-            .footer-links a {
-                color: var(--ink);
-                text-decoration: none;
-                border-bottom: 2px solid var(--red);
+            .footer-links span {
+                color: var(--quiet);
             }
 
             @media (prefers-reduced-motion: reduce) {
                 html {
                     scroll-behavior: auto;
                 }
+
                 .request-card,
                 .stamp {
                     animation: none !important;
                 }
+
                 .blocked-card {
                     left: var(--block-stop);
                     top: 84px;
                     opacity: 1;
                 }
+
                 .good-one {
                     left: var(--pass-mid);
                     top: 42px;
                     opacity: 1;
                 }
+
                 .good-two {
                     left: var(--pass-mid);
                     top: 150px;
                     opacity: 1;
                 }
+
                 .stamp-block {
                     opacity: 1;
                     transform: rotate(-9deg) scale(1);
                 }
+
                 .stamp-pass {
                     opacity: 0;
                 }
             }
 
             @media (max-width: 940px) {
-                .hero-grid {
+                .strip-grid,
+                .numbers,
+                .steps,
+                .install-grid,
+                .before-after,
+                .two-col {
                     grid-template-columns: 1fr;
                 }
-                h1 {
-                    font-size: 58px;
+
+                .hero {
+                    min-height: auto;
+                    padding-top: 42px;
                 }
-                .steps {
-                    grid-template-columns: 1fr;
+
+                .install-grid {
+                    gap: 20px;
                 }
             }
 
@@ -819,71 +1150,129 @@
                 body {
                     font-size: 16px;
                 }
+
                 .wrap {
                     width: min(100% - 28px, var(--max));
                 }
+
                 .nav-inner {
                     min-height: 56px;
                 }
+
                 .brand span:last-child {
                     display: none;
                 }
+
                 .nav-links {
                     gap: 12px;
+                }
+
+                .nav-links .source-nav {
+                    display: none;
+                }
+
+                .mascot {
+                    width: min(205px, 56vw);
+                }
+
+                .tagline {
+                    margin-top: 12px;
+                    padding-top: 14px;
+                    font-size: 1.45rem;
+                }
+
+                .hero {
+                    padding: 26px 0 34px;
+                }
+
+                .badges {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 8px;
+                    margin: 16px 0 20px;
                     font-size: 12px;
                 }
-                .hero {
-                    padding: 46px 0 42px;
+
+                .badge {
+                    justify-content: space-between;
+                    min-height: 31px;
                 }
-                h1 {
-                    font-size: 42px;
+
+                .badge span,
+                .badge strong {
+                    min-height: 31px;
+                    padding: 0 8px;
                 }
-                h2 {
-                    font-size: 32px;
+
+                .badge:last-child {
+                    grid-column: 1 / -1;
                 }
+
+                .claim {
+                    margin-bottom: 14px;
+                    font-size: 2.05rem;
+                }
+
                 .sub {
-                    font-size: 18px;
+                    margin-bottom: 16px;
+                    font-size: 1rem;
+                    line-height: 1.45;
                 }
-                .install-box {
-                    box-shadow: 5px 5px 0 var(--red);
+
+                .hero-actions {
+                    gap: 14px;
+                    margin: 16px 0;
                 }
-                .install-box pre {
-                    font-size: 11px;
+
+                .terminal {
+                    box-shadow: 5px 5px 0 rgba(255, 59, 79, 0.35);
                 }
-                .install-tabs {
-                    flex-wrap: wrap;
+
+                pre {
+                    font-size: 12px;
                 }
-                .wall {
-                    box-shadow: 6px 6px 0 var(--ink);
+
+                section {
+                    padding: 52px 0;
                 }
-                .wall-top {
-                    grid-template-columns: 1fr auto;
+
+                .panel,
+                .example,
+                .number,
+                .step {
+                    padding: 18px;
                 }
+
                 .wall-stage {
                     height: 230px;
                 }
+
                 .request-card {
-                    width: 170px;
+                    width: 168px;
                 }
+
                 .stamp {
-                    right: 16px;
+                    right: 14px;
                     top: 112px;
-                    font-size: 22px;
+                    font-size: 20px;
                 }
+
                 .stamp-good-one {
                     top: 55px;
                 }
+
                 .stamp-good-two {
                     top: 145px;
                 }
-                section {
-                    padding: 50px 0;
+
+                .command-table {
+                    display: block;
+                    overflow-x: auto;
+                    white-space: nowrap;
                 }
+
                 summary {
                     font-size: 16px;
-                }
-                .footer-inner {
-                    align-items: flex-start;
                 }
             }
         </style>
@@ -893,31 +1282,17 @@
 
         <header class="nav">
             <div class="wrap nav-inner">
-                <a class="brand" href="#top" aria-label="SkillGuard home">
-                    <svg
-                        width="26"
-                        height="26"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#D91F2F"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                    >
-                        <path
-                            d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z"
-                        />
-                        <path d="m9 12 2 2 4-4" />
-                    </svg>
-                    <span>SkillGuard</span>
+                <a class="brand" href="#top" aria-label="Gandalf home">
+                    <span class="brand-mark" aria-hidden="true">G</span>
+                    <span>Gandalf</span>
                 </a>
                 <nav class="nav-links" aria-label="Primary">
-                    <a href="#install">Install</a>
+                    <a class="primary-link" href="#install">Install</a>
                     <a
+                        class="source-nav"
                         href="https://github.com/mannanj/skillguard"
                         rel="noopener"
-                        >GitHub</a
+                        >Source</a
                     >
                 </nav>
             </div>
@@ -927,40 +1302,245 @@
             <span id="top"></span>
 
             <section class="hero" aria-labelledby="hero-heading">
-                <div class="wrap hero-grid">
-                    <div>
-                        <h1 id="hero-heading">
-                            <span>Trust</span>your agent tools
-                        </h1>
-                        <p class="sub">
-                            SkillGuard checks Agent Skills and MCP server
-                            surfaces before runtime, guarding against malicious
-                            behavior.
-                        </p>
+                <div class="wrap hero-inner">
+                    <img
+                        class="mascot"
+                        src="/gandalf-mascot.svg"
+                        width="720"
+                        height="560"
+                        alt="Gandalf cartoon mascot"
+                        fetchpriority="high"
+                    />
+                    <h1 id="hero-heading">Gandalf</h1>
+                    <p class="tagline">Thou shall not pass.</p>
 
-                        <div class="install-box" id="install">
+                    <div class="badges" aria-label="Product facts">
+                        <span class="badge"
+                            ><span>checks</span><strong>skills</strong></span
+                        >
+                        <span class="badge"
+                            ><span>checks</span><strong>MCPs</strong></span
+                        >
+                        <span class="badge"
+                            ><span>runs</span><strong>local</strong></span
+                        >
+                        <span class="badge"
+                            ><span>proof</span><strong>0 commands</strong></span
+                        >
+                        <span class="badge"
+                            ><span>license</span><strong>AGPL</strong></span
+                        >
+                    </div>
+
+                    <p class="claim">Block unsafe skills before they run.</p>
+                    <p class="sub">
+                        Gandalf checks Claude Code skills and MCP servers
+                        before runtime, then blocks anything unscanned, changed,
+                        corrupted, critical, or high-risk.
+                    </p>
+
+                    <div class="hero-actions">
+                        <a class="button" href="#install">Install Gandalf</a>
+                        <a
+                            class="source-link"
+                            href="https://github.com/mannanj/skillguard"
+                            rel="noopener"
+                            >View source</a
+                        >
+                    </div>
+
+                    <div
+                        class="terminal"
+                        role="img"
+                        aria-label="Gandalf blocks a credential exfiltration skill before any command runs."
+                    >
+                        <div class="terminal-head">
+                            <span>PreToolUse</span>
+                            <span>blocked before runtime</span>
+                        </div>
+                        <pre><code><span class="prompt">$</span> claude uses pretty-formatter
+
+<span class="red">GANDALF: THOU SHALL NOT PASS</span>
+  reason: credential exfiltration
+  file: scripts/setup.sh:14
+
+<span class="green">0 commands ran.</span></code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="strip" aria-label="Trust strip">
+                <div class="wrap strip-grid">
+                    <div class="strip-item">Skills checked</div>
+                    <div class="strip-item">MCP servers checked</div>
+                    <div class="strip-item">Secrets redacted</div>
+                    <div class="strip-item">History kept</div>
+                    <div class="strip-item">Local by default</div>
+                </div>
+            </section>
+
+            <section aria-labelledby="problem-heading">
+                <div class="wrap">
+                    <p class="kicker">Why it exists</p>
+                    <h2 id="problem-heading">
+                        Agent tools run with your permissions.
+                    </h2>
+                    <p class="copy">
+                        A helpful skill can hide a shell script, steal
+                        credentials, or inject prompts. Claude sees a tool.
+                        Gandalf sees what it can do.
+                    </p>
+                    <div class="two-col">
+                        <article class="panel">
+                            <h3>Without Gandalf</h3>
+                            <p>
+                                An agent reads a skill, trusts the description,
+                                and reaches for the tool. Hidden scripts get
+                                their chance.
+                            </p>
+                        </article>
+                        <article class="panel">
+                            <h3>With Gandalf</h3>
+                            <p>
+                                No scan. No run. Changed code stops. High-risk
+                                code stops. Secret values stay redacted.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section aria-labelledby="before-heading">
+                <div class="wrap">
+                    <p class="kicker">Before / after</p>
+                    <h2 id="before-heading">The same agent. A gate in front.</h2>
+                    <div class="before-after">
+                        <article class="example">
+                            <h3>Before</h3>
+                            <p>
+                                You ask for formatting help. The agent installs
+                                a skill that says it cleans Markdown. A bundled
+                                setup script reads browser cookies and posts
+                                them away.
+                            </p>
+                        </article>
+                        <article class="example">
+                            <h3>With Gandalf</h3>
+                            <p>
+                                Gandalf reads the files first. Runtime asks for
+                                the tool. The hook refuses it before execution.
+                            </p>
+                            <pre><code><span class="red">GANDALF: THOU SHALL NOT PASS</span>
+reason: credential exfiltration
+ran: <span class="green">0 commands</span></code></pre>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section aria-labelledby="numbers-heading">
+                <div class="wrap">
+                    <p class="kicker">Numbers</p>
+                    <h2 id="numbers-heading">This is not theoretical.</h2>
+                    <p class="copy">
+                        Gandalf is built around the threat that agent skills and
+                        MCP servers are code supply chains. They need a runtime
+                        gate, not a best-effort reminder.
+                    </p>
+                    <div class="numbers">
+                        <div class="number">
+                            <strong>341</strong>
+                            <span
+                                >malicious skills found in one agent-skill
+                                marketplace.</span
+                            >
+                        </div>
+                        <div class="number">
+                            <strong>13.4%</strong>
+                            <span
+                                >of one studied registry had critical
+                                issues.</span
+                            >
+                        </div>
+                        <div class="number">
+                            <strong>0</strong>
+                            <span
+                                >blocked commands run when the hook refuses the
+                                call.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section aria-labelledby="how-heading">
+                <div class="wrap">
+                    <p class="kicker">How it works</p>
+                    <h2 id="how-heading">Scan. Decide. Enforce. Remember.</h2>
+                    <div class="steps">
+                        <article class="step">
+                            <span class="step-num">1</span>
+                            <h3>Scan</h3>
+                            <p>
+                                Reads skill files, bundled scripts, MCP
+                                surfaces, commands, endpoints, and env/header
+                                names.
+                            </p>
+                        </article>
+                        <article class="step">
+                            <span class="step-num">2</span>
+                            <h3>Decide</h3>
+                            <p>
+                                Combines local rules, cache state, change
+                                checks, and optional engines.
+                            </p>
+                        </article>
+                        <article class="step">
+                            <span class="step-num">3</span>
+                            <h3>Enforce</h3>
+                            <p>
+                                Blocks unsafe calls in the PreToolUse hook
+                                before execution.
+                            </p>
+                        </article>
+                        <article class="step">
+                            <span class="step-num">4</span>
+                            <h3>Remember</h3>
+                            <p>
+                                Keeps local scan history and hook activity so
+                                each decision can be reviewed.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section id="install" aria-labelledby="install-heading">
+                <div class="wrap">
+                    <p class="kicker">Install</p>
+                    <h2 id="install-heading">
+                        The first command installs the gate.
+                    </h2>
+                    <div class="install-grid">
+                        <div class="install-box">
                             <div class="install-head">
-                                <span id="installTitle">Claude Code</span>
+                                <span id="installTitle">Shell</span>
                                 <button
                                     class="copy-btn"
                                     type="button"
                                     id="installCopy"
-                                    data-copy="/plugin marketplace add mannanj/skillguard
-/plugin install skillguard@skillguard
-/reload-plugins
-skillguard --target all --engines local"
+                                    data-copy="curl -fsSL https://gandalf.sh/install | sh
+gandalf --target all --engines local"
                                     aria-label="Copy install commands"
                                 >
                                     Copy
                                 </button>
                             </div>
-                            <pre><code id="installCommands"><span class="prompt">$</span> /plugin marketplace add mannanj/skillguard
-<span class="prompt">$</span> /plugin install skillguard@skillguard
-<span class="prompt">$</span> /reload-plugins
-<span class="prompt">$</span> skillguard --target all --engines local</code></pre>
+                            <pre><code id="installCommands"><span class="prompt">$</span> curl -fsSL https://gandalf.sh/install | sh
+<span class="prompt">$</span> gandalf --target all --engines local</code></pre>
                             <p class="install-use" id="installUse">
-                                Use: /skillguard:skillguard, or ask Claude to
-                                use SkillGuard.
+                                Use: scan everything locally, then let the hook
+                                block unsafe runtime calls.
                             </p>
                             <div
                                 class="install-tabs"
@@ -972,6 +1552,15 @@ skillguard --target all --engines local"
                                     type="button"
                                     role="tab"
                                     aria-selected="true"
+                                    data-platform="shell"
+                                >
+                                    Shell
+                                </button>
+                                <button
+                                    class="tab-btn"
+                                    type="button"
+                                    role="tab"
+                                    aria-selected="false"
                                     data-platform="claude"
                                 >
                                     Claude Code
@@ -987,138 +1576,148 @@ skillguard --target all --engines local"
                                 </button>
                             </div>
                         </div>
-                    </div>
 
-                    <div
-                        class="wall"
-                        id="scanWall"
-                        role="img"
-                        aria-label="SkillGuard scanning Agent Skills and blocking risky requests."
-                    >
-                        <div class="wall-top">
-                            <span>Runtime requests</span>
-                            <span class="status-red">Gated</span>
-                        </div>
-                        <div class="wall-stage" aria-hidden="true">
-                            <span class="wall-label">Runtime gate</span>
-                            <div class="request-card blocked-card">
-                                <div>
-                                    <span class="request-name" id="blockedName"
-                                        >reverse-shell-helper</span
-                                    >
-                                    <span class="request-risk" id="blockedRisk"
-                                        >reverse shell</span
-                                    >
+                        <div
+                            class="wall"
+                            id="scanWall"
+                            role="img"
+                            aria-label="Gandalf gating runtime calls and blocking risky requests."
+                        >
+                            <div class="wall-top">
+                                <span>Runtime requests</span>
+                                <span class="status-red">Gated</span>
+                            </div>
+                            <div class="wall-stage" aria-hidden="true">
+                                <span class="wall-label">Runtime gate</span>
+                                <div class="request-card blocked-card">
+                                    <div>
+                                        <span
+                                            class="request-name"
+                                            id="blockedName"
+                                            >reverse-shell-helper</span
+                                        >
+                                        <span
+                                            class="request-risk"
+                                            id="blockedRisk"
+                                            >reverse shell</span
+                                        >
+                                    </div>
+                                </div>
+                                <div class="request-card good-one">
+                                    <div>
+                                        <span
+                                            class="request-name"
+                                            id="goodOneName"
+                                            >gandalf</span
+                                        >
+                                        <span
+                                            class="request-risk ok"
+                                            id="goodOneRisk"
+                                            >clean</span
+                                        >
+                                    </div>
+                                </div>
+                                <div class="request-card good-two">
+                                    <div>
+                                        <span
+                                            class="request-name"
+                                            id="goodTwoName"
+                                            >docs-helper</span
+                                        >
+                                        <span
+                                            class="request-risk ok"
+                                            id="goodTwoRisk"
+                                            >clean</span
+                                        >
+                                    </div>
+                                </div>
+                                <div class="stamp stamp-block">Blocked</div>
+                                <div class="stamp stamp-pass stamp-good-one">
+                                    Cleared
+                                </div>
+                                <div class="stamp stamp-pass stamp-good-two">
+                                    Cleared
                                 </div>
                             </div>
-                            <div class="request-card good-one">
-                                <div>
-                                    <span class="request-name" id="goodOneName"
-                                        >skillguard</span
-                                    >
-                                    <span
-                                        class="request-risk ok"
-                                        id="goodOneRisk"
-                                        >clean</span
-                                    >
-                                </div>
+                            <div class="receipt">
+                                <dl class="receipt-grid">
+                                    <dt>blocked</dt>
+                                    <dd class="red" id="receiptBlocked">
+                                        reverse-shell-helper
+                                    </dd>
+                                    <dt>cleared</dt>
+                                    <dd class="green" id="receiptPassed">
+                                        gandalf, docs-helper
+                                    </dd>
+                                    <dt>action</dt>
+                                    <dd>exit 2 on risk</dd>
+                                    <dt>ran</dt>
+                                    <dd>0 blocked commands</dd>
+                                </dl>
                             </div>
-                            <div class="request-card good-two">
-                                <div>
-                                    <span class="request-name" id="goodTwoName"
-                                        >docs-helper</span
-                                    >
-                                    <span
-                                        class="request-risk ok"
-                                        id="goodTwoRisk"
-                                        >clean</span
-                                    >
-                                </div>
-                            </div>
-                            <div class="stamp stamp-block">Blocked</div>
-                            <div class="stamp stamp-pass stamp-good-one">
-                                Passed
-                            </div>
-                            <div class="stamp stamp-pass stamp-good-two">
-                                Passed
-                            </div>
-                        </div>
-                        <div class="receipt">
-                            <dl class="receipt-grid">
-                                <dt>blocked</dt>
-                                <dd class="red" id="receiptBlocked">
-                                    reverse-shell-helper
-                                </dd>
-                                <dt>passed</dt>
-                                <dd class="ok" id="receiptPassed">
-                                    skillguard, docs-helper
-                                </dd>
-                                <dt>action</dt>
-                                <dd>exit 2 on risk</dd>
-                                <dt>ran</dt>
-                                <dd>0 blocked commands</dd>
-                            </dl>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section aria-labelledby="how-heading">
+            <section aria-labelledby="commands-heading">
                 <div class="wrap">
-                    <h2 id="how-heading">How it works</h2>
-                    <div class="steps">
-                        <article class="step">
-                            <span class="step-num">1</span>
-                            <p>
-                                Check skills, bundled files, and MCP server
-                                config with local or optional engines.
-                            </p>
-                        </article>
-                        <article class="step">
-                            <span class="step-num">2</span>
-                            <p>
-                                At runtime, use cached verdicts. Block unknown,
-                                changed, critical, and high-risk targets unless
-                                allowed.
-                            </p>
-                        </article>
-                        <article class="step">
-                            <span class="step-num">3</span>
-                            <p>
-                                Keep history and hook decisions local. Inspect
-                                secrets in memory; persist only redacted
-                                records.
-                            </p>
-                        </article>
-                    </div>
+                    <p class="kicker">Commands</p>
+                    <h2 id="commands-heading">Ask what ran. Ask what stopped.</h2>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>What it does</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>gandalf --target all</code></td>
+                                <td>Scan skills and MCP servers.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --agent-summary</code></td>
+                                <td>Print the current high-risk summary.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --review</code></td>
+                                <td>Review findings, false positives, and acknowledgements.</td>
+                            </tr>
+                            <tr>
+                                <td><code>gandalf --activity</code></td>
+                                <td>Show scan and hook activity.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
             <section class="faq" id="faq" aria-labelledby="faq-heading">
                 <div class="wrap">
-                    <h2 id="faq-heading">FAQ</h2>
+                    <p class="kicker">FAQ</p>
+                    <h2 id="faq-heading">Sharp answers only.</h2>
                     <div class="faq-list">
                         <details>
-                            <summary>What does it check?</summary>
+                            <summary>What does Gandalf check?</summary>
                             <div class="answer">
-                                Agent skills, bundled files, and MCP server
-                                surfaces from global, project, and plugin
-                                config.
+                                Skills, bundled files, MCP server config,
+                                launch commands, endpoint metadata, and
+                                env/header names.
                             </div>
                         </details>
                         <details>
                             <summary>Does it block MCP calls?</summary>
                             <div class="answer">
-                                Yes. <code>mcp_policy</code> defaults to
-                                <code>enforce</code>, so unknown or
+                                Yes. MCP enforcement defaults on, so unknown or
                                 critical/high MCP servers are refused.
                             </div>
                         </details>
                         <details>
-                            <summary>Do API keys touch disk?</summary>
+                            <summary>Do secret values touch disk?</summary>
                             <div class="answer">
-                                No. Env and header values are inspected in
-                                memory, then redacted before records persist.
+                                No. Gandalf inspects env and header values in
+                                memory, then persists redacted records.
                             </div>
                         </details>
                         <details>
@@ -1129,17 +1728,10 @@ skillguard --target all --engines local"
                             </div>
                         </details>
                         <details>
-                            <summary>Prefer the Claude Code plugin?</summary>
+                            <summary>What happens when code changes?</summary>
                             <div class="answer">
-                                Inside Claude Code, run
-                                <code
-                                    >/plugin marketplace add
-                                    mannanj/skillguard</code
-                                >
-                                and then
-                                <code
-                                    >/plugin install skillguard@skillguard</code
-                                >.
+                                The cached verdict no longer matches. Runtime
+                                stops until the changed target clears again.
                             </div>
                         </details>
                     </div>
@@ -1149,24 +1741,9 @@ skillguard --target all --engines local"
 
         <footer>
             <div class="wrap footer-inner">
-                <a class="brand" href="#top" aria-label="SkillGuard home">
-                    <svg
-                        width="26"
-                        height="26"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#D91F2F"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                    >
-                        <path
-                            d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z"
-                        />
-                        <path d="m9 12 2 2 4-4" />
-                    </svg>
-                    <span>SkillGuard</span>
+                <a class="brand" href="#top" aria-label="Gandalf home">
+                    <span class="brand-mark" aria-hidden="true">G</span>
+                    <span>Gandalf</span>
                 </a>
                 <nav class="footer-links" aria-label="Footer">
                     <a
@@ -1192,26 +1769,35 @@ skillguard --target all --engines local"
         <script>
             (function () {
                 var installs = {
+                    shell: {
+                        title: "Shell",
+                        copy: "curl -fsSL https://gandalf.sh/install | sh\ngandalf --target all --engines local",
+                        commands: [
+                            "curl -fsSL https://gandalf.sh/install | sh",
+                            "gandalf --target all --engines local",
+                        ],
+                        use: "Use: scan everything locally, then let the hook block unsafe runtime calls.",
+                    },
                     claude: {
                         title: "Claude Code",
-                        copy: "/plugin marketplace add mannanj/skillguard\n/plugin install skillguard@skillguard\n/reload-plugins\nskillguard --target all --engines local",
+                        copy: "/plugin marketplace add mannanj/gandalf\n/plugin install gandalf@gandalf\n/reload-plugins\ngandalf --target all --engines local",
                         commands: [
-                            "/plugin marketplace add mannanj/skillguard",
-                            "/plugin install skillguard@skillguard",
+                            "/plugin marketplace add mannanj/gandalf",
+                            "/plugin install gandalf@gandalf",
                             "/reload-plugins",
-                            "skillguard --target all --engines local",
+                            "gandalf --target all --engines local",
                         ],
-                        use: "Use: /skillguard:skillguard, or ask Claude to use SkillGuard.",
+                        use: "Use: /gandalf:gandalf, or ask Claude to use Gandalf.",
                     },
                     codex: {
                         title: "Codex",
-                        copy: "curl -fsSL https://skillguard.sh/install | sh\ncodex plugin add skillguard@personal\nskillguard --target all --engines local",
+                        copy: "curl -fsSL https://gandalf.sh/install | sh\ncodex plugin add gandalf@personal\ngandalf --target all --engines local",
                         commands: [
-                            "curl -fsSL https://skillguard.sh/install | sh",
-                            "codex plugin add skillguard@personal",
-                            "skillguard --target all --engines local",
+                            "curl -fsSL https://gandalf.sh/install | sh",
+                            "codex plugin add gandalf@personal",
+                            "gandalf --target all --engines local",
                         ],
-                        use: 'Use: new Codex thread, /skills, $skillguard, or ask "Use SkillGuard to review current findings."',
+                        use: 'Use: new Codex thread, /skills, $gandalf, or ask "Use Gandalf to review current findings."',
                     },
                 };
 
@@ -1304,10 +1890,10 @@ skillguard --target all --engines local"
 
                 var scanItems = [
                     {
-                        "name": "skillguard",
+                        "name": "gandalf",
                         "verdict": "approved",
                         "risk": "clean",
-                        "summary": "canonical Agent Skill source"
+                        "summary": "runtime gate source"
                     },
                     {
                         "name": "docs-helper",
@@ -1531,7 +2117,7 @@ skillguard --target all --engines local"
                     }, reduceMotion ? 0 : 3200);
                 }
 
-                setInstall("claude");
+                setInstall("shell");
                 advanceScan();
                 setInterval(advanceScan, cycleMs);
             })();

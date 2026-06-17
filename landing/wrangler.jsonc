@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "skillguard",
+  "name": "gandalf",
   "main": "src/index.js",
   "compatibility_date": "2026-06-03",
   // Keep the workers.dev URL alive alongside the custom domains
@@ -12,7 +12,7 @@
     "run_worker_first": true
   },
   "routes": [
-    { "pattern": "skillguard.sh", "custom_domain": true },
-    { "pattern": "www.skillguard.sh", "custom_domain": true }
+    { "pattern": "gandalf.sh", "custom_domain": true },
+    { "pattern": "www.gandalf.sh", "custom_domain": true }
   ]
 }
