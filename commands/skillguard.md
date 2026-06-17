@@ -8,7 +8,9 @@ allowed-tools: Bash("${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py":*)
 
 User arguments: $ARGUMENTS
 
-Use the SkillGuard CLI bundled with this plugin:
+Use the SkillGuard CLI to inspect cached findings and guide triage. Prefer read-only commands first; mutate triage state only after the user explicitly asks.
+
+Use this exact SkillGuard command:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py"
@@ -23,19 +25,14 @@ Use the SkillGuard CLI bundled with this plugin:
 - `activity`: run `"${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --activity 20`.
 - `show <target>`: run `"${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --show <target>`.
 
-If the user passes other SkillGuard CLI arguments, run them with the same plugin-local CLI path.
+If the user passes other SkillGuard CLI arguments, run them with this same command.
 
-## Interactive Review Flow
+## Review Flow
 
-1. Run the cached summary:
+1. Run `"${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --agent-summary`.
+2. Show the first active item without changing state:
 
-   ```
-   "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --agent-summary
-   ```
-
-2. Display the first active review item without mutating state:
-
-   ```
+   ```bash
    printf 'q\n' | "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --review
    ```
 
@@ -44,9 +41,9 @@ If the user passes other SkillGuard CLI arguments, run them with the same plugin
    - `mark-fp`: reviewed benign; run `printf 'm\n' | "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --review`
    - `ack`: allow despite risk. Before running it, ask the user to Type allow. Only after the user replies `allow`, run `printf 'a\nallow\n' | "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --review`
    - `show`: show full target history; run `printf 's\nq\n' | "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --review`
-   - `next`: move to the next target without changing state. Run one blank line per target to skip, then `q`. For example, to show the second target, run `printf '\nq\n' | "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --review`
-   - `quit`: stop the review.
+   - `next`: move to the next target without changing state. Run one blank line per target to skip, then `q`; for example, `printf '\nq\n' | "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --review`
+   - `quit`: stop the review
 
-4. After `mark-fp` or confirmed `ack`, run the cached summary again and continue the flow if there are still active findings.
+4. After `mark-fp` or confirmed `ack`, rerun `"${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" --agent-summary` and continue if active findings remain.
 
-Keep the review conversational. Do not mark a finding false positive or acknowledge risk unless the user explicitly asks for that action.
+Do not mark a finding false positive or acknowledge risk unless the user explicitly asks for that action.

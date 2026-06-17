@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -43,3 +43,43 @@ def test_clean_package_includes_skillguard_slash_command():
     assert r.returncode == 0, r.stderr
     packaged = ROOT / "dist" / "skillguard-plugin" / "commands" / "skillguard.md"
     assert packaged.exists()
+
+
+def test_clean_package_includes_codex_skill():
+    skill = ROOT / "skills" / "skillguard" / "SKILL.md"
+    assert skill.exists()
+    text = skill.read_text()
+    assert "name: skillguard" in text
+    assert "Use when reviewing SkillGuard findings" in text
+    assert "--agent-summary" in text
+    assert "--review" in text
+
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_plugin_package.py")],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+
+    assert r.returncode == 0, r.stderr
+    packaged = ROOT / "dist" / "skillguard-plugin" / "skills" / "skillguard" / "SKILL.md"
+    assert packaged.exists()
+    packaged_text = packaged.read_text()
+    assert "${CLAUDE_PLUGIN_ROOT}/skillguard/cli.py" in packaged_text
+    assert "skillguard --agent-summary" not in packaged_text
+
+
+def test_clean_package_includes_codex_manifest():
+    r = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_plugin_package.py")],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+
+    assert r.returncode == 0, r.stderr
+    manifest = ROOT / "dist" / "skillguard-plugin" / ".codex-plugin" / "plugin.json"
+    assert manifest.exists()
+    payload = json.loads(manifest.read_text())
+    assert payload["name"] == "skillguard"
+    assert payload["skills"] == "./skills/"

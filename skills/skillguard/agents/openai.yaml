@@ -1,0 +1,4 @@
+interface:
+  display_name: "SkillGuard"
+  short_description: "Review SkillGuard cached findings and scan state."
+  default_prompt: "Use SkillGuard to review current findings."

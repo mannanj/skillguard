@@ -31,6 +31,7 @@ __init__.py
 _util.py
 args.py
 cli.py
+agent_skill.py
 agent_summary.py
 hook.py
 review_text.py
@@ -131,6 +132,8 @@ PYEOF
 echo "→ Installing skillguard command and codex/claude launch summary integration"
 python3 "$DEST/cli.py" --install-shell-integration
 
-echo "→ Done. Scan your skills now:"
-echo "    skillguard --engines local"
+echo "→ Done. Scan your skills and MCPs now:"
+echo "    skillguard --target all --engines local"
+echo "  Claude Code: use /skillguard or /skillguard:skillguard."
+echo "  Codex: run 'codex plugin add skillguard@personal', start a new thread, then use /skills or \$skillguard."
 echo "  Unscanned skills will be blocked the next time Claude tries to use them."
