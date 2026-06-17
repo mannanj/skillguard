@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Gandalf docs - commands</title>
+        <meta
+            name="description"
+            content="Command reference for Gandalf skill and MCP runtime checks."
+        />
+        <style>
+            :root {
+                --bg: #0b0f14;
+                --panel: #151c25;
+                --ink: #f4f7fb;
+                --muted: #b8c2cf;
+                --quiet: #8290a0;
+                --line: #303b49;
+                --line-strong: #556373;
+                --red: #ff3b4f;
+                --green: #5ee08f;
+                --black: #05070a;
+                --mono:
+                    ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+                --sans:
+                    ui-sans-serif, -apple-system, BlinkMacSystemFont,
+                    "Segoe UI", sans-serif;
+                --max: 1120px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--ink);
+                font-family: var(--sans);
+                font-size: 17px;
+                line-height: 1.55;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
+            }
+
+            a {
+                color: var(--ink);
+                text-decoration-color: var(--red);
+                text-underline-offset: 4px;
+            }
+
+            a:focus-visible {
+                outline: 3px solid #f0c75e;
+                outline-offset: 4px;
+            }
+
+            .wrap {
+                width: min(var(--max), calc(100% - 40px));
+                margin: 0 auto;
+            }
+
+            .nav {
+                border-bottom: 1px solid var(--line);
+                background: rgba(11, 15, 20, 0.9);
+            }
+
+            .nav-inner {
+                display: flex;
+                min-height: 62px;
+                align-items: center;
+                justify-content: space-between;
+                gap: 20px;
+            }
+
+            .brand,
+            .nav-links {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .brand {
+                color: var(--ink);
+                text-decoration: none;
+            }
+
+            .brand-mark {
+                display: inline-grid;
+                width: 28px;
+                height: 28px;
+                place-items: center;
+                border: 2px solid var(--ink);
+                background: var(--red);
+                box-shadow: 3px 3px 0 var(--ink);
+            }
+
+            .nav-links a {
+                text-decoration: none;
+                border-bottom: 2px solid transparent;
+            }
+
+            .nav-links a:hover {
+                border-color: var(--red);
+            }
+
+            main {
+                padding: 72px 0;
+            }
+
+            .kicker {
+                margin: 0 0 12px;
+                color: var(--red);
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            h1 {
+                max-width: 880px;
+                margin: 0 0 28px;
+                font-size: clamp(3rem, 8vw, 6rem);
+                line-height: 0.95;
+                font-weight: 950;
+                letter-spacing: 0;
+            }
+
+            .command-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 18px;
+                font-family: var(--mono);
+                font-size: 14px;
+            }
+
+            .command-table th,
+            .command-table td {
+                border-bottom: 1px solid var(--line);
+                padding: 16px 0;
+                text-align: left;
+                vertical-align: top;
+            }
+
+            .command-table th {
+                color: var(--quiet);
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+
+            .command-table code {
+                color: var(--green);
+                font-family: var(--mono);
+            }
+
+            @media (max-width: 640px) {
+                .wrap {
+                    width: min(100% - 28px, var(--max));
+                }
+
+                .brand span:last-child {
+                    display: none;
+                }
+
+                .command-table {
+                    display: block;
+                    overflow-x: auto;
+                    white-space: nowrap;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header class="nav">
+            <div class="wrap nav-inner">
+                <a class="brand" href="/" aria-label="Gandalf home">
+                    <span class="brand-mark" aria-hidden="true">G</span>
+                    <span>Gandalf</span>
+                </a>
+                <nav class="nav-links" aria-label="Primary">
+                    <a href="/">Home</a>
+                    <a
+                        href="https://github.com/mannanj/skillguard"
+                        rel="noopener"
+                        >Source</a
+                    >
+                </nav>
+            </div>
+        </header>
+
+        <main>
+            <div class="wrap">
+                <p class="kicker">Docs</p>
+                <h1>Command reference</h1>
+                <table class="command-table">
+                    <thead>
+                        <tr>
+                            <th>Command</th>
+                            <th>What it does</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>gandalf --target all</code></td>
+                            <td>Scan skills and MCP servers.</td>
+                        </tr>
+                        <tr>
+                            <td><code>gandalf --agent-summary</code></td>
+                            <td>Print the current high-risk summary.</td>
+                        </tr>
+                        <tr>
+                            <td><code>gandalf --review</code></td>
+                            <td>
+                                Review findings, false positives, and
+                                acknowledgements.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>gandalf --activity</code></td>
+                            <td>Show scan and hook activity.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </body>
+</html>

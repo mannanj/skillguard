@@ -306,68 +306,6 @@
                 line-height: 1.55;
             }
 
-            .hero-actions {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 18px;
-                flex-wrap: wrap;
-                margin: 22px 0;
-            }
-
-            .button {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                min-height: 48px;
-                padding: 0 18px;
-                border: 2px solid var(--ink);
-                background: var(--red);
-                color: #fff;
-                box-shadow: 5px 5px 0 var(--ink);
-                font-family: var(--mono);
-                font-size: 13px;
-                font-weight: 900;
-                text-decoration: none;
-                text-transform: uppercase;
-            }
-
-            .button:hover {
-                background: var(--red-dark);
-                color: #fff;
-            }
-
-            .source-link {
-                color: var(--muted);
-                font-family: var(--mono);
-                font-size: 13px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .terminal {
-                width: min(860px, 100%);
-                margin: 24px auto 0;
-                overflow: hidden;
-                border: 1px solid var(--line-strong);
-                background: #05070a;
-                text-align: left;
-                box-shadow: 8px 8px 0 rgba(255, 59, 79, 0.35);
-            }
-
-            .terminal-head {
-                display: flex;
-                justify-content: space-between;
-                gap: 14px;
-                padding: 10px 12px;
-                border-bottom: 1px solid var(--line);
-                color: var(--quiet);
-                font-family: var(--mono);
-                font-size: 12px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
             pre {
                 margin: 0;
                 padding: 16px;
@@ -466,133 +404,21 @@
                 margin-top: 16px;
             }
 
-            .two-col {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 22px;
-                margin-top: 26px;
-            }
-
-            .panel,
             .install-box {
                 border: 1px solid var(--line-strong);
                 background: var(--panel);
-            }
-
-            .panel {
-                padding: 24px;
-                min-height: 190px;
-            }
-
-            .panel p {
-                color: var(--muted);
-            }
-
-            .panel code {
-                color: var(--green);
-                font-family: var(--mono);
-                font-size: 0.92em;
-            }
-
-            .before-after {
-                display: grid;
-                grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-                gap: 22px;
-                align-items: stretch;
-                margin-top: 28px;
-            }
-
-            .example {
-                padding: 24px;
-                border: 1px solid var(--line-strong);
-                background: var(--panel);
-            }
-
-            .example h3 {
-                color: var(--red);
-                font-family: var(--mono);
-                font-size: 13px;
-                text-transform: uppercase;
-            }
-
-            .example p {
-                color: var(--muted);
-            }
-
-            .example pre {
-                margin-top: 16px;
-                border: 1px solid var(--line);
-                background: var(--black);
-            }
-
-            .numbers {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 18px;
-                margin-top: 28px;
-            }
-
-            .number {
-                padding: 24px;
-                border: 1px solid var(--line-strong);
-                background: var(--panel);
-            }
-
-            .number strong {
-                display: block;
-                margin-bottom: 8px;
-                color: #fff;
-                font-size: clamp(2.2rem, 5vw, 3.6rem);
-                line-height: 1;
-                font-weight: 950;
-            }
-
-            .number span {
-                color: var(--muted);
-            }
-
-            .steps {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 16px;
-                margin-top: 30px;
-            }
-
-            .step {
-                min-height: 210px;
-                padding: 20px;
-                border: 1px solid var(--line-strong);
-                background: var(--panel);
-            }
-
-            .step-num {
-                display: inline-grid;
-                place-items: center;
-                width: 34px;
-                height: 34px;
-                margin-bottom: 18px;
-                background: var(--red);
-                color: #fff;
-                font-family: var(--mono);
-                font-weight: 950;
-            }
-
-            .step p {
-                color: var(--muted);
-            }
-
-            .install-grid {
-                display: grid;
-                grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-                gap: 26px;
-                align-items: start;
-                margin-top: 28px;
             }
 
             .install-box {
                 overflow: hidden;
                 background: #05070a;
                 box-shadow: 8px 8px 0 rgba(255, 59, 79, 0.35);
+            }
+
+            .hero-install {
+                width: min(860px, 100%);
+                margin: 28px auto 0;
+                text-align: left;
             }
 
             .install-head {
@@ -647,350 +473,6 @@
                 gap: 8px;
                 padding: 10px 12px;
                 border-top: 1px solid var(--line);
-            }
-
-            .wall {
-                overflow: hidden;
-                border: 1px solid var(--line-strong);
-                background: var(--panel);
-            }
-
-            .wall-top {
-                display: grid;
-                grid-template-columns: 1fr auto;
-                align-items: center;
-                gap: 12px;
-                border-bottom: 1px solid var(--line-strong);
-                padding: 12px 14px;
-                font-family: var(--mono);
-                font-size: 12px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .status-red {
-                background: var(--red);
-                color: #fff;
-                padding: 5px 8px;
-            }
-
-            .wall-stage {
-                position: relative;
-                height: 260px;
-                overflow: hidden;
-                --block-stop: clamp(22px, calc(50% - 260px), 150px);
-                --pass-mid: calc(50% + 20px);
-                background:
-                    linear-gradient(
-                        90deg,
-                        transparent 0 49%,
-                        var(--red) 49% 51%,
-                        transparent 51% 100%
-                    ),
-                    repeating-linear-gradient(
-                        0deg,
-                        #101720,
-                        #101720 19px,
-                        #16202b 20px
-                    );
-            }
-
-            .wall-label {
-                position: absolute;
-                top: 18px;
-                left: calc(50% + 16px);
-                color: var(--red);
-                font-family: var(--mono);
-                font-size: 11px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .request-card {
-                position: absolute;
-                left: 22px;
-                top: 84px;
-                width: 245px;
-                border: 1px solid var(--line-strong);
-                background: var(--panel-2);
-                color: var(--black);
-                box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.34);
-                font-family: var(--mono);
-                opacity: 0;
-            }
-
-            .good-one {
-                top: 60px;
-            }
-
-            .good-two {
-                top: 150px;
-            }
-
-            .request-card::before {
-                content: "runtime call";
-                display: block;
-                background: var(--black);
-                color: #fff;
-                padding: 7px 9px;
-                font-size: 11px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .request-card div {
-                padding: 9px;
-            }
-
-            .request-name {
-                display: block;
-                margin-bottom: 7px;
-                font-size: 14px;
-                font-weight: 900;
-                overflow-wrap: anywhere;
-            }
-
-            .request-risk {
-                display: inline-block;
-                border: 2px solid var(--red);
-                color: var(--red-dark);
-                padding: 3px 6px;
-                font-size: 11px;
-                font-weight: 900;
-                text-transform: uppercase;
-            }
-
-            .request-risk.ok {
-                border-color: #168a50;
-                color: #116d40;
-            }
-
-            .stamp {
-                position: absolute;
-                right: 26px;
-                top: 82px;
-                border: 5px solid var(--red);
-                color: var(--red);
-                padding: 11px 14px;
-                font-family: var(--mono);
-                font-size: 27px;
-                font-weight: 950;
-                text-transform: uppercase;
-                transform: rotate(-9deg) scale(1);
-                opacity: 0;
-            }
-
-            .stamp-pass {
-                border-color: var(--green);
-                color: var(--green);
-                font-size: 21px;
-                transform: rotate(6deg) scale(1);
-            }
-
-            .stamp-good-one {
-                top: 55px;
-            }
-
-            .stamp-good-two {
-                top: 145px;
-            }
-
-            @media (prefers-reduced-motion: no-preference) {
-                .blocked-card {
-                    animation: bad-block 5s cubic-bezier(0.45, 0, 0.18, 1)
-                        infinite;
-                }
-
-                .good-one {
-                    animation: good-one-pass 5s
-                        cubic-bezier(0.45, 0, 0.18, 1) infinite;
-                }
-
-                .good-two {
-                    animation: good-two-pass 5s
-                        cubic-bezier(0.45, 0, 0.18, 1) infinite;
-                }
-
-                .stamp-block {
-                    animation: block-stamp 5s steps(1, end) infinite;
-                }
-
-                .stamp-good-one {
-                    animation: pass-one-stamp 5s steps(1, end) infinite;
-                }
-
-                .stamp-good-two {
-                    animation: pass-two-stamp 5s steps(1, end) infinite;
-                }
-            }
-
-            .receipt {
-                border-top: 1px solid var(--line-strong);
-                padding: 16px;
-                background: #05070a;
-                color: var(--ink);
-                font-family: var(--mono);
-                font-size: 13px;
-            }
-
-            .receipt-grid {
-                display: grid;
-                grid-template-columns: auto 1fr;
-                gap: 7px 13px;
-            }
-
-            .receipt dt {
-                color: var(--quiet);
-            }
-
-            .receipt dd {
-                margin: 0;
-                line-height: 1.45;
-                overflow-wrap: anywhere;
-            }
-
-            @keyframes bad-block {
-                0% {
-                    left: -300px;
-                    opacity: 0;
-                    transform: translateY(0);
-                }
-
-                7% {
-                    opacity: 1;
-                }
-
-                15% {
-                    left: 22px;
-                    opacity: 1;
-                }
-
-                27% {
-                    left: var(--block-stop);
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-
-                40% {
-                    left: var(--block-stop);
-                    opacity: 0;
-                    transform: translateY(14px);
-                }
-
-                100% {
-                    left: var(--block-stop);
-                    opacity: 0;
-                    transform: translateY(14px);
-                }
-            }
-
-            @keyframes good-one-pass {
-                0%,
-                40% {
-                    left: -300px;
-                    opacity: 0;
-                    transform: translateY(0);
-                }
-
-                46% {
-                    left: 22px;
-                    opacity: 1;
-                }
-
-                58% {
-                    left: var(--pass-mid);
-                    opacity: 1;
-                }
-
-                68% {
-                    left: calc(100% + 32px);
-                    opacity: 0;
-                }
-
-                100% {
-                    left: calc(100% + 32px);
-                    opacity: 0;
-                }
-            }
-
-            @keyframes good-two-pass {
-                0%,
-                64% {
-                    left: -300px;
-                    opacity: 0;
-                    transform: translateY(0);
-                }
-
-                70% {
-                    left: 22px;
-                    opacity: 1;
-                }
-
-                82% {
-                    left: var(--pass-mid);
-                    opacity: 1;
-                }
-
-                94% {
-                    left: calc(100% + 32px);
-                    opacity: 0;
-                }
-
-                100% {
-                    left: calc(100% + 32px);
-                    opacity: 0;
-                }
-            }
-
-            @keyframes block-stamp {
-                0%,
-                26% {
-                    opacity: 0;
-                }
-
-                27%,
-                38% {
-                    opacity: 1;
-                }
-
-                39%,
-                100% {
-                    opacity: 0;
-                }
-            }
-
-            @keyframes pass-one-stamp {
-                0%,
-                56% {
-                    opacity: 0;
-                }
-
-                57%,
-                65% {
-                    opacity: 1;
-                }
-
-                66%,
-                100% {
-                    opacity: 0;
-                }
-            }
-
-            @keyframes pass-two-stamp {
-                0%,
-                80% {
-                    opacity: 0;
-                }
-
-                81%,
-                91% {
-                    opacity: 1;
-                }
-
-                92%,
-                100% {
-                    opacity: 0;
-                }
             }
 
             .command-table {
@@ -1092,57 +574,16 @@
                 html {
                     scroll-behavior: auto;
                 }
-
-                .request-card,
-                .stamp {
-                    animation: none !important;
-                }
-
-                .blocked-card {
-                    left: var(--block-stop);
-                    top: 84px;
-                    opacity: 1;
-                }
-
-                .good-one {
-                    left: var(--pass-mid);
-                    top: 42px;
-                    opacity: 1;
-                }
-
-                .good-two {
-                    left: var(--pass-mid);
-                    top: 150px;
-                    opacity: 1;
-                }
-
-                .stamp-block {
-                    opacity: 1;
-                    transform: rotate(-9deg) scale(1);
-                }
-
-                .stamp-pass {
-                    opacity: 0;
-                }
             }
 
             @media (max-width: 940px) {
-                .strip-grid,
-                .numbers,
-                .steps,
-                .install-grid,
-                .before-after,
-                .two-col {
+                .strip-grid {
                     grid-template-columns: 1fr;
                 }
 
                 .hero {
                     min-height: auto;
                     padding-top: 42px;
-                }
-
-                .install-grid {
-                    gap: 20px;
                 }
             }
 
@@ -1219,12 +660,7 @@
                     line-height: 1.45;
                 }
 
-                .hero-actions {
-                    gap: 14px;
-                    margin: 16px 0;
-                }
-
-                .terminal {
+                .install-box {
                     box-shadow: 5px 5px 0 rgba(255, 59, 79, 0.35);
                 }
 
@@ -1234,35 +670,6 @@
 
                 section {
                     padding: 52px 0;
-                }
-
-                .panel,
-                .example,
-                .number,
-                .step {
-                    padding: 18px;
-                }
-
-                .wall-stage {
-                    height: 230px;
-                }
-
-                .request-card {
-                    width: 168px;
-                }
-
-                .stamp {
-                    right: 14px;
-                    top: 112px;
-                    font-size: 20px;
-                }
-
-                .stamp-good-one {
-                    top: 55px;
-                }
-
-                .stamp-good-two {
-                    top: 145px;
                 }
 
                 .command-table {
@@ -1277,7 +684,7 @@
             }
         </style>
     </head>
-    <body>
+    <body data-conversion-goal="install-intent">
         <a class="skip-link" href="#main">Skip to content</a>
 
         <header class="nav">
@@ -1287,7 +694,14 @@
                     <span>Gandalf</span>
                 </a>
                 <nav class="nav-links" aria-label="Primary">
-                    <a class="primary-link" href="#install">Install</a>
+                    <a
+                        class="primary-link"
+                        href="#install"
+                        data-primary-cta="install"
+                        data-conversion-action="nav-install"
+                        >Install</a
+                    >
+                    <a href="/docs/">Docs</a>
                     <a
                         class="source-nav"
                         href="https://github.com/mannanj/skillguard"
@@ -1312,7 +726,14 @@
                         fetchpriority="high"
                     />
                     <h1 id="hero-heading">Gandalf</h1>
-                    <p class="tagline">Thou shall not pass.</p>
+                    <p
+                        class="tagline"
+                        data-variant-slot="headline"
+                        data-variant-control="Thou shall not pass."
+                        data-variant-b="No scan. No run."
+                    >
+                        Thou shall not pass.
+                    </p>
 
                     <div class="badges" aria-label="Product facts">
                         <span class="badge"
@@ -1332,39 +753,74 @@
                         >
                     </div>
 
-                    <p class="claim">Block unsafe skills before they run.</p>
+                    <p
+                        class="claim"
+                        data-variant-slot="value-prop"
+                        data-variant-control="Block unsafe skills before they run."
+                    >
+                        Block unsafe skills before they run.
+                    </p>
                     <p class="sub">
                         Gandalf checks Claude Code skills and MCP servers
                         before runtime, then blocks anything unscanned, changed,
                         corrupted, critical, or high-risk.
                     </p>
 
-                    <div class="hero-actions">
-                        <a class="button" href="#install">Install Gandalf</a>
-                        <a
-                            class="source-link"
-                            href="https://github.com/mannanj/skillguard"
-                            rel="noopener"
-                            >View source</a
-                        >
-                    </div>
-
-                    <div
-                        class="terminal"
-                        role="img"
-                        aria-label="Gandalf blocks a credential exfiltration skill before any command runs."
-                    >
-                        <div class="terminal-head">
-                            <span>PreToolUse</span>
-                            <span>blocked before runtime</span>
+                    <div class="install-box hero-install" id="install">
+                        <div class="install-head">
+                            <span id="installTitle">Shell</span>
+                            <button
+                                class="copy-btn"
+                                type="button"
+                                id="installCopy"
+                                data-copy="curl -fsSL https://gandalf.sh/install | sh
+gandalf --target all --engines local"
+                                aria-label="Copy install commands"
+                                data-primary-cta="install"
+                                data-conversion-action="copy-install-command"
+                            >
+                                Copy
+                            </button>
                         </div>
-                        <pre><code><span class="prompt">$</span> claude uses pretty-formatter
-
-<span class="red">GANDALF: THOU SHALL NOT PASS</span>
-  reason: credential exfiltration
-  file: scripts/setup.sh:14
-
-<span class="green">0 commands ran.</span></code></pre>
+                        <pre><code id="installCommands"><span class="prompt">$</span> curl -fsSL https://gandalf.sh/install | sh
+<span class="prompt">$</span> gandalf --target all --engines local</code></pre>
+                        <p class="install-use" id="installUse">
+                            Use: scan everything locally, then let the hook
+                            block unsafe runtime calls.
+                        </p>
+                        <div
+                            class="install-tabs"
+                            role="tablist"
+                            aria-label="Install platform"
+                        >
+                            <button
+                                class="tab-btn"
+                                type="button"
+                                role="tab"
+                                aria-selected="true"
+                                data-platform="shell"
+                            >
+                                Shell
+                            </button>
+                            <button
+                                class="tab-btn"
+                                type="button"
+                                role="tab"
+                                aria-selected="false"
+                                data-platform="claude"
+                            >
+                                Claude Code
+                            </button>
+                            <button
+                                class="tab-btn"
+                                type="button"
+                                role="tab"
+                                aria-selected="false"
+                                data-platform="codex"
+                            >
+                                Codex
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1379,324 +835,9 @@
                 </div>
             </section>
 
-            <section aria-labelledby="problem-heading">
-                <div class="wrap">
-                    <p class="kicker">Why it exists</p>
-                    <h2 id="problem-heading">
-                        Agent tools run with your permissions.
-                    </h2>
-                    <p class="copy">
-                        A helpful skill can hide a shell script, steal
-                        credentials, or inject prompts. Claude sees a tool.
-                        Gandalf sees what it can do.
-                    </p>
-                    <div class="two-col">
-                        <article class="panel">
-                            <h3>Without Gandalf</h3>
-                            <p>
-                                An agent reads a skill, trusts the description,
-                                and reaches for the tool. Hidden scripts get
-                                their chance.
-                            </p>
-                        </article>
-                        <article class="panel">
-                            <h3>With Gandalf</h3>
-                            <p>
-                                No scan. No run. Changed code stops. High-risk
-                                code stops. Secret values stay redacted.
-                            </p>
-                        </article>
-                    </div>
-                </div>
-            </section>
-
-            <section aria-labelledby="before-heading">
-                <div class="wrap">
-                    <p class="kicker">Before / after</p>
-                    <h2 id="before-heading">The same agent. A gate in front.</h2>
-                    <div class="before-after">
-                        <article class="example">
-                            <h3>Before</h3>
-                            <p>
-                                You ask for formatting help. The agent installs
-                                a skill that says it cleans Markdown. A bundled
-                                setup script reads browser cookies and posts
-                                them away.
-                            </p>
-                        </article>
-                        <article class="example">
-                            <h3>With Gandalf</h3>
-                            <p>
-                                Gandalf reads the files first. Runtime asks for
-                                the tool. The hook refuses it before execution.
-                            </p>
-                            <pre><code><span class="red">GANDALF: THOU SHALL NOT PASS</span>
-reason: credential exfiltration
-ran: <span class="green">0 commands</span></code></pre>
-                        </article>
-                    </div>
-                </div>
-            </section>
-
-            <section aria-labelledby="numbers-heading">
-                <div class="wrap">
-                    <p class="kicker">Numbers</p>
-                    <h2 id="numbers-heading">This is not theoretical.</h2>
-                    <p class="copy">
-                        Gandalf is built around the threat that agent skills and
-                        MCP servers are code supply chains. They need a runtime
-                        gate, not a best-effort reminder.
-                    </p>
-                    <div class="numbers">
-                        <div class="number">
-                            <strong>341</strong>
-                            <span
-                                >malicious skills found in one agent-skill
-                                marketplace.</span
-                            >
-                        </div>
-                        <div class="number">
-                            <strong>13.4%</strong>
-                            <span
-                                >of one studied registry had critical
-                                issues.</span
-                            >
-                        </div>
-                        <div class="number">
-                            <strong>0</strong>
-                            <span
-                                >blocked commands run when the hook refuses the
-                                call.</span
-                            >
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section aria-labelledby="how-heading">
-                <div class="wrap">
-                    <p class="kicker">How it works</p>
-                    <h2 id="how-heading">Scan. Decide. Enforce. Remember.</h2>
-                    <div class="steps">
-                        <article class="step">
-                            <span class="step-num">1</span>
-                            <h3>Scan</h3>
-                            <p>
-                                Reads skill files, bundled scripts, MCP
-                                surfaces, commands, endpoints, and env/header
-                                names.
-                            </p>
-                        </article>
-                        <article class="step">
-                            <span class="step-num">2</span>
-                            <h3>Decide</h3>
-                            <p>
-                                Combines local rules, cache state, change
-                                checks, and optional engines.
-                            </p>
-                        </article>
-                        <article class="step">
-                            <span class="step-num">3</span>
-                            <h3>Enforce</h3>
-                            <p>
-                                Blocks unsafe calls in the PreToolUse hook
-                                before execution.
-                            </p>
-                        </article>
-                        <article class="step">
-                            <span class="step-num">4</span>
-                            <h3>Remember</h3>
-                            <p>
-                                Keeps local scan history and hook activity so
-                                each decision can be reviewed.
-                            </p>
-                        </article>
-                    </div>
-                </div>
-            </section>
-
-            <section id="install" aria-labelledby="install-heading">
-                <div class="wrap">
-                    <p class="kicker">Install</p>
-                    <h2 id="install-heading">
-                        The first command installs the gate.
-                    </h2>
-                    <div class="install-grid">
-                        <div class="install-box">
-                            <div class="install-head">
-                                <span id="installTitle">Shell</span>
-                                <button
-                                    class="copy-btn"
-                                    type="button"
-                                    id="installCopy"
-                                    data-copy="curl -fsSL https://gandalf.sh/install | sh
-gandalf --target all --engines local"
-                                    aria-label="Copy install commands"
-                                >
-                                    Copy
-                                </button>
-                            </div>
-                            <pre><code id="installCommands"><span class="prompt">$</span> curl -fsSL https://gandalf.sh/install | sh
-<span class="prompt">$</span> gandalf --target all --engines local</code></pre>
-                            <p class="install-use" id="installUse">
-                                Use: scan everything locally, then let the hook
-                                block unsafe runtime calls.
-                            </p>
-                            <div
-                                class="install-tabs"
-                                role="tablist"
-                                aria-label="Install platform"
-                            >
-                                <button
-                                    class="tab-btn"
-                                    type="button"
-                                    role="tab"
-                                    aria-selected="true"
-                                    data-platform="shell"
-                                >
-                                    Shell
-                                </button>
-                                <button
-                                    class="tab-btn"
-                                    type="button"
-                                    role="tab"
-                                    aria-selected="false"
-                                    data-platform="claude"
-                                >
-                                    Claude Code
-                                </button>
-                                <button
-                                    class="tab-btn"
-                                    type="button"
-                                    role="tab"
-                                    aria-selected="false"
-                                    data-platform="codex"
-                                >
-                                    Codex
-                                </button>
-                            </div>
-                        </div>
-
-                        <div
-                            class="wall"
-                            id="scanWall"
-                            role="img"
-                            aria-label="Gandalf gating runtime calls and blocking risky requests."
-                        >
-                            <div class="wall-top">
-                                <span>Runtime requests</span>
-                                <span class="status-red">Gated</span>
-                            </div>
-                            <div class="wall-stage" aria-hidden="true">
-                                <span class="wall-label">Runtime gate</span>
-                                <div class="request-card blocked-card">
-                                    <div>
-                                        <span
-                                            class="request-name"
-                                            id="blockedName"
-                                            >reverse-shell-helper</span
-                                        >
-                                        <span
-                                            class="request-risk"
-                                            id="blockedRisk"
-                                            >reverse shell</span
-                                        >
-                                    </div>
-                                </div>
-                                <div class="request-card good-one">
-                                    <div>
-                                        <span
-                                            class="request-name"
-                                            id="goodOneName"
-                                            >gandalf</span
-                                        >
-                                        <span
-                                            class="request-risk ok"
-                                            id="goodOneRisk"
-                                            >clean</span
-                                        >
-                                    </div>
-                                </div>
-                                <div class="request-card good-two">
-                                    <div>
-                                        <span
-                                            class="request-name"
-                                            id="goodTwoName"
-                                            >docs-helper</span
-                                        >
-                                        <span
-                                            class="request-risk ok"
-                                            id="goodTwoRisk"
-                                            >clean</span
-                                        >
-                                    </div>
-                                </div>
-                                <div class="stamp stamp-block">Blocked</div>
-                                <div class="stamp stamp-pass stamp-good-one">
-                                    Cleared
-                                </div>
-                                <div class="stamp stamp-pass stamp-good-two">
-                                    Cleared
-                                </div>
-                            </div>
-                            <div class="receipt">
-                                <dl class="receipt-grid">
-                                    <dt>blocked</dt>
-                                    <dd class="red" id="receiptBlocked">
-                                        reverse-shell-helper
-                                    </dd>
-                                    <dt>cleared</dt>
-                                    <dd class="green" id="receiptPassed">
-                                        gandalf, docs-helper
-                                    </dd>
-                                    <dt>action</dt>
-                                    <dd>exit 2 on risk</dd>
-                                    <dt>ran</dt>
-                                    <dd>0 blocked commands</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section aria-labelledby="commands-heading">
-                <div class="wrap">
-                    <p class="kicker">Commands</p>
-                    <h2 id="commands-heading">Ask what ran. Ask what stopped.</h2>
-                    <table class="command-table">
-                        <thead>
-                            <tr>
-                                <th>Command</th>
-                                <th>What it does</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>gandalf --target all</code></td>
-                                <td>Scan skills and MCP servers.</td>
-                            </tr>
-                            <tr>
-                                <td><code>gandalf --agent-summary</code></td>
-                                <td>Print the current high-risk summary.</td>
-                            </tr>
-                            <tr>
-                                <td><code>gandalf --review</code></td>
-                                <td>Review findings, false positives, and acknowledgements.</td>
-                            </tr>
-                            <tr>
-                                <td><code>gandalf --activity</code></td>
-                                <td>Show scan and hook activity.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
             <section class="faq" id="faq" aria-labelledby="faq-heading">
                 <div class="wrap">
-                    <p class="kicker">FAQ</p>
-                    <h2 id="faq-heading">Sharp answers only.</h2>
+                    <h2 id="faq-heading">FAQ</h2>
                     <div class="faq-list">
                         <details>
                             <summary>What does Gandalf check?</summary>
@@ -1746,6 +887,7 @@ gandalf --target all --engines local"
                     <span>Gandalf</span>
                 </a>
                 <nav class="footer-links" aria-label="Footer">
+                    <a href="/docs/">Docs</a>
                     <a
                         href="https://github.com/mannanj/skillguard"
                         rel="noopener"
@@ -1768,6 +910,71 @@ gandalf --target all --engines local"
 
         <script>
             (function () {
+                var landingExperiment = {
+                    name: "gandalf-landing",
+                    goal: "install-intent",
+                    testedSlot: "headline",
+                    variants: {
+                        control: "Thou shall not pass.",
+                        b: "No scan. No run.",
+                    },
+                };
+                var variantParam = "";
+                try {
+                    variantParam =
+                        new URLSearchParams(window.location.search).get("v") ||
+                        "";
+                } catch (e) {}
+                var activeVariant = landingExperiment.variants[variantParam]
+                    ? variantParam
+                    : "control";
+                document.documentElement.setAttribute(
+                    "data-landing-variant",
+                    activeVariant,
+                );
+
+                function applyLandingVariant() {
+                    var slots = document.querySelectorAll(
+                        "[data-variant-slot]",
+                    );
+                    for (var i = 0; i < slots.length; i++) {
+                        var value =
+                            slots[i].getAttribute(
+                                "data-variant-" + activeVariant,
+                            ) ||
+                            slots[i].getAttribute("data-variant-control");
+                        if (value) {
+                            slots[i].textContent = value;
+                        }
+                    }
+                }
+
+                function trackConversion(action, detail) {
+                    var payload = {
+                        event: "gandalf_conversion",
+                        goal: landingExperiment.goal,
+                        action: action,
+                        variant: activeVariant,
+                    };
+                    if (detail) {
+                        payload.detail = detail;
+                    }
+                    window.dataLayer = window.dataLayer || [];
+                    window.dataLayer.push(payload);
+                    if (typeof window.plausible === "function") {
+                        window.plausible("Gandalf Install Intent", {
+                            props: payload,
+                        });
+                    }
+                    if (typeof window.CustomEvent === "function") {
+                        document.dispatchEvent(
+                            new CustomEvent("gandalf:conversion", {
+                                detail: payload,
+                            }),
+                        );
+                    }
+                }
+
                 var installs = {
                     shell: {
                         title: "Shell",
@@ -1866,19 +1073,25 @@ gandalf --target all --engines local"
                 installCopy.addEventListener("click", function () {
                     var btn = this;
                     var text = btn.getAttribute("data-copy") || "";
+                    var action =
+                        btn.getAttribute("data-conversion-action") ||
+                        "copy-install-command";
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(text).then(
                             function () {
                                 flash(btn);
+                                trackConversion(action, installTitle.textContent);
                             },
                             function () {
                                 legacyCopy(text);
                                 flash(btn);
+                                trackConversion(action, installTitle.textContent);
                             },
                         );
                     } else {
                         legacyCopy(text);
                         flash(btn);
+                        trackConversion(action, installTitle.textContent);
                     }
                 });
 
@@ -1888,238 +1101,21 @@ gandalf --target all --engines local"
                     });
                 }
 
-                var scanItems = [
-                    {
-                        "name": "gandalf",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "runtime gate source"
-                    },
-                    {
-                        "name": "docs-helper",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "reads docs, writes notes"
-                    },
-                    {
-                        "name": "release-notes",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "summarizes commits"
-                    },
-                    {
-                        "name": "test-runner",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "runs local tests"
-                    },
-                    {
-                        "name": "github-pr-review",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "reviews diffs only"
-                    },
-                    {
-                        "name": "reverse-shell-helper",
-                        "verdict": "blocked",
-                        "risk": "reverse shell",
-                        "summary": "opens remote shell from setup.sh"
-                    },
-                    {
-                        "name": "python-refactor",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "edits Python files"
-                    },
-                    {
-                        "name": "browser-cookie-exporter",
-                        "verdict": "blocked",
-                        "risk": "credential theft",
-                        "summary": "copies browser session cookies"
-                    },
-                    {
-                        "name": "figma-export",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "exports design specs"
-                    },
-                    {
-                        "name": "ssh-key-harvester",
-                        "verdict": "blocked",
-                        "risk": "private keys",
-                        "summary": "reads ~/.ssh and uploads keys"
-                    },
-                    {
-                        "name": "cloudflare-worker",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "builds Worker code"
-                    },
-                    {
-                        "name": "env-token-relay",
-                        "verdict": "blocked",
-                        "risk": "secret exfil",
-                        "summary": "posts env vars to remote API"
-                    },
-                    {
-                        "name": "pdf-reader",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "extracts local PDF text"
-                    },
-                    {
-                        "name": "repo-wiper",
-                        "verdict": "blocked",
-                        "risk": "destructive rm",
-                        "summary": "removes repo files recursively"
-                    },
-                    {
-                        "name": "stripe-webhook",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "checks webhook handlers"
-                    },
-                    {
-                        "name": "npm-postinstall-runner",
-                        "verdict": "blocked",
-                        "risk": "postinstall exec",
-                        "summary": "runs install-time shell"
-                    },
-                    {
-                        "name": "resend-email",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "drafts email templates"
-                    },
-                    {
-                        "name": "token-pastebin-sync",
-                        "verdict": "blocked",
-                        "risk": "secret upload",
-                        "summary": "publishes tokens to paste site"
-                    },
-                    {
-                        "name": "mcp-introspector",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "lists MCP tools"
-                    },
-                    {
-                        "name": "sudo-persist",
-                        "verdict": "blocked",
-                        "risk": "privilege escalation",
-                        "summary": "adds a persistent sudo hook"
-                    },
-                    {
-                        "name": "data-migration",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "plans schema changes"
-                    },
-                    {
-                        "name": "wallet-drain-helper",
-                        "verdict": "blocked",
-                        "risk": "wallet theft",
-                        "summary": "targets wallet files"
-                    },
-                    {
-                        "name": "security-audit",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "reports suspicious code"
-                    },
-                    {
-                        "name": "shadow-git-push",
-                        "verdict": "blocked",
-                        "risk": "unauthorized push",
-                        "summary": "pushes changes to hidden remote"
-                    },
-                    {
-                        "name": "markdown-converter",
-                        "verdict": "approved",
-                        "risk": "clean",
-                        "summary": "converts docs locally"
-                    }
-                ];
-
-                var blockedName = document.getElementById("blockedName");
-                var blockedRisk = document.getElementById("blockedRisk");
-                var goodOneName = document.getElementById("goodOneName");
-                var goodOneRisk = document.getElementById("goodOneRisk");
-                var goodTwoName = document.getElementById("goodTwoName");
-                var goodTwoRisk = document.getElementById("goodTwoRisk");
-                var receiptBlocked =
-                    document.getElementById("receiptBlocked");
-                var receiptPassed = document.getElementById("receiptPassed");
-                var blockedItems = scanItems.filter(function (item) {
-                    return item.verdict === "blocked";
-                });
-                var approvedItems = scanItems.filter(function (item) {
-                    return item.verdict === "approved";
-                });
-                var cursors = { blocked: 0, approved: 0 };
-                var completedCount = 0;
-                var blockedNames = [];
-                var passedNames = [];
-                var reduceMotion =
-                    window.matchMedia &&
-                    window.matchMedia("(prefers-reduced-motion: reduce)")
-                        .matches;
-                var cycleMs = reduceMotion ? 4000 : 5000;
-
-                function nextItemByVerdict(verdict) {
-                    if (completedCount >= scanItems.length) {
-                        cursors.blocked = 0;
-                        cursors.approved = 0;
-                        completedCount = 0;
-                        blockedNames = [];
-                        passedNames = [];
-                    }
-                    var pool =
-                        verdict === "blocked" ? blockedItems : approvedItems;
-                    if (!pool.length) {
-                        pool = scanItems;
-                    }
-                    var item = pool[cursors[verdict] % pool.length];
-                    cursors[verdict] += 1;
-                    completedCount += 1;
-                    return item;
-                }
-
-                function setBlocked(item) {
-                    blockedName.textContent = item.name;
-                    blockedRisk.textContent = item.risk;
-                    blockedNames.push(item.name);
-                    receiptBlocked.textContent = blockedNames.join(", ");
-                }
-
-                function setPassed(nameNode, riskNode, item) {
-                    nameNode.textContent = item.name;
-                    riskNode.textContent = item.risk;
-                    passedNames.push(item.name);
-                    receiptPassed.textContent = passedNames.join(", ");
-                }
-
-                function advanceScan() {
-                    setBlocked(nextItemByVerdict("blocked"));
-                    setTimeout(function () {
-                        setPassed(
-                            goodOneName,
-                            goodOneRisk,
-                            nextItemByVerdict("approved"),
+                var primaryLinks = document.querySelectorAll(
+                    "a[data-primary-cta='install']",
+                );
+                for (var i = 0; i < primaryLinks.length; i++) {
+                    primaryLinks[i].addEventListener("click", function () {
+                        trackConversion(
+                            this.getAttribute("data-conversion-action") ||
+                                "install",
+                            this.getAttribute("href") || "",
                         );
-                    }, reduceMotion ? 0 : 2000);
-                    setTimeout(function () {
-                        setPassed(
-                            goodTwoName,
-                            goodTwoRisk,
-                            nextItemByVerdict("approved"),
-                        );
-                    }, reduceMotion ? 0 : 3200);
+                    });
                 }
 
+                applyLandingVariant();
                 setInstall("shell");
-                advanceScan();
-                setInterval(advanceScan, cycleMs);
             })();
         </script>
     </body>

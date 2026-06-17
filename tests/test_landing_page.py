@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import json
 import re
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 LANDING_HTML = ROOT / "landing" / "public" / "index.html"
+DOCS_HTML = ROOT / "landing" / "public" / "docs" / "index.html"
 MASCOT_SVG = ROOT / "landing" / "public" / "gandalf-mascot.svg"
 
 
@@ -15,10 +14,8 @@ def _html() -> str:
     return LANDING_HTML.read_text(encoding="utf-8")
 
 
-def _scan_items(html: str) -> list[dict[str, str]]:
-    match = re.search(r"var scanItems = (\[.*?\]);", html, re.DOTALL)
-    assert match, "landing page should define data-driven scan items"
-    return json.loads(match.group(1))
+def _docs_html() -> str:
+    return DOCS_HTML.read_text(encoding="utf-8")
 
 
 class LandingPageTests(unittest.TestCase):
@@ -38,7 +35,7 @@ class LandingPageTests(unittest.TestCase):
             "Gandalf checks Claude Code skills and MCP servers",
             compact_html,
         )
-        self.assertIn("0 commands ran.", html)
+        self.assertIn("0 commands", html)
         self.assertIn("No scan. No run.", html)
         self.assertIn("curl -fsSL https://gandalf.sh/install | sh", html)
         self.assertIn("gandalf --target all --engines local", html)
@@ -48,12 +45,53 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('data-platform="shell"', html)
         self.assertIn('data-platform="claude"', html)
         self.assertIn('data-platform="codex"', html)
-        self.assertIn("<h2 id=\"how-heading\">Scan. Decide. Enforce. Remember.</h2>", html)
-        self.assertIn("<h2 id=\"install-heading\">", html)
-        self.assertIn("<h2 id=\"faq-heading\">Sharp answers only.</h2>", html)
+        self.assertIn('href="/docs/"', html)
+        self.assertIn('class="install-box hero-install"', html)
+        self.assertIn("<h2 id=\"faq-heading\">FAQ</h2>", html)
+        self.assertNotIn("<h2 id=\"how-heading\">", html)
+        self.assertNotIn("<h2 id=\"install-heading\">", html)
+        self.assertNotIn("<h2 id=\"commands-heading\">", html)
+        self.assertNotIn("<h2 id=\"problem-heading\">", html)
+        self.assertNotIn("<h2 id=\"before-heading\">", html)
+        self.assertNotIn("<h2 id=\"numbers-heading\">", html)
+        self.assertNotIn("<section class=\"final-cta\"", html)
+        self.assertNotIn('class="terminal"', html)
+        self.assertNotIn('class="wall"', html)
+        self.assertNotIn("var scanItems =", html)
         self.assertNotIn("SkillGuard - trust your agent tools", html)
         self.assertNotIn("<span>Trust</span>your agent tools", html)
         self.assertNotIn("guarding against malicious behavior", html)
+
+    def test_landing_page_has_conversion_skill_hooks(self) -> None:
+        html = _html()
+
+        self.assertIn('data-conversion-goal="install-intent"', html)
+        self.assertIn('data-primary-cta="install"', html)
+        self.assertIn('data-variant-slot="headline"', html)
+        self.assertIn('data-variant-control="Thou shall not pass."', html)
+        self.assertIn('data-variant-b="No scan. No run."', html)
+        self.assertIn('var landingExperiment = {', html)
+        self.assertIn('goal: "install-intent"', html)
+        self.assertIn('testedSlot: "headline"', html)
+        self.assertIn('new URLSearchParams(window.location.search).get("v")', html)
+        self.assertIn('data-landing-variant', html)
+        self.assertIn("applyLandingVariant", html)
+        self.assertIn("trackConversion", html)
+        self.assertIn("gandalf_conversion", html)
+        self.assertIn("gandalf:conversion", html)
+        self.assertIn('plausible("Gandalf Install Intent"', html)
+        self.assertNotIn('<section class="final-cta"', html)
+
+    def test_docs_page_holds_command_reference(self) -> None:
+        html = _docs_html()
+
+        self.assertIn("<title>Gandalf docs - commands</title>", html)
+        self.assertIn('href="/"', html)
+        self.assertIn("Command reference", html)
+        self.assertIn("<code>gandalf --target all</code>", html)
+        self.assertIn("<code>gandalf --agent-summary</code>", html)
+        self.assertIn("<code>gandalf --review</code>", html)
+        self.assertIn("<code>gandalf --activity</code>", html)
 
     def test_mascot_asset_matches_black_white_cartoon_direction(self) -> None:
         svg = MASCOT_SVG.read_text(encoding="utf-8")
@@ -66,73 +104,24 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn("glasses", svg)
         self.assertNotIn("<text", svg)
 
-    def test_animation_keeps_runtime_gate_ui(self) -> None:
+    def test_runtime_animation_has_been_removed(self) -> None:
         html = _html()
 
-        self.assertIn('class="wall"', html)
-        self.assertIn('class="wall-stage"', html)
-        self.assertIn('class="request-card blocked-card"', html)
-        self.assertIn('class="request-card good-one"', html)
-        self.assertIn('class="request-card good-two"', html)
-        self.assertIn('class="stamp stamp-block"', html)
-        self.assertIn('class="stamp stamp-pass stamp-good-one"', html)
-        self.assertIn('class="stamp stamp-pass stamp-good-two"', html)
-        self.assertIn('class="receipt"', html)
-        self.assertIn('class="receipt-grid"', html)
-        self.assertIn("@keyframes bad-block", html)
-        self.assertIn("@keyframes good-one-pass", html)
-        self.assertIn("@keyframes good-two-pass", html)
-        self.assertIn("animation: bad-block 5s", html)
-        self.assertIn("Gandalf gating runtime calls", html)
+        self.assertNotIn('class="wall"', html)
+        self.assertNotIn('class="wall-stage"', html)
+        self.assertNotIn('class="request-card blocked-card"', html)
+        self.assertNotIn('class="stamp stamp-block"', html)
+        self.assertNotIn('class="receipt"', html)
+        self.assertNotIn("@keyframes bad-block", html)
+        self.assertNotIn("@keyframes good-one-pass", html)
+        self.assertNotIn("@keyframes good-two-pass", html)
+        self.assertNotIn("animation: bad-block 5s", html)
+        self.assertNotIn("Gandalf gating runtime calls", html)
         self.assertNotIn('class="scanner"', html)
         self.assertNotIn('class="scan-stage"', html)
         self.assertNotIn('class="skill-card"', html)
         self.assertNotIn('id="scanCount"', html)
         self.assertNotIn('id="scanReset"', html)
-
-    def test_scan_animation_uses_25_realistic_skill_names(self) -> None:
-        items = _scan_items(_html())
-
-        self.assertEqual(len(items), 25)
-        names = {item["name"] for item in items}
-        self.assertTrue({"docs-helper", "release-notes", "gandalf"}.issubset(names))
-        self.assertTrue(
-            {
-                "reverse-shell-helper",
-                "browser-cookie-exporter",
-                "ssh-key-harvester",
-                "env-token-relay",
-                "repo-wiper",
-            }.issubset(names)
-        )
-        self.assertEqual({item["verdict"] for item in items}, {"approved", "blocked"})
-        self.assertGreaterEqual(sum(item["verdict"] == "blocked" for item in items), 8)
-        self.assertTrue(all(item["summary"] for item in items))
-
-    def test_scan_animation_updates_wall_text_from_skill_items(self) -> None:
-        html = _html()
-
-        self.assertIn('id="blockedName"', html)
-        self.assertIn('id="blockedRisk"', html)
-        self.assertIn('id="goodOneName"', html)
-        self.assertIn('id="goodTwoName"', html)
-        self.assertIn('id="receiptBlocked"', html)
-        self.assertIn('id="receiptPassed"', html)
-        self.assertIn("nextItemByVerdict", html)
-        self.assertIn("completedCount += 1", html)
-        self.assertIn("completedCount >= scanItems.length", html)
-        self.assertIn("blockedNames.push(item.name)", html)
-        self.assertIn("passedNames.push(item.name)", html)
-        self.assertIn('join(", ")', html)
-        self.assertIn("cycleMs = reduceMotion ? 4000 : 5000", html)
-        self.assertIn("blockedName.textContent", html)
-        self.assertIn("nameNode.textContent", html)
-        self.assertIn("receiptBlocked.textContent", html)
-        self.assertIn("receiptPassed.textContent", html)
-        self.assertIn("setInterval(advanceScan", html)
-        self.assertNotIn("receiptGrid.prepend", html)
-        self.assertNotIn("request-card--blocked", html)
-        self.assertNotIn("request-card--approved", html)
 
 
 if __name__ == "__main__":
