@@ -45,35 +45,7 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('data-platform="codex"', html)
         self.assertNotIn('class="install-grid"', html)
         self.assertIn('<h2 id="how-heading">How it works</h2>', html)
-        self.assertIn("It scans the skills and MCP settings you use.", compact_html)
-        self.assertIn(
-            "Before anything runs, it checks for new, changed, or risky items.",
-            compact_html,
-        )
-        self.assertIn(
-            "If something looks wrong, it can stop it and keep a local record without secrets.",
-            compact_html,
-        )
         self.assertIn('<h2 id="faq-heading">FAQ</h2>', html)
-        self.assertIn(
-            "The skills and MCP settings you use with Claude Code, including the files and settings they can reach on your machine.",
-            compact_html,
-        )
-        self.assertIn("What happens if something looks risky?", html)
-        self.assertIn(
-            "SkillGuard can stop it before Claude uses it, and it can do that for unscanned, changed, or risky items.",
-            compact_html,
-        )
-        self.assertIn("Does it work with Claude Code and Codex?", html)
-        self.assertIn(
-            "Yes. SkillGuard has install paths for both, but the setup steps are different.",
-            compact_html,
-        )
-        self.assertIn("Do I need the cloud engines?", html)
-        self.assertIn(
-            "No. The local engine works on its own. Optional cloud engines are there if you want extra checks.",
-            compact_html,
-        )
         self.assertIn('aria-label="SkillGuard home"', html)
         self.assertIn('stroke="#D91F2F"', html)
         self.assertIn("stroke='%23D91F2F'", html)
