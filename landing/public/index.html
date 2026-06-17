@@ -84,7 +84,8 @@
                 --hero-rule-tagline-gap: var(--space-sm);
                 --hero-tagline-facts-gap: var(--space-sm);
                 --hero-facts-claim-gap: var(--space-3xl);
-                --hero-copy-stack-gap: var(--space-sm);
+                --hero-copy-element-gap: 14px;
+                --hero-copy-line-height: 1.32;
                 --mono:
                     ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
                 --sans:
@@ -343,7 +344,7 @@
 
             .claim {
                 max-width: 900px;
-                margin: 0 auto var(--hero-copy-stack-gap);
+                margin: 0 auto var(--hero-copy-element-gap);
                 font-size: clamp(1.7rem, 2.8vw, 2.15rem);
                 line-height: 1.1;
                 font-weight: 800;
@@ -351,17 +352,11 @@
             }
 
             .sub {
-                display: grid;
-                gap: var(--hero-copy-stack-gap);
                 max-width: 920px;
-                margin: 0 auto var(--hero-copy-stack-gap);
+                margin: 0 auto var(--hero-copy-element-gap);
                 color: var(--ink);
                 font-size: clamp(1.1rem, 2.15vw, 1.55rem);
-                line-height: 1.2;
-            }
-
-            .sub-line {
-                display: block;
+                line-height: var(--hero-copy-line-height);
             }
 
             pre {
@@ -914,16 +909,11 @@
                         Gandalf blocks unsafe skills before they run.
                     </p>
                     <p class="sub">
-                        <span class="sub-line"
-                            >Check agent skills and MCPs on Claude, Codex, and
-                            other agent harnesses before runtime.</span
-                        >
-                        <span class="sub-line"
-                            >Block anything malicious that is unscanned,
-                            changed, corrupted, critical, high-risk, and
-                            more.</span
-                        >
-                        <span class="sub-line">Free and open-source.</span>
+                        Check agent skills and MCPs on Claude, Codex, and other
+                        agent harnesses before runtime.<br />
+                        Block anything malicious that is unscanned, changed,
+                        corrupted, critical, high-risk, and more.<br />
+                        Free and open-source.
                     </p>
 
                     <div class="install-box hero-install" id="install">
