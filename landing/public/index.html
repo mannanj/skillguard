@@ -1065,28 +1065,26 @@ skillguard --target all --engines local"
 
             <section aria-labelledby="how-heading">
                 <div class="wrap">
-                    <h2 id="how-heading">What SkillGuard does</h2>
+                    <h2 id="how-heading">How it works</h2>
                     <div class="steps">
                         <article class="step">
                             <span class="step-num">1</span>
                             <p>
-                                It looks at the skills and MCP settings you
-                                already use.
+                                It scans the skills and MCP settings you use.
                             </p>
                         </article>
                         <article class="step">
                             <span class="step-num">2</span>
                             <p>
-                                Before something runs, it checks whether that
-                                item is new, changed, or risky.
+                                Before anything runs, it checks for new,
+                                changed, or risky items.
                             </p>
                         </article>
                         <article class="step">
                             <span class="step-num">3</span>
                             <p>
-                                When it finds a problem, it can stop the item
-                                and keep a local record without saving secret
-                                values.
+                                If something looks wrong, it can stop it and
+                                keep a local record without secrets.
                             </p>
                         </article>
                     </div>
@@ -1102,43 +1100,37 @@ skillguard --target all --engines local"
                             <div class="answer">
                                 The skills and MCP settings you use with
                                 Claude Code, including the files and settings
-                                it can reach from your local setup.
+                                they can reach on your machine.
                             </div>
                         </details>
                         <details>
-                            <summary>Does it block MCP calls?</summary>
+                            <summary>What happens if something looks risky?</summary>
                             <div class="answer">
-                                Yes. <code>mcp_policy</code> defaults to
-                                <code>enforce</code>, so unknown or
-                                critical/high MCP servers are refused.
+                                SkillGuard can stop it before Claude uses it,
+                                and it can do that for unscanned, changed, or
+                                risky items.
                             </div>
                         </details>
                         <details>
                             <summary>Do API keys touch disk?</summary>
                             <div class="answer">
-                                No. Env and header values are inspected in
-                                memory, then redacted before records persist.
+                                No. Secret values are checked in memory and
+                                redacted before anything is saved.
                             </div>
                         </details>
                         <details>
-                            <summary>What leaves my machine?</summary>
+                            <summary>Does it work with Claude Code and Codex?</summary>
                             <div class="answer">
-                                Nothing with the local engine. Files leave only
-                                when you enable an optional cloud engine.
+                                Yes. SkillGuard has install paths for both, but
+                                the setup steps are different.
                             </div>
                         </details>
                         <details>
-                            <summary>Prefer the Claude Code plugin?</summary>
+                            <summary>Do I need the cloud engines?</summary>
                             <div class="answer">
-                                Inside Claude Code, run
-                                <code
-                                    >/plugin marketplace add
-                                    mannanj/skillguard</code
-                                >
-                                and then
-                                <code
-                                    >/plugin install skillguard@skillguard</code
-                                >.
+                                No. The local engine works on its own. Optional
+                                cloud engines are there if you want extra
+                                checks.
                             </div>
                         </details>
                     </div>
