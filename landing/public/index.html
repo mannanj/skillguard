@@ -1065,29 +1065,28 @@ skillguard --target all --engines local"
 
             <section aria-labelledby="how-heading">
                 <div class="wrap">
-                    <h2 id="how-heading">How it works</h2>
+                    <h2 id="how-heading">What SkillGuard does</h2>
                     <div class="steps">
                         <article class="step">
                             <span class="step-num">1</span>
                             <p>
-                                Check skills, bundled files, and MCP server
-                                config with local or optional engines.
+                                It looks at the skills and MCP settings you
+                                already use.
                             </p>
                         </article>
                         <article class="step">
                             <span class="step-num">2</span>
                             <p>
-                                At runtime, use cached verdicts. Block unknown,
-                                changed, critical, and high-risk targets unless
-                                allowed.
+                                Before something runs, it checks whether that
+                                item is new, changed, or risky.
                             </p>
                         </article>
                         <article class="step">
                             <span class="step-num">3</span>
                             <p>
-                                Keep history and hook decisions local. Inspect
-                                secrets in memory; persist only redacted
-                                records.
+                                When it finds a problem, it can stop the item
+                                and keep a local record without saving secret
+                                values.
                             </p>
                         </article>
                     </div>
@@ -1101,9 +1100,9 @@ skillguard --target all --engines local"
                         <details>
                             <summary>What does it check?</summary>
                             <div class="answer">
-                                Agent skills, bundled files, and MCP server
-                                surfaces from global, project, and plugin
-                                config.
+                                The skills and MCP settings you use with
+                                Claude Code, including the files and settings
+                                it can reach from your local setup.
                             </div>
                         </details>
                         <details>

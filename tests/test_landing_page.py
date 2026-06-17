@@ -44,8 +44,21 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('data-platform="claude"', html)
         self.assertIn('data-platform="codex"', html)
         self.assertNotIn('class="install-grid"', html)
-        self.assertIn('<h2 id="how-heading">How it works</h2>', html)
+        self.assertIn('<h2 id="how-heading">What SkillGuard does</h2>', html)
+        self.assertIn("It looks at the skills and MCP settings you already use.", compact_html)
+        self.assertIn(
+            "Before something runs, it checks whether that item is new, changed, or risky.",
+            compact_html,
+        )
+        self.assertIn(
+            "When it finds a problem, it can stop the item and keep a local record without saving secret values.",
+            compact_html,
+        )
         self.assertIn('<h2 id="faq-heading">FAQ</h2>', html)
+        self.assertIn(
+            "The skills and MCP settings you use with Claude Code, including the files and settings it can reach from your local setup.",
+            compact_html,
+        )
         self.assertIn('aria-label="SkillGuard home"', html)
         self.assertIn('stroke="#D91F2F"', html)
         self.assertIn("stroke='%23D91F2F'", html)
