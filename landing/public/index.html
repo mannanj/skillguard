@@ -1,803 +1,1540 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SkillGuard - only trusted tools run</title>
-<meta name="description" content="SkillGuard checks agent tools before runtime, blocks changed or high-risk targets, and keeps secrets redacted.">
-<link rel="canonical" href="https://skillguard.sh/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D91F2F' stroke-width='2.2' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M12 7v7'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E">
-
-<meta property="og:type" content="website">
-<meta property="og:title" content="SkillGuard - only trusted tools run">
-<meta property="og:description" content="Check agent tools before runtime, then gate use from local verdicts.">
-<meta property="og:image" content="https://skillguard.sh/og.png">
-<meta property="og:url" content="https://skillguard.sh/">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SkillGuard - only trusted tools run">
-<meta name="twitter:description" content="A local-first runtime gate for agent tools.">
-<meta name="twitter:image" content="https://skillguard.sh/og.png">
-
-<style>
-:root {
-  --paper: #f4f4f2;
-  --ink: #111111;
-  --ink-2: #2a2a2a;
-  --muted: #666666;
-  --line: #d5d5d2;
-  --panel: #ffffff;
-  --panel-dark: #151515;
-  --red: #d91f2f;
-  --red-dark: #9f111d;
-  --ok: #147a4c;
-  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --max: 1120px;
-}
-
-* { box-sizing: border-box; }
-
-html { scroll-behavior: smooth; }
-
-body {
-  margin: 0;
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px),
-    var(--paper);
-  background-size: 44px 44px;
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: 17px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-a { color: var(--ink); text-decoration-color: var(--red); text-underline-offset: 3px; }
-a:hover { color: var(--red-dark); }
-
-a:focus-visible,
-button:focus-visible,
-summary:focus-visible {
-  outline: 3px solid var(--red);
-  outline-offset: 3px;
-}
-
-.skip-link {
-  position: absolute;
-  left: -999px;
-  top: 0;
-  z-index: 100;
-  background: var(--red);
-  color: #fff;
-  padding: 10px 14px;
-  font-weight: 800;
-}
-.skip-link:focus { left: 0; }
-
-.wrap {
-  width: min(var(--max), calc(100% - 40px));
-  margin: 0 auto;
-}
-
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(244, 244, 242, 0.88);
-  border-bottom: 2px solid var(--ink);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  min-height: 62px;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--ink);
-  text-decoration: none;
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.mark-box {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  background: var(--ink);
-  color: #fff;
-  border: 2px solid var(--ink);
-  font-family: var(--mono);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  font-family: var(--mono);
-  font-size: 13px;
-  text-transform: uppercase;
-}
-
-.nav-links a {
-  color: var(--ink);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-}
-.nav-links a:hover { border-color: var(--red); }
-
-.hero {
-  padding: 72px 0 58px;
-  border-bottom: 2px solid var(--ink);
-}
-
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
-  gap: 42px;
-  align-items: center;
-}
-
-.hero-grid > * { min-width: 0; }
-
-h1 {
-  max-width: 680px;
-  margin: 0 0 22px;
-  font-size: 78px;
-  line-height: 0.93;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-h1 span {
-  color: var(--red);
-  display: block;
-}
-
-.sub {
-  max-width: 670px;
-  margin: 0 0 28px;
-  color: var(--ink-2);
-  font-size: 21px;
-  line-height: 1.42;
-  overflow-wrap: anywhere;
-}
-
-.install-box {
-  width: 100%;
-  min-width: 0;
-  max-width: 720px;
-  background: var(--panel-dark);
-  color: #f7f7f7;
-  border: 2px solid var(--ink);
-  box-shadow: 8px 8px 0 var(--red);
-}
-
-.install-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid #3a3a3a;
-  padding: 10px 12px;
-  font-family: var(--mono);
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.copy-btn {
-  appearance: none;
-  border: 1px solid #f7f7f7;
-  background: transparent;
-  color: #f7f7f7;
-  padding: 6px 10px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  text-transform: uppercase;
-}
-.copy-btn:hover,
-.copy-btn.copied {
-  background: var(--red);
-  border-color: var(--red);
-  color: #fff;
-}
-
-.install-box pre {
-  margin: 0;
-  padding: 16px 14px 18px;
-  overflow-x: auto;
-  font-family: var(--mono);
-  font-size: 14px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.prompt { color: #ff7a86; user-select: none; }
-
-.wall {
-  width: 100%;
-  min-width: 0;
-  background: var(--panel);
-  border: 2px solid var(--ink);
-  box-shadow: 10px 10px 0 var(--ink);
-  overflow: hidden;
-}
-
-.wall-top {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 2px solid var(--ink);
-  padding: 12px 14px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.status-red {
-  background: var(--red);
-  color: #fff;
-  padding: 5px 8px;
-}
-
-.wall-stage {
-  position: relative;
-  height: 260px;
-  overflow: hidden;
-  --block-stop: clamp(22px, calc(50% - 270px), 172px);
-  --pass-mid: calc(50% + 22px);
-  background:
-    linear-gradient(90deg, transparent 0 49%, var(--red) 49% 51%, transparent 51% 100%),
-    repeating-linear-gradient(0deg, #fff, #fff 19px, #eeeeec 20px);
-}
-
-.wall-label {
-  position: absolute;
-  top: 18px;
-  left: calc(50% + 16px);
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--red);
-  text-transform: uppercase;
-}
-
-.request-card {
-  position: absolute;
-  left: 22px;
-  top: 84px;
-  width: 250px;
-  border: 2px solid var(--ink);
-  background: #fff;
-  box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
-  font-family: var(--mono);
-  opacity: 0;
-}
-
-.good-one { top: 60px; }
-.good-two { top: 150px; }
-
-.request-card::before {
-  content: "Skill";
-  display: block;
-  background: var(--ink);
-  color: #fff;
-  padding: 7px 9px;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.request-card div { padding: 9px; }
-
-.request-name {
-  display: block;
-  margin-bottom: 7px;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.request-risk {
-  display: inline-block;
-  border: 2px solid var(--red);
-  color: var(--red);
-  padding: 3px 6px;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.request-risk.ok {
-  border-color: var(--ok);
-  color: var(--ok);
-}
-
-.stamp {
-  position: absolute;
-  right: 30px;
-  top: 82px;
-  border: 5px solid var(--red);
-  color: var(--red);
-  padding: 11px 14px;
-  font-family: var(--mono);
-  font-size: 30px;
-  font-weight: 900;
-  text-transform: uppercase;
-  transform: rotate(-9deg) scale(1);
-  opacity: 0;
-}
-
-.stamp-pass {
-  border-color: var(--ok);
-  color: var(--ok);
-  font-size: 24px;
-  transform: rotate(6deg) scale(1);
-}
-
-.stamp-good-one { top: 55px; }
-.stamp-good-two { top: 145px; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .blocked-card {
-    animation: bad-block 4.8s cubic-bezier(.45, 0, .18, 1) infinite;
-    animation-delay: -0.7s;
-  }
-  .good-one {
-    animation: good-one-pass 4.8s cubic-bezier(.45, 0, .18, 1) infinite;
-    animation-delay: -0.7s;
-  }
-  .good-two {
-    animation: good-two-pass 4.8s cubic-bezier(.45, 0, .18, 1) infinite;
-    animation-delay: -0.7s;
-  }
-  .stamp-block {
-    animation: block-stamp 4.8s steps(1, end) infinite;
-    animation-delay: -0.7s;
-  }
-  .stamp-good-one {
-    animation: pass-one-stamp 4.8s steps(1, end) infinite;
-    animation-delay: -0.7s;
-  }
-  .stamp-good-two {
-    animation: pass-two-stamp 4.8s steps(1, end) infinite;
-    animation-delay: -0.7s;
-  }
-}
-
-.receipt {
-  border-top: 2px solid var(--ink);
-  padding: 16px;
-  background: var(--panel-dark);
-  color: #f7f7f7;
-  font-family: var(--mono);
-  font-size: 13px;
-}
-
-.receipt-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 7px 13px;
-}
-
-.receipt dt { color: #a6a6a6; }
-.receipt dd { margin: 0; }
-.receipt .red { color: #ff7a86; font-weight: 800; }
-.receipt .ok { color: #83d9a8; font-weight: 800; }
-
-@keyframes bad-block {
-  0% { left: -300px; opacity: 0; transform: translateY(0); }
-  7% { opacity: 1; }
-  15% { left: 22px; opacity: 1; }
-  27% { left: var(--block-stop); opacity: 1; transform: translateY(0); }
-  34% { left: var(--block-stop); opacity: 1; transform: translateY(0); }
-  40% { left: var(--block-stop); opacity: 0; transform: translateY(14px); }
-  100% { left: var(--block-stop); opacity: 0; transform: translateY(14px); }
-}
-
-@keyframes good-one-pass {
-  0%, 40% { left: -300px; opacity: 0; transform: translateY(0); }
-  46% { left: 22px; opacity: 1; }
-  58% { left: var(--pass-mid); opacity: 1; }
-  68% { left: calc(100% + 32px); opacity: 0; }
-  100% { left: calc(100% + 32px); opacity: 0; }
-}
-
-@keyframes good-two-pass {
-  0%, 64% { left: -300px; opacity: 0; transform: translateY(0); }
-  70% { left: 22px; opacity: 1; }
-  82% { left: var(--pass-mid); opacity: 1; }
-  94% { left: calc(100% + 32px); opacity: 0; }
-  100% { left: calc(100% + 32px); opacity: 0; }
-}
-
-@keyframes block-stamp {
-  0%, 26% { opacity: 0; }
-  27%, 38% { opacity: 1; }
-  39%, 100% { opacity: 0; }
-}
-
-@keyframes pass-one-stamp {
-  0%, 56% { opacity: 0; }
-  57%, 65% { opacity: 1; }
-  66%, 100% { opacity: 0; }
-}
-
-@keyframes pass-two-stamp {
-  0%, 80% { opacity: 0; }
-  81%, 91% { opacity: 1; }
-  92%, 100% { opacity: 0; }
-}
-
-section {
-  padding: 70px 0;
-  border-bottom: 2px solid var(--ink);
-}
-
-.section-kicker {
-  margin: 0 0 12px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: var(--red);
-}
-
-h2 {
-  margin: 0 0 28px;
-  max-width: 780px;
-  font-size: 44px;
-  line-height: 1.04;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-}
-
-.step {
-  background: var(--panel);
-  border: 2px solid var(--ink);
-  padding: 22px 22px 24px;
-  min-height: 190px;
-}
-
-.step-num {
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 18px;
-  background: var(--ink);
-  color: #fff;
-  font-family: var(--mono);
-  font-weight: 900;
-}
-
-.step p { margin: 0; color: var(--muted); }
-.step code,
-.faq code {
-  font-family: var(--mono);
-  font-size: 0.9em;
-  color: var(--red-dark);
-}
-
-.faq {
-  background: var(--panel-dark);
-  color: #f7f7f7;
-}
-
-.faq h2 { color: #fff; }
-
-.faq code { color: #ff7a86; }
-
-.faq-list {
-  border: 2px solid #f7f7f7;
-  background: #191919;
-  box-shadow: 8px 8px 0 var(--red);
-}
-
-details {
-  border-bottom: 2px solid #f7f7f7;
-}
-details:last-child { border-bottom: 0; }
-
-summary {
-  cursor: pointer;
-  list-style: none;
-  padding: 18px 20px;
-  font-size: 19px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-summary::-webkit-details-marker { display: none; }
-summary::after {
-  content: "+";
-  float: right;
-  color: var(--red);
-  font-family: var(--mono);
-}
-details[open] summary::after { content: "-"; }
-
-.answer {
-  max-width: 870px;
-  padding: 0 20px 18px;
-  color: #c8c8c8;
-}
-
-footer {
-  padding: 34px 0;
-  background: var(--paper);
-}
-
-.footer-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-
-.footer-links {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  font-family: var(--mono);
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.footer-links a { color: var(--ink); text-decoration: none; border-bottom: 2px solid var(--red); }
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .request-card,
-  .stamp { animation: none !important; }
-  .blocked-card { left: var(--block-stop); top: 84px; opacity: 1; }
-  .good-one { left: var(--pass-mid); top: 42px; opacity: 1; }
-  .good-two { left: var(--pass-mid); top: 150px; opacity: 1; }
-  .stamp-block { opacity: 1; transform: rotate(-9deg) scale(1); }
-  .stamp-pass { opacity: 0; }
-}
-
-@media (max-width: 940px) {
-  .hero-grid { grid-template-columns: 1fr; }
-  h1 { font-size: 58px; }
-  .steps { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 640px) {
-  body { font-size: 16px; }
-  .wrap { width: min(100% - 28px, var(--max)); }
-  .nav-inner { min-height: 56px; }
-  .brand span:last-child { display: none; }
-  .nav-links { gap: 12px; font-size: 12px; }
-  .hero { padding: 46px 0 42px; }
-  h1 { font-size: 42px; }
-  h2 { font-size: 32px; }
-  .sub { font-size: 18px; }
-  .install-box { box-shadow: 5px 5px 0 var(--red); }
-  .install-box pre { font-size: 11px; }
-  .wall { box-shadow: 6px 6px 0 var(--ink); }
-  .wall-stage { height: 230px; }
-  .request-card {
-    width: 170px;
-  }
-  .stamp { right: 16px; top: 112px; font-size: 22px; }
-  .stamp-good-one { top: 55px; }
-  .stamp-good-two { top: 145px; }
-  section { padding: 50px 0; }
-  summary { font-size: 16px; }
-  .footer-inner { align-items: flex-start; }
-}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to content</a>
-
-<header class="nav">
-  <div class="wrap nav-inner">
-    <a class="brand" href="#top" aria-label="SkillGuard home">
-      <span class="mark-box" aria-hidden="true">!</span>
-      <span>SkillGuard</span>
-    </a>
-    <nav class="nav-links" aria-label="Primary">
-      <a href="#install">Install</a>
-      <a href="https://github.com/mannanj/skillguard" rel="noopener">GitHub</a>
-    </nav>
-  </div>
-</header>
-
-<main id="main">
-  <span id="top"></span>
-
-  <section class="hero" aria-labelledby="hero-heading">
-    <div class="wrap hero-grid">
-      <div>
-        <h1 id="hero-heading">Only trusted tools <span>run.</span></h1>
-        <p class="sub">SkillGuard checks agent tools before runtime. Risky or changed targets stop. Trusted ones pass.</p>
-
-        <div class="install-box" id="install">
-          <div class="install-head">
-            <span>Install</span>
-            <button class="copy-btn" type="button" data-copy="curl -fsSL https://skillguard.sh/install | sh
-skillguard --target all --engines local" aria-label="Copy install commands">Copy</button>
-          </div>
-          <pre><code><span class="prompt">$</span> curl -fsSL https://skillguard.sh/install | sh
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>SkillGuard - trust your agent tools</title>
+        <meta
+            name="description"
+            content="SkillGuard checks Agent Skills and MCP server surfaces before runtime, guarding against malicious behavior."
+        />
+        <link rel="canonical" href="https://skillguard.sh/" />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D91F2F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E"
+        />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="SkillGuard" />
+        <meta
+            property="og:title"
+            content="SkillGuard - trust your agent tools"
+        />
+        <meta
+            property="og:description"
+            content="Local-first checks for Agent Skills and MCP servers that guard against malicious behavior before runtime."
+        />
+        <meta property="og:image" content="https://skillguard.sh/og.png" />
+        <meta
+            property="og:image:alt"
+            content="SkillGuard blocking risky agent tools before runtime."
+        />
+        <meta property="og:url" content="https://skillguard.sh/" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="SkillGuard - trust your agent tools"
+        />
+        <meta
+            name="twitter:description"
+            content="Local-first checks for Agent Skills and MCP servers that guard against malicious behavior before runtime."
+        />
+        <meta name="twitter:image" content="https://skillguard.sh/og.png" />
+        <meta
+            name="twitter:image:alt"
+            content="SkillGuard blocking risky agent tools before runtime."
+        />
+
+        <style>
+            :root {
+                --paper: #f4f4f2;
+                --ink: #111111;
+                --ink-2: #2a2a2a;
+                --muted: #666666;
+                --line: #d5d5d2;
+                --panel: #ffffff;
+                --panel-dark: #151515;
+                --red: #d91f2f;
+                --red-dark: #9f111d;
+                --ok: #147a4c;
+                --mono:
+                    ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+                --sans:
+                    ui-sans-serif, -apple-system, BlinkMacSystemFont,
+                    "Segoe UI", sans-serif;
+                --max: 1120px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            body {
+                margin: 0;
+                background:
+                    linear-gradient(var(--line) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+                    var(--paper);
+                background-size: 44px 44px;
+                color: var(--ink);
+                font-family: var(--sans);
+                font-size: 17px;
+                line-height: 1.55;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
+            }
+
+            a {
+                color: var(--ink);
+                text-decoration-color: var(--red);
+                text-underline-offset: 3px;
+            }
+            a:hover {
+                color: var(--red-dark);
+            }
+
+            a:focus-visible,
+            button:focus-visible,
+            summary:focus-visible {
+                outline: 3px solid var(--red);
+                outline-offset: 3px;
+            }
+
+            .skip-link {
+                position: absolute;
+                left: -999px;
+                top: 0;
+                z-index: 100;
+                background: var(--red);
+                color: #fff;
+                padding: 10px 14px;
+                font-weight: 800;
+            }
+            .skip-link:focus {
+                left: 0;
+            }
+
+            .wrap {
+                width: min(var(--max), calc(100% - 40px));
+                margin: 0 auto;
+            }
+
+            .nav {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                background: rgba(244, 244, 242, 0.88);
+                border-bottom: 2px solid var(--ink);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+
+            .nav-inner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 20px;
+                min-height: 62px;
+            }
+
+            .brand {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--ink);
+                text-decoration: none;
+                font-family: var(--mono);
+                font-size: 15px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .brand svg {
+                display: block;
+                flex: 0 0 auto;
+            }
+
+            .nav-links {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                font-family: var(--mono);
+                font-size: 13px;
+                text-transform: uppercase;
+            }
+
+            .nav-links a {
+                color: var(--ink);
+                text-decoration: none;
+                border-bottom: 2px solid transparent;
+            }
+            .nav-links a:hover {
+                border-color: var(--red);
+            }
+
+            .hero {
+                padding: 72px 0 58px;
+                border-bottom: 2px solid var(--ink);
+            }
+
+            .hero-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+                gap: 42px;
+                align-items: center;
+            }
+
+            .hero-grid > * {
+                min-width: 0;
+            }
+
+            h1 {
+                max-width: 680px;
+                margin: 0 0 22px;
+                font-size: 78px;
+                line-height: 0.93;
+                font-weight: 900;
+                letter-spacing: 0;
+                text-transform: uppercase;
+            }
+
+            h1 span {
+                color: var(--red);
+                display: block;
+            }
+
+            .sub {
+                max-width: 670px;
+                margin: 0 0 28px;
+                color: var(--ink-2);
+                font-size: 21px;
+                line-height: 1.42;
+                overflow-wrap: anywhere;
+            }
+
+            .install-box {
+                width: 100%;
+                min-width: 0;
+                max-width: 720px;
+                background: var(--panel-dark);
+                color: #f7f7f7;
+                border: 2px solid var(--ink);
+                box-shadow: 8px 8px 0 var(--red);
+            }
+
+            .install-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                border-bottom: 1px solid #3a3a3a;
+                padding: 10px 12px;
+                font-family: var(--mono);
+                font-size: 12px;
+                text-transform: uppercase;
+            }
+
+            .copy-btn,
+            .tab-btn {
+                appearance: none;
+                border: 1px solid #f7f7f7;
+                background: transparent;
+                color: #f7f7f7;
+                padding: 6px 10px;
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 800;
+                cursor: pointer;
+                text-transform: uppercase;
+            }
+            .copy-btn:hover,
+            .copy-btn.copied,
+            .tab-btn:hover,
+            .tab-btn[aria-selected="true"] {
+                background: var(--red);
+                border-color: var(--red);
+                color: #fff;
+            }
+
+            .install-box pre {
+                margin: 0;
+                padding: 16px 14px 8px;
+                overflow-x: auto;
+                font-family: var(--mono);
+                font-size: 14px;
+                line-height: 1.8;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+            }
+
+            .install-use {
+                margin: 0;
+                padding: 0 14px 14px;
+                color: #d4d4d4;
+                font-family: var(--mono);
+                font-size: 12px;
+                line-height: 1.55;
+            }
+
+            .install-tabs {
+                display: flex;
+                gap: 8px;
+                padding: 10px 12px;
+                border-top: 1px solid #3a3a3a;
+            }
+
+            .tab-btn {
+                border-color: #777;
+                color: #d4d4d4;
+            }
+
+            .prompt {
+                color: #ff7a86;
+                user-select: none;
+            }
+
+            .wall {
+                width: 100%;
+                min-width: 0;
+                background: var(--panel);
+                border: 2px solid var(--ink);
+                box-shadow: 10px 10px 0 var(--ink);
+                overflow: hidden;
+            }
+
+            .wall-top {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                align-items: center;
+                gap: 12px;
+                border-bottom: 2px solid var(--ink);
+                padding: 12px 14px;
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .status-red {
+                background: var(--red);
+                color: #fff;
+                padding: 5px 8px;
+            }
+
+            .wall-stage {
+                position: relative;
+                height: 260px;
+                overflow: hidden;
+                --block-stop: clamp(22px, calc(50% - 270px), 172px);
+                --pass-mid: calc(50% + 22px);
+                background:
+                    linear-gradient(
+                        90deg,
+                        transparent 0 49%,
+                        var(--red) 49% 51%,
+                        transparent 51% 100%
+                    ),
+                    repeating-linear-gradient(
+                        0deg,
+                        #fff,
+                        #fff 19px,
+                        #eeeeec 20px
+                    );
+            }
+
+            .wall-label {
+                position: absolute;
+                top: 18px;
+                left: calc(50% + 16px);
+                font-family: var(--mono);
+                font-size: 11px;
+                font-weight: 800;
+                color: var(--red);
+                text-transform: uppercase;
+            }
+
+            .request-card {
+                position: absolute;
+                left: 22px;
+                top: 84px;
+                width: 250px;
+                border: 2px solid var(--ink);
+                background: #fff;
+                box-shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
+                font-family: var(--mono);
+                opacity: 0;
+            }
+
+            .good-one {
+                top: 60px;
+            }
+            .good-two {
+                top: 150px;
+            }
+
+            .request-card::before {
+                content: "Skill";
+                display: block;
+                background: var(--ink);
+                color: #fff;
+                padding: 7px 9px;
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .request-card div {
+                padding: 9px;
+            }
+
+            .request-name {
+                display: block;
+                margin-bottom: 7px;
+                font-size: 15px;
+                font-weight: 800;
+                overflow-wrap: anywhere;
+            }
+
+            .request-risk {
+                display: inline-block;
+                border: 2px solid var(--red);
+                color: var(--red);
+                padding: 3px 6px;
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }
+
+            .request-risk.ok {
+                border-color: var(--ok);
+                color: var(--ok);
+            }
+
+            .stamp {
+                position: absolute;
+                right: 30px;
+                top: 82px;
+                border: 5px solid var(--red);
+                color: var(--red);
+                padding: 11px 14px;
+                font-family: var(--mono);
+                font-size: 30px;
+                font-weight: 900;
+                text-transform: uppercase;
+                transform: rotate(-9deg) scale(1);
+                opacity: 0;
+            }
+
+            .stamp-pass {
+                border-color: var(--ok);
+                color: var(--ok);
+                font-size: 24px;
+                transform: rotate(6deg) scale(1);
+            }
+
+            .stamp-good-one {
+                top: 55px;
+            }
+            .stamp-good-two {
+                top: 145px;
+            }
+
+            @media (prefers-reduced-motion: no-preference) {
+                .blocked-card {
+                    animation: bad-block 5s cubic-bezier(0.45, 0, 0.18, 1)
+                        infinite;
+                }
+                .good-one {
+                    animation: good-one-pass 5s
+                        cubic-bezier(0.45, 0, 0.18, 1) infinite;
+                }
+                .good-two {
+                    animation: good-two-pass 5s
+                        cubic-bezier(0.45, 0, 0.18, 1) infinite;
+                }
+                .stamp-block {
+                    animation: block-stamp 5s steps(1, end) infinite;
+                }
+                .stamp-good-one {
+                    animation: pass-one-stamp 5s steps(1, end) infinite;
+                }
+                .stamp-good-two {
+                    animation: pass-two-stamp 5s steps(1, end) infinite;
+                }
+            }
+
+            .receipt {
+                border-top: 2px solid var(--ink);
+                padding: 16px;
+                background: var(--panel-dark);
+                color: #f7f7f7;
+                font-family: var(--mono);
+                font-size: 13px;
+            }
+
+            .receipt-grid {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 7px 13px;
+            }
+
+            .receipt dt {
+                color: #a6a6a6;
+            }
+            .receipt dd {
+                margin: 0;
+                line-height: 1.45;
+                overflow-wrap: anywhere;
+            }
+            .receipt .red {
+                color: #ff7a86;
+                font-weight: 800;
+            }
+            .receipt .ok {
+                color: #83d9a8;
+                font-weight: 800;
+            }
+
+            @keyframes bad-block {
+                0% {
+                    left: -300px;
+                    opacity: 0;
+                    transform: translateY(0);
+                }
+                7% {
+                    opacity: 1;
+                }
+                15% {
+                    left: 22px;
+                    opacity: 1;
+                }
+                27% {
+                    left: var(--block-stop);
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                34% {
+                    left: var(--block-stop);
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                40% {
+                    left: var(--block-stop);
+                    opacity: 0;
+                    transform: translateY(14px);
+                }
+                100% {
+                    left: var(--block-stop);
+                    opacity: 0;
+                    transform: translateY(14px);
+                }
+            }
+
+            @keyframes good-one-pass {
+                0%,
+                40% {
+                    left: -300px;
+                    opacity: 0;
+                    transform: translateY(0);
+                }
+                46% {
+                    left: 22px;
+                    opacity: 1;
+                }
+                58% {
+                    left: var(--pass-mid);
+                    opacity: 1;
+                }
+                68% {
+                    left: calc(100% + 32px);
+                    opacity: 0;
+                }
+                100% {
+                    left: calc(100% + 32px);
+                    opacity: 0;
+                }
+            }
+
+            @keyframes good-two-pass {
+                0%,
+                64% {
+                    left: -300px;
+                    opacity: 0;
+                    transform: translateY(0);
+                }
+                70% {
+                    left: 22px;
+                    opacity: 1;
+                }
+                82% {
+                    left: var(--pass-mid);
+                    opacity: 1;
+                }
+                94% {
+                    left: calc(100% + 32px);
+                    opacity: 0;
+                }
+                100% {
+                    left: calc(100% + 32px);
+                    opacity: 0;
+                }
+            }
+
+            @keyframes block-stamp {
+                0%,
+                26% {
+                    opacity: 0;
+                }
+                27%,
+                38% {
+                    opacity: 1;
+                }
+                39%,
+                100% {
+                    opacity: 0;
+                }
+            }
+
+            @keyframes pass-one-stamp {
+                0%,
+                56% {
+                    opacity: 0;
+                }
+                57%,
+                65% {
+                    opacity: 1;
+                }
+                66%,
+                100% {
+                    opacity: 0;
+                }
+            }
+
+            @keyframes pass-two-stamp {
+                0%,
+                80% {
+                    opacity: 0;
+                }
+                81%,
+                91% {
+                    opacity: 1;
+                }
+                92%,
+                100% {
+                    opacity: 0;
+                }
+            }
+
+            section {
+                padding: 70px 0;
+                border-bottom: 2px solid var(--ink);
+            }
+
+            .section-kicker {
+                margin: 0 0 12px;
+                font-family: var(--mono);
+                font-size: 12px;
+                font-weight: 900;
+                text-transform: uppercase;
+                color: var(--red);
+            }
+
+            h2 {
+                margin: 0 0 28px;
+                max-width: 780px;
+                font-size: 44px;
+                line-height: 1.04;
+                font-weight: 900;
+                letter-spacing: 0;
+                text-transform: uppercase;
+            }
+
+            .steps {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 18px;
+            }
+
+            .step {
+                background: var(--panel);
+                border: 2px solid var(--ink);
+                padding: 22px 22px 24px;
+                min-height: 190px;
+            }
+
+            .step-num {
+                display: inline-grid;
+                place-items: center;
+                width: 38px;
+                height: 38px;
+                margin-bottom: 18px;
+                background: var(--ink);
+                color: #fff;
+                font-family: var(--mono);
+                font-weight: 900;
+            }
+
+            .step p {
+                margin: 0;
+                color: var(--muted);
+            }
+            .step code,
+            .faq code {
+                font-family: var(--mono);
+                font-size: 0.9em;
+                color: var(--red-dark);
+            }
+
+            .faq {
+                background: var(--panel-dark);
+                color: #f7f7f7;
+            }
+
+            .faq h2 {
+                color: #fff;
+            }
+
+            .faq code {
+                color: #ff7a86;
+            }
+
+            .faq-list {
+                border: 2px solid #f7f7f7;
+                background: #191919;
+                box-shadow: 8px 8px 0 var(--red);
+            }
+
+            details {
+                border-bottom: 2px solid #f7f7f7;
+            }
+            details:last-child {
+                border-bottom: 0;
+            }
+
+            summary {
+                cursor: pointer;
+                list-style: none;
+                padding: 18px 20px;
+                font-size: 19px;
+                font-weight: 900;
+                text-transform: uppercase;
+            }
+            summary::-webkit-details-marker {
+                display: none;
+            }
+            summary::after {
+                content: "+";
+                float: right;
+                color: var(--red);
+                font-family: var(--mono);
+            }
+            details[open] summary::after {
+                content: "-";
+            }
+
+            .answer {
+                max-width: 870px;
+                padding: 0 20px 18px;
+                color: #c8c8c8;
+            }
+
+            footer {
+                padding: 34px 0;
+                background: var(--paper);
+            }
+
+            .footer-inner {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 18px;
+                flex-wrap: wrap;
+            }
+
+            .footer-links {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                flex-wrap: wrap;
+                font-family: var(--mono);
+                font-size: 12px;
+                text-transform: uppercase;
+            }
+
+            .footer-links a {
+                color: var(--ink);
+                text-decoration: none;
+                border-bottom: 2px solid var(--red);
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                html {
+                    scroll-behavior: auto;
+                }
+                .request-card,
+                .stamp {
+                    animation: none !important;
+                }
+                .blocked-card {
+                    left: var(--block-stop);
+                    top: 84px;
+                    opacity: 1;
+                }
+                .good-one {
+                    left: var(--pass-mid);
+                    top: 42px;
+                    opacity: 1;
+                }
+                .good-two {
+                    left: var(--pass-mid);
+                    top: 150px;
+                    opacity: 1;
+                }
+                .stamp-block {
+                    opacity: 1;
+                    transform: rotate(-9deg) scale(1);
+                }
+                .stamp-pass {
+                    opacity: 0;
+                }
+            }
+
+            @media (max-width: 940px) {
+                .hero-grid {
+                    grid-template-columns: 1fr;
+                }
+                h1 {
+                    font-size: 58px;
+                }
+                .steps {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @media (max-width: 640px) {
+                body {
+                    font-size: 16px;
+                }
+                .wrap {
+                    width: min(100% - 28px, var(--max));
+                }
+                .nav-inner {
+                    min-height: 56px;
+                }
+                .brand span:last-child {
+                    display: none;
+                }
+                .nav-links {
+                    gap: 12px;
+                    font-size: 12px;
+                }
+                .hero {
+                    padding: 46px 0 42px;
+                }
+                h1 {
+                    font-size: 42px;
+                }
+                h2 {
+                    font-size: 32px;
+                }
+                .sub {
+                    font-size: 18px;
+                }
+                .install-box {
+                    box-shadow: 5px 5px 0 var(--red);
+                }
+                .install-box pre {
+                    font-size: 11px;
+                }
+                .install-tabs {
+                    flex-wrap: wrap;
+                }
+                .wall {
+                    box-shadow: 6px 6px 0 var(--ink);
+                }
+                .wall-top {
+                    grid-template-columns: 1fr auto;
+                }
+                .wall-stage {
+                    height: 230px;
+                }
+                .request-card {
+                    width: 170px;
+                }
+                .stamp {
+                    right: 16px;
+                    top: 112px;
+                    font-size: 22px;
+                }
+                .stamp-good-one {
+                    top: 55px;
+                }
+                .stamp-good-two {
+                    top: 145px;
+                }
+                section {
+                    padding: 50px 0;
+                }
+                summary {
+                    font-size: 16px;
+                }
+                .footer-inner {
+                    align-items: flex-start;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">Skip to content</a>
+
+        <header class="nav">
+            <div class="wrap nav-inner">
+                <a class="brand" href="#top" aria-label="SkillGuard home">
+                    <svg
+                        width="26"
+                        height="26"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#D91F2F"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z"
+                        />
+                        <path d="m9 12 2 2 4-4" />
+                    </svg>
+                    <span>SkillGuard</span>
+                </a>
+                <nav class="nav-links" aria-label="Primary">
+                    <a href="#install">Install</a>
+                    <a
+                        href="https://github.com/mannanj/skillguard"
+                        rel="noopener"
+                        >GitHub</a
+                    >
+                </nav>
+            </div>
+        </header>
+
+        <main id="main">
+            <span id="top"></span>
+
+            <section class="hero" aria-labelledby="hero-heading">
+                <div class="wrap hero-grid">
+                    <div>
+                        <h1 id="hero-heading">
+                            <span>Trust</span>your agent tools
+                        </h1>
+                        <p class="sub">
+                            SkillGuard checks Agent Skills and MCP server
+                            surfaces before runtime, guarding against malicious
+                            behavior.
+                        </p>
+
+                        <div class="install-box" id="install">
+                            <div class="install-head">
+                                <span id="installTitle">Claude Code</span>
+                                <button
+                                    class="copy-btn"
+                                    type="button"
+                                    id="installCopy"
+                                    data-copy="/plugin marketplace add mannanj/skillguard
+/plugin install skillguard@skillguard
+/reload-plugins
+skillguard --target all --engines local"
+                                    aria-label="Copy install commands"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code id="installCommands"><span class="prompt">$</span> /plugin marketplace add mannanj/skillguard
+<span class="prompt">$</span> /plugin install skillguard@skillguard
+<span class="prompt">$</span> /reload-plugins
 <span class="prompt">$</span> skillguard --target all --engines local</code></pre>
-        </div>
-      </div>
+                            <p class="install-use" id="installUse">
+                                Use: /skillguard:skillguard, or ask Claude to
+                                use SkillGuard.
+                            </p>
+                            <div
+                                class="install-tabs"
+                                role="tablist"
+                                aria-label="Install platform"
+                            >
+                                <button
+                                    class="tab-btn"
+                                    type="button"
+                                    role="tab"
+                                    aria-selected="true"
+                                    data-platform="claude"
+                                >
+                                    Claude Code
+                                </button>
+                                <button
+                                    class="tab-btn"
+                                    type="button"
+                                    role="tab"
+                                    aria-selected="false"
+                                    data-platform="codex"
+                                >
+                                    Codex
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
-      <div class="wall" role="img" aria-label="SkillGuard blocking a reverse shell request and passing clean requests.">
-        <div class="wall-top">
-          <span>Runtime requests</span>
-          <span class="status-red">Gated</span>
-        </div>
-        <div class="wall-stage" aria-hidden="true">
-          <span class="wall-label">Runtime gate</span>
-          <div class="request-card blocked-card">
-            <div>
-              <span class="request-name">pretty-formatter</span>
-              <span class="request-risk">reverse shell</span>
+                    <div
+                        class="wall"
+                        id="scanWall"
+                        role="img"
+                        aria-label="SkillGuard scanning Agent Skills and blocking risky requests."
+                    >
+                        <div class="wall-top">
+                            <span>Runtime requests</span>
+                            <span class="status-red">Gated</span>
+                        </div>
+                        <div class="wall-stage" aria-hidden="true">
+                            <span class="wall-label">Runtime gate</span>
+                            <div class="request-card blocked-card">
+                                <div>
+                                    <span class="request-name" id="blockedName"
+                                        >reverse-shell-helper</span
+                                    >
+                                    <span class="request-risk" id="blockedRisk"
+                                        >reverse shell</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="request-card good-one">
+                                <div>
+                                    <span class="request-name" id="goodOneName"
+                                        >skillguard</span
+                                    >
+                                    <span
+                                        class="request-risk ok"
+                                        id="goodOneRisk"
+                                        >clean</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="request-card good-two">
+                                <div>
+                                    <span class="request-name" id="goodTwoName"
+                                        >docs-helper</span
+                                    >
+                                    <span
+                                        class="request-risk ok"
+                                        id="goodTwoRisk"
+                                        >clean</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="stamp stamp-block">Blocked</div>
+                            <div class="stamp stamp-pass stamp-good-one">
+                                Passed
+                            </div>
+                            <div class="stamp stamp-pass stamp-good-two">
+                                Passed
+                            </div>
+                        </div>
+                        <div class="receipt">
+                            <dl class="receipt-grid">
+                                <dt>blocked</dt>
+                                <dd class="red" id="receiptBlocked">
+                                    reverse-shell-helper
+                                </dd>
+                                <dt>passed</dt>
+                                <dd class="ok" id="receiptPassed">
+                                    skillguard, docs-helper
+                                </dd>
+                                <dt>action</dt>
+                                <dd>exit 2 on risk</dd>
+                                <dt>ran</dt>
+                                <dd>0 blocked commands</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section aria-labelledby="how-heading">
+                <div class="wrap">
+                    <h2 id="how-heading">How it works</h2>
+                    <div class="steps">
+                        <article class="step">
+                            <span class="step-num">1</span>
+                            <p>
+                                Check skills, bundled files, and MCP server
+                                config with local or optional engines.
+                            </p>
+                        </article>
+                        <article class="step">
+                            <span class="step-num">2</span>
+                            <p>
+                                At runtime, use cached verdicts. Block unknown,
+                                changed, critical, and high-risk targets unless
+                                allowed.
+                            </p>
+                        </article>
+                        <article class="step">
+                            <span class="step-num">3</span>
+                            <p>
+                                Keep history and hook decisions local. Inspect
+                                secrets in memory; persist only redacted
+                                records.
+                            </p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="faq" id="faq" aria-labelledby="faq-heading">
+                <div class="wrap">
+                    <h2 id="faq-heading">FAQ</h2>
+                    <div class="faq-list">
+                        <details>
+                            <summary>What does it check?</summary>
+                            <div class="answer">
+                                Agent skills, bundled files, and MCP server
+                                surfaces from global, project, and plugin
+                                config.
+                            </div>
+                        </details>
+                        <details>
+                            <summary>Does it block MCP calls?</summary>
+                            <div class="answer">
+                                Yes. <code>mcp_policy</code> defaults to
+                                <code>enforce</code>, so unknown or
+                                critical/high MCP servers are refused.
+                            </div>
+                        </details>
+                        <details>
+                            <summary>Do API keys touch disk?</summary>
+                            <div class="answer">
+                                No. Env and header values are inspected in
+                                memory, then redacted before records persist.
+                            </div>
+                        </details>
+                        <details>
+                            <summary>What leaves my machine?</summary>
+                            <div class="answer">
+                                Nothing with the local engine. Files leave only
+                                when you enable an optional cloud engine.
+                            </div>
+                        </details>
+                        <details>
+                            <summary>Prefer the Claude Code plugin?</summary>
+                            <div class="answer">
+                                Inside Claude Code, run
+                                <code
+                                    >/plugin marketplace add
+                                    mannanj/skillguard</code
+                                >
+                                and then
+                                <code
+                                    >/plugin install skillguard@skillguard</code
+                                >.
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="wrap footer-inner">
+                <a class="brand" href="#top" aria-label="SkillGuard home">
+                    <svg
+                        width="26"
+                        height="26"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#D91F2F"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M12 2 4 5v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5l-8-3Z"
+                        />
+                        <path d="m9 12 2 2 4-4" />
+                    </svg>
+                    <span>SkillGuard</span>
+                </a>
+                <nav class="footer-links" aria-label="Footer">
+                    <a
+                        href="https://github.com/mannanj/skillguard"
+                        rel="noopener"
+                        >Source</a
+                    >
+                    <a
+                        href="https://github.com/mannanj/skillguard/blob/main/LICENSE"
+                        rel="noopener"
+                        >AGPL</a
+                    >
+                    <a
+                        href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md"
+                        rel="noopener"
+                        >Commercial</a
+                    >
+                    <span>Made by Mannan</span>
+                </nav>
             </div>
-          </div>
-          <div class="request-card good-one">
-            <div>
-              <span class="request-name">docs-helper</span>
-              <span class="request-risk ok">clean</span>
-            </div>
-          </div>
-          <div class="request-card good-two">
-            <div>
-              <span class="request-name">release-notes</span>
-              <span class="request-risk ok">clean</span>
-            </div>
-          </div>
-          <div class="stamp stamp-block">Blocked</div>
-          <div class="stamp stamp-pass stamp-good-one">Passed</div>
-          <div class="stamp stamp-pass stamp-good-two">Passed</div>
-        </div>
-        <div class="receipt">
-          <dl class="receipt-grid">
-            <dt>blocked</dt><dd class="red">pretty-formatter / reverse_shell</dd>
-            <dt>passed</dt><dd class="ok">docs-helper, release-notes</dd>
-            <dt>action</dt><dd>exit 2 on risk</dd>
-            <dt>ran</dt><dd>0 blocked commands</dd>
-          </dl>
-        </div>
-      </div>
-    </div>
-  </section>
+        </footer>
 
-  <section aria-labelledby="how-heading">
-    <div class="wrap">
-      <h2 id="how-heading">How it works.</h2>
-      <div class="steps">
-        <article class="step">
-          <span class="step-num">1</span>
-          <p>Check skills, bundled files, and MCP server config with local or optional engines.</p>
-        </article>
-        <article class="step">
-          <span class="step-num">2</span>
-          <p>At runtime, use cached verdicts. Block unknown, changed, critical, and high-risk targets unless allowed.</p>
-        </article>
-        <article class="step">
-          <span class="step-num">3</span>
-          <p>Keep history and hook decisions local. Inspect secrets in memory; persist only redacted records.</p>
-        </article>
-      </div>
-    </div>
-  </section>
+        <script>
+            (function () {
+                var installs = {
+                    claude: {
+                        title: "Claude Code",
+                        copy: "/plugin marketplace add mannanj/skillguard\n/plugin install skillguard@skillguard\n/reload-plugins\nskillguard --target all --engines local",
+                        commands: [
+                            "/plugin marketplace add mannanj/skillguard",
+                            "/plugin install skillguard@skillguard",
+                            "/reload-plugins",
+                            "skillguard --target all --engines local",
+                        ],
+                        use: "Use: /skillguard:skillguard, or ask Claude to use SkillGuard.",
+                    },
+                    codex: {
+                        title: "Codex",
+                        copy: "curl -fsSL https://skillguard.sh/install | sh\ncodex plugin add skillguard@personal\nskillguard --target all --engines local",
+                        commands: [
+                            "curl -fsSL https://skillguard.sh/install | sh",
+                            "codex plugin add skillguard@personal",
+                            "skillguard --target all --engines local",
+                        ],
+                        use: 'Use: new Codex thread, /skills, $skillguard, or ask "Use SkillGuard to review current findings."',
+                    },
+                };
 
-  <section class="faq" id="faq" aria-labelledby="faq-heading">
-    <div class="wrap">
-      <h2 id="faq-heading">FAQ.</h2>
-      <div class="faq-list">
-        <details>
-          <summary>What does it check?</summary>
-          <div class="answer">Agent skills, bundled files, and MCP server surfaces from global, project, and plugin config.</div>
-        </details>
-        <details>
-          <summary>Does it block MCP calls?</summary>
-          <div class="answer">Yes. <code>mcp_policy</code> defaults to <code>enforce</code>, so unknown or critical/high MCP servers are refused.</div>
-        </details>
-        <details>
-          <summary>Do API keys touch disk?</summary>
-          <div class="answer">No. Env and header values are inspected in memory, then redacted before records persist.</div>
-        </details>
-        <details>
-          <summary>What leaves my machine?</summary>
-          <div class="answer">Nothing with the local engine. Files leave only when you enable an optional cloud engine.</div>
-        </details>
-        <details>
-          <summary>Prefer the Claude Code plugin?</summary>
-          <div class="answer">Inside Claude Code, run <code>/plugin marketplace add mannanj/skillguard</code> and then <code>/plugin install skillguard@skillguard</code>.</div>
-        </details>
-      </div>
-    </div>
-  </section>
-</main>
+                function commandMarkup(commands) {
+                    var html = "";
+                    for (var i = 0; i < commands.length; i++) {
+                        html +=
+                            (i ? "\n" : "") +
+                            '<span class="prompt">$</span> ' +
+                            commands[i]
+                                .replace(/&/g, "&amp;")
+                                .replace(/</g, "&lt;")
+                                .replace(/>/g, "&gt;");
+                    }
+                    return html;
+                }
 
-<footer>
-  <div class="wrap footer-inner">
-    <a class="brand" href="#top" aria-label="SkillGuard home">
-      <span class="mark-box" aria-hidden="true">!</span>
-      <span>SkillGuard</span>
-    </a>
-    <nav class="footer-links" aria-label="Footer">
-      <a href="https://github.com/mannanj/skillguard" rel="noopener">Source</a>
-      <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE" rel="noopener">AGPL</a>
-      <a href="https://github.com/mannanj/skillguard/blob/main/LICENSE-COMMERCIAL.md" rel="noopener">Commercial</a>
-      <span>Made by Mannan</span>
-    </nav>
-  </div>
-</footer>
+                function flash(btn) {
+                    var original = btn.textContent;
+                    btn.textContent = "Copied";
+                    btn.classList.add("copied");
+                    setTimeout(function () {
+                        btn.textContent = original;
+                        btn.classList.remove("copied");
+                    }, 1500);
+                }
 
-<script>
-(function () {
-  function flash(btn) {
-    var original = btn.textContent;
-    btn.textContent = "Copied";
-    btn.classList.add("copied");
-    setTimeout(function () {
-      btn.textContent = original;
-      btn.classList.remove("copied");
-    }, 1500);
-  }
+                function legacyCopy(text) {
+                    var ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.setAttribute("readonly", "");
+                    ta.style.position = "absolute";
+                    ta.style.left = "-9999px";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand("copy");
+                    } catch (e) {}
+                    document.body.removeChild(ta);
+                }
 
-  function legacyCopy(text) {
-    var ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "absolute";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand("copy"); } catch (e) {}
-    document.body.removeChild(ta);
-  }
+                var installTitle = document.getElementById("installTitle");
+                var installCopy = document.getElementById("installCopy");
+                var installCommands =
+                    document.getElementById("installCommands");
+                var installUse = document.getElementById("installUse");
+                var tabButtons = document.querySelectorAll(".tab-btn");
 
-  var buttons = document.querySelectorAll(".copy-btn");
-  for (var i = 0; i < buttons.length; i++) {
-    buttons[i].addEventListener("click", function () {
-      var btn = this;
-      var text = btn.getAttribute("data-copy") || "";
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(
-          function () { flash(btn); },
-          function () { legacyCopy(text); flash(btn); }
-        );
-      } else {
-        legacyCopy(text);
-        flash(btn);
-      }
-    });
-  }
-})();
-</script>
-</body>
+                function setInstall(platform) {
+                    var install = installs[platform];
+                    installTitle.textContent = install.title;
+                    installCopy.setAttribute("data-copy", install.copy);
+                    installCommands.innerHTML = commandMarkup(install.commands);
+                    installUse.textContent = install.use;
+                    for (var i = 0; i < tabButtons.length; i++) {
+                        tabButtons[i].setAttribute(
+                            "aria-selected",
+                            tabButtons[i].getAttribute("data-platform") ===
+                                platform
+                                ? "true"
+                                : "false",
+                        );
+                    }
+                }
+
+                installCopy.addEventListener("click", function () {
+                    var btn = this;
+                    var text = btn.getAttribute("data-copy") || "";
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(
+                            function () {
+                                flash(btn);
+                            },
+                            function () {
+                                legacyCopy(text);
+                                flash(btn);
+                            },
+                        );
+                    } else {
+                        legacyCopy(text);
+                        flash(btn);
+                    }
+                });
+
+                for (var i = 0; i < tabButtons.length; i++) {
+                    tabButtons[i].addEventListener("click", function () {
+                        setInstall(this.getAttribute("data-platform"));
+                    });
+                }
+
+                var scanItems = [
+                    {
+                        "name": "skillguard",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "canonical Agent Skill source"
+                    },
+                    {
+                        "name": "docs-helper",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "reads docs, writes notes"
+                    },
+                    {
+                        "name": "release-notes",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "summarizes commits"
+                    },
+                    {
+                        "name": "test-runner",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "runs local tests"
+                    },
+                    {
+                        "name": "github-pr-review",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "reviews diffs only"
+                    },
+                    {
+                        "name": "reverse-shell-helper",
+                        "verdict": "blocked",
+                        "risk": "reverse shell",
+                        "summary": "opens remote shell from setup.sh"
+                    },
+                    {
+                        "name": "python-refactor",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "edits Python files"
+                    },
+                    {
+                        "name": "browser-cookie-exporter",
+                        "verdict": "blocked",
+                        "risk": "credential theft",
+                        "summary": "copies browser session cookies"
+                    },
+                    {
+                        "name": "figma-export",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "exports design specs"
+                    },
+                    {
+                        "name": "ssh-key-harvester",
+                        "verdict": "blocked",
+                        "risk": "private keys",
+                        "summary": "reads ~/.ssh and uploads keys"
+                    },
+                    {
+                        "name": "cloudflare-worker",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "builds Worker code"
+                    },
+                    {
+                        "name": "env-token-relay",
+                        "verdict": "blocked",
+                        "risk": "secret exfil",
+                        "summary": "posts env vars to remote API"
+                    },
+                    {
+                        "name": "pdf-reader",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "extracts local PDF text"
+                    },
+                    {
+                        "name": "repo-wiper",
+                        "verdict": "blocked",
+                        "risk": "destructive rm",
+                        "summary": "removes repo files recursively"
+                    },
+                    {
+                        "name": "stripe-webhook",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "checks webhook handlers"
+                    },
+                    {
+                        "name": "npm-postinstall-runner",
+                        "verdict": "blocked",
+                        "risk": "postinstall exec",
+                        "summary": "runs install-time shell"
+                    },
+                    {
+                        "name": "resend-email",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "drafts email templates"
+                    },
+                    {
+                        "name": "token-pastebin-sync",
+                        "verdict": "blocked",
+                        "risk": "secret upload",
+                        "summary": "publishes tokens to paste site"
+                    },
+                    {
+                        "name": "mcp-introspector",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "lists MCP tools"
+                    },
+                    {
+                        "name": "sudo-persist",
+                        "verdict": "blocked",
+                        "risk": "privilege escalation",
+                        "summary": "adds a persistent sudo hook"
+                    },
+                    {
+                        "name": "data-migration",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "plans schema changes"
+                    },
+                    {
+                        "name": "wallet-drain-helper",
+                        "verdict": "blocked",
+                        "risk": "wallet theft",
+                        "summary": "targets wallet files"
+                    },
+                    {
+                        "name": "security-audit",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "reports suspicious code"
+                    },
+                    {
+                        "name": "shadow-git-push",
+                        "verdict": "blocked",
+                        "risk": "unauthorized push",
+                        "summary": "pushes changes to hidden remote"
+                    },
+                    {
+                        "name": "markdown-converter",
+                        "verdict": "approved",
+                        "risk": "clean",
+                        "summary": "converts docs locally"
+                    }
+                ];
+
+                var blockedName = document.getElementById("blockedName");
+                var blockedRisk = document.getElementById("blockedRisk");
+                var goodOneName = document.getElementById("goodOneName");
+                var goodOneRisk = document.getElementById("goodOneRisk");
+                var goodTwoName = document.getElementById("goodTwoName");
+                var goodTwoRisk = document.getElementById("goodTwoRisk");
+                var receiptBlocked =
+                    document.getElementById("receiptBlocked");
+                var receiptPassed = document.getElementById("receiptPassed");
+                var blockedItems = scanItems.filter(function (item) {
+                    return item.verdict === "blocked";
+                });
+                var approvedItems = scanItems.filter(function (item) {
+                    return item.verdict === "approved";
+                });
+                var cursors = { blocked: 0, approved: 0 };
+                var completedCount = 0;
+                var blockedNames = [];
+                var passedNames = [];
+                var reduceMotion =
+                    window.matchMedia &&
+                    window.matchMedia("(prefers-reduced-motion: reduce)")
+                        .matches;
+                var cycleMs = reduceMotion ? 4000 : 5000;
+
+                function nextItemByVerdict(verdict) {
+                    if (completedCount >= scanItems.length) {
+                        cursors.blocked = 0;
+                        cursors.approved = 0;
+                        completedCount = 0;
+                        blockedNames = [];
+                        passedNames = [];
+                    }
+                    var pool =
+                        verdict === "blocked" ? blockedItems : approvedItems;
+                    if (!pool.length) {
+                        pool = scanItems;
+                    }
+                    var item = pool[cursors[verdict] % pool.length];
+                    cursors[verdict] += 1;
+                    completedCount += 1;
+                    return item;
+                }
+
+                function setBlocked(item) {
+                    blockedName.textContent = item.name;
+                    blockedRisk.textContent = item.risk;
+                    blockedNames.push(item.name);
+                    receiptBlocked.textContent = blockedNames.join(", ");
+                }
+
+                function setPassed(nameNode, riskNode, item) {
+                    nameNode.textContent = item.name;
+                    riskNode.textContent = item.risk;
+                    passedNames.push(item.name);
+                    receiptPassed.textContent = passedNames.join(", ");
+                }
+
+                function advanceScan() {
+                    setBlocked(nextItemByVerdict("blocked"));
+                    setTimeout(function () {
+                        setPassed(
+                            goodOneName,
+                            goodOneRisk,
+                            nextItemByVerdict("approved"),
+                        );
+                    }, reduceMotion ? 0 : 2000);
+                    setTimeout(function () {
+                        setPassed(
+                            goodTwoName,
+                            goodTwoRisk,
+                            nextItemByVerdict("approved"),
+                        );
+                    }, reduceMotion ? 0 : 3200);
+                }
+
+                setInstall("claude");
+                advanceScan();
+                setInterval(advanceScan, cycleMs);
+            })();
+        </script>
+    </body>
 </html>
