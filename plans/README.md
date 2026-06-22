@@ -39,8 +39,13 @@ file with no test on its main path. So the sequence is:
 | 008.5| Naming authority + shared doc-table heuristic (forward-architecture seams) | P2 | S | 001, 002, 007 | DONE |
 | 009  | Security posture investigations (hook fail-open, cache DoS, redaction blind spot, token match) | P2 | M | 001 | DONE |
 | 010  | Add CLAUDE.md for agent contributors | P3 | S | 005, 006, 007 | DONE |
+| 011  | Role-injection / special-token detection (role-confusion attack class) | P2 | S–M | — | TODO (design only) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (one-line rationale)
+
+> **011 is the first post-refactor *feature* plan** (the 001–010 refactor roadmap
+> stays closed). It is authored and crux-verified but **not executed** — the
+> maintainer chose design-only. Greenlight required before building.
 
 ## Dependency notes
 
@@ -304,6 +309,26 @@ Full forward-architecture assessment:
   module added → `install.sh` `MODULES` unchanged, test count unchanged. **This
   closes the refactor roadmap (001–010 all DONE).** Verified green: ruff clean,
   ruff-format clean, mypy clean (34 files), **205** pass.
+- **2026-06-22** — Plan 011 **authored (design only, not executed)** from the
+  `role-confusion.github.io` research thread. Three parallel research agents ran:
+  (1) attack taxonomy + literal-token inventory across model families, (2) a
+  first-hand audit of the detection internals, (3) an empirical FP base-rate scan
+  of the **472 installed skill files** on the maintainer's machine. Every
+  load-bearing anchor was then **re-verified directly against live code** (not
+  trusted from the agents): the engine is strictly line-by-line / one-regex =
+  one-finding (`local.py:37-48`), code fences are scanned on purpose (no blanket
+  fence guard allowed), MCP tool/param descriptions reach `LocalEngine` via the
+  materialized `tools.md` (`materialize.py:72-97`) so **one `LOCAL_PATTERNS`
+  addition covers both surfaces**, and the test contract assumes **one category ⇒
+  one severity** (`test_local_engine.py:40-62`). Base rate: structural tokens
+  (`<|im_start|>`/`[INST]`/`<<SYS>>`/Llama-3/Gemma/Phi) = **zero** benign hits;
+  the only reasoning-tag hits were `<thinking>` in table/backtick docs; `Action:`
+  (~30 hits, WAF docs) is the one real FP. Design: HIGH `role_injection` category
+  (structural + forged-reasoning tokens) + an inline-backtick doc-guard (Phase 1);
+  a separate MEDIUM `role_spoofing` category with an `Action:` WAF value-exclusion
+  (Phase 2); an optional whole-file co-occurrence pass (Phase 3, STOP-and-discuss).
+  Behavioral/style-only role confusion is explicitly out of scope for any static
+  signature. **No code changed; awaiting greenlight.**
 
 ## Findings considered and rejected
 
