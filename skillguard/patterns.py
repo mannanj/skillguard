@@ -168,6 +168,67 @@ _p(
 )
 _p("prompt_injection", "high", r"\bjailbreak\s+mode\b", "Prompt injection: jailbreak mode")
 
+# --- Selection manipulation (description framing that games skill-selection) ---
+# Distinct from prompt_injection: these do not override the agent's instructions,
+# they game which skill the agent *picks*. The skill name + description are
+# injected into the system prompt and drive selection, so (unlike every other
+# category) LocalEngine scans the frontmatter for these — see engines/local.py.
+# Deliberately high-precision: phrasings with near-zero legitimate use. Fuzzier
+# recency/superlative framing ("most up-to-date", "best") is left to a semantic
+# engine because it is not separable from honest description by regex.
+#
+# HIGH — anti-competitive directives that suppress alternative skills.
+_p(
+    "selection_manipulation",
+    "high",
+    r"ignore\s+(?:all\s+|any\s+|the\s+)?other\s+skills?\b",
+    "Selection manipulation: tells the agent to ignore other skills",
+)
+_p(
+    "selection_manipulation",
+    "high",
+    r"(?:do\s+not|don['’]?t)\s+use\s+(?:any\s+)?(?:other\s+)?skills?\b",
+    "Selection manipulation: tells the agent not to use other skills",
+)
+_p(
+    "selection_manipulation",
+    "high",
+    r"(?:always\s+)?(?:use|prefer|choose|select)\s+this\s+skill\s+"
+    r"(?:instead\s+of|over|rather\s+than|in\s+place\s+of)\b",
+    "Selection manipulation: tells the agent to prefer this skill over others",
+)
+_p(
+    "selection_manipulation",
+    "high",
+    r"\bthe\s+only\s+skill\s+(?:you\s+)?(?:should|must|need|ever)\b",
+    "Selection manipulation: claims to be the only skill the agent should use",
+)
+# MEDIUM — unverifiable trust / authority / safety framing.
+_p(
+    "selection_manipulation",
+    "medium",
+    r"official(?:ly)?\s+(?:verified|approved|endorsed|certified|sanctioned)\b",
+    "Selection manipulation: unverifiable official-verification claim",
+)
+_p(
+    "selection_manipulation",
+    "medium",
+    r"\b(?:anthropic|claude|openai)[\s-]+(?:approved|verified|endorsed|certified|trusted)\b",
+    "Selection manipulation: claims vendor approval or endorsement",
+)
+_p(
+    "selection_manipulation",
+    "medium",
+    r"\b(?:100\s*%|guaranteed)\s+(?:safe|secure|trusted|trustworthy)\b",
+    "Selection manipulation: absolute safety guarantee",
+)
+_p(
+    "selection_manipulation",
+    "medium",
+    r"\b(?:fully|completely)\s+(?:trusted|trustworthy)\b",
+    "Selection manipulation: absolute trust claim",
+)
+
 # --- Environment variable exfiltration (HIGH) ---
 _p("env_exfil", "high", r"cat\s+(/etc/passwd|/etc/shadow)", "Reading system password files")
 _p("env_exfil", "high", r"printenv\s*\|", "Piping environment variables")

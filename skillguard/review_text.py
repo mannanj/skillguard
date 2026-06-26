@@ -32,6 +32,14 @@ def finding_explanation(finding: dict, *, target_kind: str) -> list[str]:
             "Why: this text may try to change the agent's instructions.",
             "Safest: mark false positive only when it is clearly an example in trusted docs.",
         ]
+    if "selection manipulation" in message or category == "selection_manipulation":
+        return [
+            "Why: this wording is engineered to win the agent's skill selection "
+            "(trust claims or directives to ignore other skills), not to describe "
+            "what the skill does.",
+            "Safest: prefer a skill whose description states its function plainly. "
+            "Mark false positive only for benign provenance (e.g. 'the official X integration').",
+        ]
     return [
         "Why: this matched a security pattern and needs human review.",
         "Safest: inspect the file and mark false positive only after you understand the context.",

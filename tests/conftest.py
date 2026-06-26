@@ -30,5 +30,15 @@ def clean_skill_dir() -> Path:
 
 
 @pytest.fixture
+def manipulative_skill_dir() -> Path:
+    return FIXTURES_DIR / "manipulative-skill"
+
+
+@pytest.fixture
+def honest_skill_dir() -> Path:
+    return FIXTURES_DIR / "honest-skill"
+
+
+@pytest.fixture
 def hook_path() -> Path:
     return REPO_ROOT / "skillguard" / "hook.py"

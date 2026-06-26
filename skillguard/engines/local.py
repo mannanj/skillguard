@@ -36,15 +36,21 @@ class LocalEngine:
 
             lines = content.split("\n")
             for line_num, line in enumerate(lines, 1):
-                # Skip YAML frontmatter lines (metadata, not instructions)
-                if line_num <= 10 and (
+                # YAML frontmatter (name/description/--- delimiters) is metadata,
+                # not instructions, so most categories skip it to avoid flagging a
+                # description that merely *names* a threat. The exception is
+                # selection_manipulation: the name + description ARE the attack
+                # surface (they are injected into the system prompt and drive skill
+                # selection), so those patterns must see the frontmatter.
+                in_frontmatter = line_num <= 10 and (
                     line.startswith("---")
                     or line.startswith("name:")
                     or line.startswith("description:")
-                ):
-                    continue
+                )
 
                 for category, severity, pattern, description in LOCAL_PATTERNS:
+                    if in_frontmatter and category != "selection_manipulation":
+                        continue
                     if pattern.search(line):
                         # Context suppression: skip if line is in a code comment explaining the pattern
                         stripped = line.strip()
@@ -59,7 +65,9 @@ class LocalEngine:
                             continue
                         if category == "data_exfil" and is_placeholder_webhook_site(line):
                             continue
-                        if category == "prompt_injection" and is_prompt_injection_education_line(line):
+                        if category == "prompt_injection" and is_prompt_injection_education_line(
+                            line
+                        ):
                             continue
                         if category == "shell_pipe" and is_vendor_install_pipe(line):
                             continue
