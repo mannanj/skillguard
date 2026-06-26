@@ -93,16 +93,16 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('class="line-copy-btn"', html)
         self.assertIn('data-copy-line="/plugin marketplace add mannanj/gandalf"', html)
         self.assertIn("copy-install-command-line", html)
-        self.assertIn("<h2 id=\"faq-heading\">FAQ</h2>", html)
+        self.assertIn('<h2 id="faq-heading">FAQ</h2>', html)
         self.assertNotIn('href="#top" aria-label="Gandalf home"', html)
         self.assertNotIn("<span>Gandalf</span>", html)
-        self.assertNotIn("<h2 id=\"how-heading\">", html)
-        self.assertNotIn("<h2 id=\"install-heading\">", html)
-        self.assertNotIn("<h2 id=\"commands-heading\">", html)
-        self.assertNotIn("<h2 id=\"problem-heading\">", html)
-        self.assertNotIn("<h2 id=\"before-heading\">", html)
-        self.assertNotIn("<h2 id=\"numbers-heading\">", html)
-        self.assertNotIn("<section class=\"final-cta\"", html)
+        self.assertNotIn('<h2 id="how-heading">', html)
+        self.assertNotIn('<h2 id="install-heading">', html)
+        self.assertNotIn('<h2 id="commands-heading">', html)
+        self.assertNotIn('<h2 id="problem-heading">', html)
+        self.assertNotIn('<h2 id="before-heading">', html)
+        self.assertNotIn('<h2 id="numbers-heading">', html)
+        self.assertNotIn('<section class="final-cta"', html)
         self.assertNotIn('class="terminal"', html)
         self.assertNotIn('class="wall"', html)
         self.assertNotIn("var scanItems =", html)
@@ -118,9 +118,9 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('aria-label="View source on GitHub"', html)
         self.assertIn('data-tooltip="View Source Code"', html)
         self.assertIn('class="github-icon"', html)
-        self.assertIn("<span class=\"sr-only\">Source on GitHub</span>", html)
+        self.assertIn('<span class="sr-only">Source on GitHub</span>', html)
         self.assertIn("transform: scale(1.18);", html)
-        self.assertIn('content: attr(data-tooltip);', html)
+        self.assertIn("content: attr(data-tooltip);", html)
 
     def test_landing_metadata_uses_mascot_favicon_and_social_preview(self) -> None:
         html = _html()
@@ -135,10 +135,10 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('property="og:title" content="Gandalf - Thou shall not pass."', html)
         self.assertIn('property="og:url" content="https://gandalf.sh/"', html)
         self.assertIn('property="og:image" content="https://gandalf.sh/og.png"', html)
-        self.assertIn("property=\"og:image:alt\"", html)
+        self.assertIn('property="og:image:alt"', html)
         self.assertIn('name="twitter:card" content="summary_large_image"', html)
         self.assertIn('name="twitter:image" content="https://gandalf.sh/og.png"', html)
-        self.assertIn("name=\"twitter:image:alt\"", html)
+        self.assertIn('name="twitter:image:alt"', html)
 
     def test_home_and_docs_share_header_and_footer_navigation(self) -> None:
         landing_header = re.search(
@@ -170,11 +170,19 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('href="/docs/"', landing_nav)
         self.assertNotIn('href="/">Home</a>', landing_nav)
 
-        self.assertLess(docs_header_html.index('class="home-icon-link" href="/"'), docs_header_html.index('class="home-nav" href="/"'))
-        self.assertLess(docs_header_html.index('class="home-nav" href="/"'), docs_header_html.index('<nav class="nav-links"'))
+        self.assertLess(
+            docs_header_html.index('class="home-icon-link" href="/"'),
+            docs_header_html.index('class="home-nav" href="/"'),
+        )
+        self.assertLess(
+            docs_header_html.index('class="home-nav" href="/"'),
+            docs_header_html.index('<nav class="nav-links"'),
+        )
         self.assertLess(docs_nav.index('href="#quick-install"'), docs_nav.index('href="/#faq"'))
         self.assertLess(docs_nav.index('href="/#faq"'), docs_nav.index('href="/docs/"'))
-        self.assertIn('<a class="home-icon-link" href="/" aria-label="Gandalf home">', docs_header_html)
+        self.assertIn(
+            '<a class="home-icon-link" href="/" aria-label="Gandalf home">', docs_header_html
+        )
         self.assertIn('src="/favicon-32x32.png"', docs_header_html)
         self.assertIn("border-radius: 999px;", _docs_html())
         self.assertIn('<a class="home-nav" href="/">Home</a>', docs_header_html)
@@ -194,7 +202,7 @@ class LandingPageTests(unittest.TestCase):
             self.assertIn('class="source-nav github-nav"', html)
             self.assertIn('aria-label="View source on GitHub"', html)
             self.assertIn('data-tooltip="View Source Code"', html)
-            self.assertIn("<span class=\"sr-only\">Source on GitHub</span>", html)
+            self.assertIn('<span class="sr-only">Source on GitHub</span>', html)
             self.assertIn('<nav class="footer-links" aria-label="Footer">', html)
             self.assertIn('href="/docs/"', html)
             self.assertIn('href="https://github.com/mannanj/skillguard"', html)
@@ -229,11 +237,11 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn('data-variant-slot="headline"', html)
         self.assertIn('data-variant-control="Thou shall not pass."', html)
         self.assertIn('data-variant-b="No scan. No run."', html)
-        self.assertIn('var landingExperiment = {', html)
+        self.assertIn("var landingExperiment = {", html)
         self.assertIn('goal: "install-intent"', html)
         self.assertIn('testedSlot: "headline"', html)
         self.assertIn('new URLSearchParams(window.location.search).get("v")', html)
-        self.assertIn('data-landing-variant', html)
+        self.assertIn("data-landing-variant", html)
         self.assertIn("applyLandingVariant", html)
         self.assertIn("trackConversion", html)
         self.assertIn("gandalf_conversion", html)
@@ -274,7 +282,9 @@ class LandingPageTests(unittest.TestCase):
         self.assertIn("<code>gandalf --activity</code>", html)
         self.assertIn("<code>gandalf --install-agent-adapters .</code>", html)
         self.assertIn("<code>gandalf --set-mcp-policy enforce</code>", html)
-        self.assertIn("<code>gandalf --target mcps --mcp-introspect --engines local,skillaudit</code>", html)
+        self.assertIn(
+            "<code>gandalf --target mcps --mcp-introspect --engines local,skillaudit</code>", html
+        )
         self.assertIn("mark-fp", html)
         self.assertIn("ack", html)
         self.assertIn("Static MCP scans never launch servers.", html)

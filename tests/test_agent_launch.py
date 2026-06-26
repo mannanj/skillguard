@@ -12,7 +12,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CLI = REPO_ROOT / "skillguard" / "cli.py"
 
 
-def _run_cli(tmp_home: Path, *args: str, input_text: str | None = None) -> subprocess.CompletedProcess:
+def _run_cli(
+    tmp_home: Path, *args: str, input_text: str | None = None
+) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     env["HOME"] = str(tmp_home)
     env.pop("SKILLGUARD_ACTIVITY_LOG", None)

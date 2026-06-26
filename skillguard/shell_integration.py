@@ -198,7 +198,10 @@ def ensure_zshrc_sources(zshrc: Path, shell_path: Path) -> bool:
     if marker in text:
         return False
     source_line = 'source "$HOME/.claude/skillguard/shell.sh"'
-    if shell_path != Path(os.environ.get("HOME", "~")).expanduser() / ".claude" / "skillguard" / "shell.sh":
+    if (
+        shell_path
+        != Path(os.environ.get("HOME", "~")).expanduser() / ".claude" / "skillguard" / "shell.sh"
+    ):
         source_line = f'source "{shell_path}"'
     block = f"\n# >>> skillguard >>>\n{source_line}\n# <<< skillguard <<<\n"
     zshrc.write_text(text + block)
@@ -209,7 +212,7 @@ def install_shell_integration(home: Path | None = None, *, shell_only: bool = Fa
     root = home or Path(os.environ.get("HOME", "~")).expanduser()
     shell = root / ".claude" / "skillguard" / "shell.sh"
     write_shell_integration(shell)
-    changed = {"shell": str(shell)}
+    changed: dict[str, str | bool] = {"shell": str(shell)}
     if not shell_only:
         shim = root / ".local" / "bin" / "skillguard"
         write_skillguard_shim(shim)

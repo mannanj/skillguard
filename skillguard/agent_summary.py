@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 from skillguard.paths import cache_dir
 
@@ -37,11 +37,7 @@ def load_cached_verdicts() -> list[dict]:
 
 
 def active_verdicts(verdicts: Iterable[dict]) -> list[dict]:
-    return [
-        v
-        for v in verdicts
-        if not v.get("skipped") and int(v.get("finding_count") or 0) > 0
-    ]
+    return [v for v in verdicts if not v.get("skipped") and int(v.get("finding_count") or 0) > 0]
 
 
 def high_plus_verdicts(verdicts: Iterable[dict]) -> list[dict]:

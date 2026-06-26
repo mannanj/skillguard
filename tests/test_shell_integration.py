@@ -17,8 +17,8 @@ def _fake_bin(tmp_path: Path) -> Path:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     (bin_dir / "skillguard").write_text("#!/bin/sh\necho 'SkillGuard: fake banner'\n")
-    (bin_dir / "codex").write_text("#!/bin/sh\necho \"codex $*\"\n")
-    (bin_dir / "claude").write_text("#!/bin/sh\necho \"claude $*\"\n")
+    (bin_dir / "codex").write_text('#!/bin/sh\necho "codex $*"\n')
+    (bin_dir / "claude").write_text('#!/bin/sh\necho "claude $*"\n')
     for p in bin_dir.iterdir():
         p.chmod(0o755)
     return bin_dir

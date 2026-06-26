@@ -31,7 +31,8 @@ def test_install_agent_adapters_command_writes_project_adapter(tmp_path: Path) -
     assert "SkillGuard agent adapters installed" in result.stdout
     assert "agents_md:" in result.stdout
     assert "13 agent surfaces" in (project / "AGENTS.md").read_text()
-    assert json.loads((project / ".gemini" / "settings.json").read_text())[
-        "contextFileName"
-    ] == "AGENTS.md"
+    assert (
+        json.loads((project / ".gemini" / "settings.json").read_text())["contextFileName"]
+        == "AGENTS.md"
+    )
     assert (project / ".aider.conf.yml").read_text() == "read: AGENTS.md\n"
