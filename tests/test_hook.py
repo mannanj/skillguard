@@ -559,6 +559,51 @@ def test_safe_name_mirrors_package():
         assert hook._safe_name(name) == safe_name(name), name
 
 
+def test_sanitize_mirrors_package():
+    """The hook prints attacker-controlled skill/server NAMES to a terminal an
+    agent reads, so it defangs them with an inline ``_sanitize`` that must be
+    byte-identical to the package authority ``sanitize.sanitize_for_display``.
+    Exercise every code path (ANSI CSI/OSC/Fe, lone ESC, C0/C1 controls, every
+    invisible/bidi code point, emoji ZWJ) and pin them against drift."""
+    import skillguard.hook as hook
+    from skillguard.sanitize import BIDI_CHARS, INVISIBLE_CHARS, sanitize_for_display
+
+    esc = chr(0x1B)
+    corpus = [
+        "",
+        "plain-skill",
+        "tab\there",
+        f"csi{esc}[31mred{esc}[0m",
+        f"erase{esc}[2K{esc}[1Aup",
+        f"osc{esc}]0;title{chr(0x07)}end",
+        f"fe{esc}Dnext",
+        f"lone{esc}",
+        f"c0{chr(0x07)}{chr(0x00)}{chr(0x08)}",
+        f"del{chr(0x7F)}x",
+        f"c1{chr(0x9B)}2Km",
+        f"team {chr(0x1F468)}{chr(0x200D)}{chr(0x1F4BB)}",
+        f"all{esc}[2K{chr(0x200B)}{chr(0x202E)}evil{chr(0x07)}",
+    ]
+    corpus += [f"x{c}y" for c in sorted(INVISIBLE_CHARS | BIDI_CHARS)]
+    for s in corpus:
+        assert hook._sanitize(s) == sanitize_for_display(s), repr(s)
+
+
+def test_hook_defangs_malicious_skill_name_in_output(hook_path, tmp_path):
+    """A skill named with an ANSI line-erase + a right-to-left override must not
+    move the cursor or reorder text when the hook prints it — the bytes are
+    stripped/surfaced as <U+XXXX>. Mutating away the hook's _sanitize call leaks
+    the raw ESC into the gate output the agent harness reads."""
+    _cache_dir(tmp_path)  # no entry -> "never scanned" block path echoes the name
+    esc, rlo = chr(0x1B), chr(0x202E)
+    result = _run_hook(hook_path, tmp_path, _event(f"evil{esc}[2K{rlo}x"))
+    assert result.returncode == 2
+    combined = result.stdout + result.stderr
+    assert "never been scanned" in combined
+    assert esc not in combined and "[2K" not in combined
+    assert "<U+202E>" in combined
+
+
 # ══ Skill severity gate (critical/high block unless risk acknowledged) ════════
 #     Mirrors the MCP gate; escape hatch is --ack (distinct from --skip).
 

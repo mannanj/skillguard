@@ -105,6 +105,49 @@ def _fmt_date(scanned_at: str) -> str:
         return str(scanned_at)
 
 
+# Inline mirror of skillguard.sanitize.sanitize_for_display. This hook runs
+# standalone (see install.sh) and prints attacker-controlled skill/server NAMES to
+# a terminal that an agent then reads, so it must strip ANSI escapes + control
+# chars and surface invisible/bidi code points as <U+XXXX> WITHOUT importing the
+# package. Pinned byte-for-byte against the authority by
+# tests/test_hook.py::test_sanitize_mirrors_package — keep both in lockstep.
+_SANITIZE_STRIP = frozenset(
+    chr(cp)
+    for cp in (
+        0x200B,
+        0x200C,
+        0x200D,
+        0x2060,
+        0xFEFF,
+        0x00AD,
+        0x180E,  # invisible
+        0x202A,
+        0x202B,
+        0x202C,
+        0x202D,
+        0x202E,
+        0x2066,
+        0x2067,
+        0x2068,
+        0x2069,
+        0x200E,
+        0x200F,  # bidi
+    )
+)
+_SANITIZE_ANSI_RE = re.compile(
+    r"\x1b\[[0-?]*[ -/]*[@-~]"  # CSI
+    r"|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC ... BEL or ST
+    r"|\x1b[@-Z\\-_]"  # two-char Fe escape
+)
+_SANITIZE_CONTROL_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f-\x9f]")
+
+
+def _sanitize(text: str) -> str:
+    text = _SANITIZE_ANSI_RE.sub("", text)
+    text = _SANITIZE_CONTROL_RE.sub("", text)
+    return "".join(f"<U+{ord(ch):04X}>" if ch in _SANITIZE_STRIP else ch for ch in text)
+
+
 def _standalone_mcp_policy() -> str:
     """Resolve mcp_policy WITHOUT the skillguard package — env var first, then the
     flat ``_settings.json`` — mirroring ``config.mcp_policy``'s resolution order.
@@ -172,6 +215,14 @@ def handle_skill(skill_name: str) -> None:
     if not cache_file.exists():
         cache_file = CACHE_DIR / f"{short_name}.json"
 
+    # Cache files and the on-disk SKILL.md are keyed by the RAW name, so keep raw
+    # copies for those probes; everything printed or logged from here on uses the
+    # defanged form so a control-char skill name can't spoof the hook's terminal
+    # output (which the agent harness reads).
+    raw_skill_name, raw_short_name = skill_name, short_name
+    skill_name = _sanitize(skill_name)
+    short_name = _sanitize(short_name)
+
     if not cache_file.exists():
         _log(
             "hook_block",
@@ -224,7 +275,7 @@ def handle_skill(skill_name: str) -> None:
     # TOCTOU guard — only enforceable for skills we can locate.
     cached_mtime = cache.get("skill_mtime_epoch") or 0
     if cached_mtime:
-        current_mtime = find_skill_mtime(skill_name, short_name)
+        current_mtime = find_skill_mtime(raw_skill_name, raw_short_name)
         if current_mtime is not None and current_mtime > cached_mtime + 1:
             _log(
                 "hook_block",
@@ -445,7 +496,10 @@ def handle_mcp(tool_name: str) -> None:
         )
 
     server_token = tool_name[len("mcp__") :]
+    # server_token stays raw — find_mcp_verdict matches it against stored tokens.
+    # server_label is display/log/nudge only, so defang it (the agent reads this).
     server_label = server_token.split("__", 1)[0] if "__" in server_token else server_token
+    server_label = _sanitize(server_label)
     cmd = scan_cmd()
     # Under enforce, refuse loose cross-server matches (009-D): an ambiguous match
     # must resolve toward "unscanned" rather than borrow another server's verdict.
@@ -481,7 +535,9 @@ def handle_mcp(tool_name: str) -> None:
             )
         sys.exit(0)
 
-    name = verdict.get("target_name") or verdict.get("skill_name") or server_label
+    # target_name/skill_name come from the cache (an attacker-controlled server
+    # name at scan time), so defang the resolved display name too.
+    name = _sanitize(verdict.get("target_name") or verdict.get("skill_name") or server_label)
     date_str = _fmt_date(verdict.get("scanned_at", "unknown"))
 
     if verdict.get("skipped"):

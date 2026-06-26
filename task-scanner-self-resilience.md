@@ -1,6 +1,8 @@
 # Task: Make SkillGuard itself resilient to prompt-injection & malformed-unicode
 
-**Status:** research / design-only — DO NOT build until greenlit
+**Status:** BUILT 2026-06-26 — the local guard (gaps 1 & 2) is implemented,
+tested, and mutation-proven; see "Implementation" below. Gap 3 (remote SkillAudit
+hardening) and homoglyph/mixed-script detection remain follow-ons, as scoped.
 **Created:** 2026-06-26
 **Why now:** raised in-session — "is our scanner itself hijackable by prompts or
 malformed unicode, and can we guard against it + surface those as alerts?" Maps
@@ -78,15 +80,51 @@ analogous to `mcp/secrets.py` being the redaction authority). Likely shape:
   tracked in `task-skills-registry-threat-models.md` (Option 1); coordinate so the
   unicode fixtures and those evasion fixtures share one suite.
 
-## Completion criteria (for the FUTURE build)
+## Implementation (2026-06-26)
 
-- [ ] Malicious fixtures CAUGHT: hidden `curl|bash` via single zero-width; a bidi
-      Trojan-Source line; an ANSI-escape line — each flagged with category+severity.
-- [ ] FP guard SILENT: a clean skill using legit emoji / accents / CJK / one
-      decorative full-width heading yields zero findings (per contribution contract).
-- [ ] Output proven defanged: a `context` carrying ANSI cannot move the cursor /
-      spoof output when rendered; invisibles show as `<U+XXXX>`.
-- [ ] Hook stdout proven safe (mirror or cache-sourced), with a mirror test if
-      `hook.py` gets an inline sanitizer.
-- [ ] **Mutation-proven**: break each new rule / the fold step, confirm RED, revert.
-- [ ] `install.sh` MODULES + version sync updated if a new module lands.
+New authority `skillguard/sanitize.py` (stdlib-only), mirroring `mcp/secrets.py`:
+- `fold_for_detection(text)` — strips invisibles/bidi + NFKC, but ONLY when the
+  line already contains an invisible/bidi char (so benign emoji/accents/CJK/
+  full-width are never re-normalized). `engines/local.py` now scans **raw OR
+  folded**, so an obfuscated payload (e.g. a zero-width split of `curl`) is caught
+  by the existing rules.
+- `sanitize_for_display(text)` — strips ANSI escapes + C0/C1 controls and renders
+  invisible/bidi code points as visible `<U+XXXX>`. Idempotent.
+
+Detection: three high-severity `obfuscation` rules in `patterns.py` (invisible
+char splitting an ASCII token; bidi override; ANSI escape byte), built from
+explicit code points to keep source ASCII. `obfuscation` joins
+`selection_manipulation` in seeing YAML frontmatter (`_FRONTMATTER_SCANNED_CATEGORIES`).
+
+Display chokepoint: `scan.py::_sanitize_findings_for_display` defangs every
+finding's `context`/`file` (and remote-engine `message`) in place after triage,
+before cache + history DB + render — one place covers all three. `render/reports.py`
+also defangs attacker-controlled target `name`/`path` at each print site. The
+standalone `hook.py` mirrors `sanitize_for_display` as inline `_sanitize` (pinned
+by `test_sanitize_mirrors_package`) and defangs the skill/server names it prints.
+
+Tests: `tests/test_text_safety.py` (+ 2 in `test_hook.py`), all byte-exact.
+
+## Completion criteria
+
+- [x] Malicious fixtures CAUGHT: hidden `curl|bash` via single zero-width (both
+      `obfuscation` and folded `shell_pipe`); a bidi Trojan-Source line; an
+      ANSI-escape line — each flagged high (`test_text_safety.py`).
+- [x] FP guard SILENT: a clean skill using legit emoji / accents / CJK / one
+      decorative full-width heading yields zero findings of any category.
+- [x] Output proven defanged: a `context` carrying ANSI is stripped and invisibles
+      show as `<U+XXXX>` through the full pipeline (cache + render).
+- [x] Hook stdout proven safe via an inline mirror + `test_sanitize_mirrors_package`
+      and a subprocess test driving a malicious skill name.
+- [x] **Mutation-proven**: each new rule, the fold step, the scan-chokepoint call,
+      and the hook/render defangs were mutated → RED, reverted → GREEN.
+- [~] `install.sh` MODULES updated (`sanitize.py` added). Version sync left GREEN at
+      0.3.1 (all 4 files agree); a bump is a release-marker decision (it threads into
+      the landing page + `--version` + 3 tests) deliberately deferred to release.
+
+## Follow-ons still open
+
+- Homoglyph / mixed-script (confusables / TR39) detection — separate task, as scoped.
+- Remote SkillAudit prompt-injection hardening (gap 3) — service-side.
+- A pure full-width payload with no invisible char is intentionally NOT folded
+  (the documented FP trade-off); it is covered by the homoglyph follow-on.

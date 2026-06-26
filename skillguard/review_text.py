@@ -40,6 +40,16 @@ def finding_explanation(finding: dict, *, target_kind: str) -> list[str]:
             "Safest: prefer a skill whose description states its function plainly. "
             "Mark false positive only for benign provenance (e.g. 'the official X integration').",
         ]
+    if category == "obfuscation":
+        return [
+            "Why: this disguises content — via encoding, or via invisible, "
+            "bidirectional, or terminal-escape characters — to slip a payload past "
+            "detection or to spoof what SkillGuard prints. Any '<U+XXXX>' tokens "
+            "shown are hidden characters SkillGuard made visible.",
+            "Safest: treat as malicious unless you can read the de-obfuscated text "
+            "and confirm it is benign; legitimate skills do not hide characters in "
+            "their source.",
+        ]
     return [
         "Why: this matched a security pattern and needs human review.",
         "Safest: inspect the file and mark false positive only after you understand the context.",

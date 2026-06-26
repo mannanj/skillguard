@@ -283,6 +283,35 @@ _p(
     "Hex-encoded strings (4+ bytes)",
 )
 _p("obfuscation", "high", r"[\u200b\u200c\u200d\ufeff]{3,}", "Zero-width character obfuscation")
+# Unicode/terminal text-safety rules (see skillguard/sanitize.py). These match
+# the RAW line and surface the obfuscation TECHNIQUE itself; fold_for_detection()
+# additionally lets every rule above see the de-obfuscated payload. They are
+# exempt from the frontmatter skip in engines/local.py because a skill's
+# name/description is injected into the agent verbatim. Char classes are built
+# from explicit code points (not literal invisibles) to keep this source ASCII.
+# Detection subsets are intentionally NARROWER than sanitize.STRIP_CHARS:
+#   - zero-width: the true zero-advance chars, so even a SINGLE one is flagged,
+#     but only where it splits an ASCII token — an emoji ZWJ sits between
+#     non-ASCII code points, so it never matches (the documented emoji FP guard);
+#   - bidi: the embedding/override/isolate controls (Trojan Source), excluding
+#     the benign LRM/RLM marks that legitimately appear in RTL text.
+_ZERO_WIDTH = "".join(chr(cp) for cp in (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF))
+_BIDI_OVERRIDES = "".join(
+    chr(cp) for cp in (0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069)
+)
+_p(
+    "obfuscation",
+    "high",
+    rf"[A-Za-z0-9][{_ZERO_WIDTH}]|[{_ZERO_WIDTH}][A-Za-z0-9]",
+    "Invisible character splitting a token",
+)
+_p(
+    "obfuscation",
+    "high",
+    rf"[{_BIDI_OVERRIDES}]",
+    "Bidirectional control character (Trojan Source)",
+)
+_p("obfuscation", "high", r"\x1b", "Terminal escape sequence in skill source")
 _p(
     "obfuscation",
     "high",

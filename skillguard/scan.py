@@ -19,7 +19,26 @@ from skillguard import store
 from skillguard.cache import write_cache
 from skillguard.model import Engine, Finding, SkillInfo, worst_severity
 from skillguard.paths import db_path
+from skillguard.sanitize import sanitize_for_display
 from skillguard.triage import apply_triage, load_triage
+
+
+def _sanitize_findings_for_display(findings: list[Finding]) -> None:
+    """Defang every finding's echoed skill text IN PLACE — the single chokepoint
+    that makes the same data safe for the cache, the history DB, and every
+    renderer at once (they all read these ``Finding`` objects).
+
+    ``context`` is always an excerpt of untrusted skill bytes, so it is always
+    sanitized. ``message`` is a static rule description for the local engine
+    (trusted), but a remote engine may echo skill text into its message, so
+    messages are sanitized only for non-local engines. Runs AFTER ``apply_triage``
+    so false-positive fingerprints still match on the raw excerpt.
+    """
+    for f in findings:
+        f.context = sanitize_for_display(f.context)
+        f.file = sanitize_for_display(f.file)
+        if f.engine != "local":
+            f.message = sanitize_for_display(f.message)
 
 
 def _dedupe_mcp_findings(findings: list[Finding]) -> list[Finding]:
@@ -107,6 +126,7 @@ def run_scan_pipeline(
             if target.kind == "mcp":
                 target.findings = _dedupe_mcp_findings(target.findings)
             apply_triage(target, triage)
+            _sanitize_findings_for_display(target.findings)
             cache = write_cache(target, engine_names_used)
 
             # History is ALWAYS preserved (independent of the activity-log toggle).

@@ -17,6 +17,14 @@ from skillguard.patterns import (
     is_prompt_injection_education_line,
     is_vendor_install_pipe,
 )
+from skillguard.sanitize import fold_for_detection
+
+# Categories whose patterns must ALSO see YAML frontmatter. For most categories a
+# name/description that merely *names* a threat is metadata, not a directive, so
+# the frontmatter is skipped; but for these two the frontmatter IS the attack
+# surface: selection_manipulation framing and an invisible/bidi/ANSI char hidden
+# in the description are the attack itself, not a mention of one.
+_FRONTMATTER_SCANNED_CATEGORIES = frozenset({"selection_manipulation", "obfuscation"})
 
 
 class LocalEngine:
@@ -38,20 +46,26 @@ class LocalEngine:
             for line_num, line in enumerate(lines, 1):
                 # YAML frontmatter (name/description/--- delimiters) is metadata,
                 # not instructions, so most categories skip it to avoid flagging a
-                # description that merely *names* a threat. The exception is
-                # selection_manipulation: the name + description ARE the attack
-                # surface (they are injected into the system prompt and drive skill
-                # selection), so those patterns must see the frontmatter.
+                # description that merely *names* a threat. The exceptions live in
+                # _FRONTMATTER_SCANNED_CATEGORIES (selection_manipulation +
+                # obfuscation), whose framing/hidden chars ARE the attack surface.
                 in_frontmatter = line_num <= 10 and (
                     line.startswith("---")
                     or line.startswith("name:")
                     or line.startswith("description:")
                 )
 
+                # Defeat Unicode obfuscation: fold invisibles/bidi away (and NFKC-
+                # normalize) so a regex sees the canonical form (e.g. a zero-width
+                # split of "curl" folds back to "curl"). fold_for_detection()
+                # returns the line unchanged when it has no invisible/bidi char, so
+                # benign emoji/accents/CJK/full-width text is never re-normalized.
+                folded = fold_for_detection(line)
+
                 for category, severity, pattern, description in LOCAL_PATTERNS:
-                    if in_frontmatter and category != "selection_manipulation":
+                    if in_frontmatter and category not in _FRONTMATTER_SCANNED_CATEGORIES:
                         continue
-                    if pattern.search(line):
+                    if pattern.search(line) or (folded != line and pattern.search(folded)):
                         # Context suppression: skip if line is in a code comment explaining the pattern
                         stripped = line.strip()
                         if stripped.startswith("#") and "detect" in stripped.lower():

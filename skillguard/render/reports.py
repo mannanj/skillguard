@@ -18,6 +18,12 @@ from datetime import datetime
 from skillguard.model import SEVERITY_ORDER, SkillInfo
 from skillguard.render.colors import bold, dim, reset, severity_color
 from skillguard.render.summary import summarize
+from skillguard.sanitize import sanitize_for_display
+
+# A target's name/path come from an attacker-controlled directory name, so they
+# are defanged for display the same way finding excerpts are (see scan.py). The
+# finding excerpts themselves (context/file/remote message) were already
+# sanitized at the scan chokepoint before these renderers ever see them.
 
 
 def _fmt_ts(iso: str) -> str:
@@ -78,12 +84,13 @@ def report_table(
     if high_skills:
         print(f"{bold()}FINDINGS (HIGH+){reset()}")
         for skill in high_skills:
+            name = sanitize_for_display(skill.name)
             high_findings = [f for f in skill.active_findings if f.severity in ("critical", "high")]
             for f in sorted(high_findings, key=lambda x: x.sort_key()):
                 color = severity_color(f.severity)
                 label = f"{skill.kind}/{skill.scope}" if skill.kind == "mcp" else skill.scope
                 print(
-                    f"  {color}{f.severity.upper():<9}{reset()} {skill.name} ({label}) — [{f.engine}] {f.message}"
+                    f"  {color}{f.severity.upper():<9}{reset()} {name} ({label}) — [{f.engine}] {f.message}"
                 )
                 if f.file:
                     print(f"           {dim()}{f.file}:{f.line}{reset()}")
@@ -98,9 +105,10 @@ def report_table(
         for skill in skills:
             med_f = [f for f in skill.active_findings if f.severity == "medium"]
             if med_f:
+                name = sanitize_for_display(skill.name)
                 for f in sorted(med_f, key=lambda x: x.sort_key()):
                     print(
-                        f"  {severity_color('medium')}MEDIUM{reset()}   {skill.name} — [{f.engine}] {f.message}"
+                        f"  {severity_color('medium')}MEDIUM{reset()}   {name} — [{f.engine}] {f.message}"
                     )
                     if f.file:
                         print(f"           {dim()}{f.file}:{f.line}{reset()}")
@@ -119,9 +127,10 @@ def report_table(
             print(f"{bold()}ADVISORIES (low/info){reset()}")
             for t, f in sorted(advisories, key=lambda sf: sf[1].sort_key()):
                 label = f"{t.kind}/{t.scope}" if t.kind == "mcp" else t.scope
+                name = sanitize_for_display(t.name)
                 print(
                     f"  {severity_color(f.severity)}{f.severity.upper():<8}{reset()} "
-                    f"{t.name} ({label}) — [{f.engine}] {f.message}"
+                    f"{name} ({label}) — [{f.engine}] {f.message}"
                 )
             print()
 
@@ -156,10 +165,10 @@ def report_json(skills: list[SkillInfo], engines_used: list[str], scan_time: str
 
     def target_dict(t: SkillInfo) -> dict:
         return {
-            "name": t.name,
+            "name": sanitize_for_display(t.name),
             "kind": t.kind,
             "scope": t.scope,
-            "path": str(t.path),
+            "path": sanitize_for_display(str(t.path)),
             "max_severity": t.max_severity,
             "triaged_fp_count": sum(1 for f in t.findings if f.triaged_fp),
             "findings": [asdict(f) for f in sorted(t.findings, key=lambda x: x.sort_key())],
@@ -240,7 +249,7 @@ def report_markdown(
         for skill in flagged:
             sev = skill.max_severity.upper()
             label = f"{skill.kind}/{skill.scope}" if skill.kind == "mcp" else skill.scope
-            print(f"### {skill.name} ({label}) — {sev}")
+            print(f"### {sanitize_for_display(skill.name)} ({label}) — {sev}")
             print()
             for f in sorted(skill.active_findings, key=lambda x: x.sort_key()):
                 loc = f" `{f.file}:{f.line}`" if f.file else ""
@@ -260,6 +269,6 @@ def report_quiet(skills: list[SkillInfo]) -> None:
         for s in skills:
             if s.max_severity in ("critical", "high"):
                 top = sorted(s.active_findings, key=lambda f: f.sort_key())[0]
-                print(f"  - {s.name} ({s.kind}): {top.message}")
+                print(f"  - {sanitize_for_display(s.name)} ({s.kind}): {top.message}")
     else:
         print(f"SkillGuard: {total} target(s) scanned, all clean")

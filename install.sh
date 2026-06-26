@@ -51,6 +51,7 @@ mcp/materialize.py
 mcp/engine.py
 mcp/introspect.py
 patterns.py
+sanitize.py
 discovery.py
 paths.py
 cache.py
