@@ -3,12 +3,12 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Gandalf docs - install, scan, and runtime checks</title>
+        <title>SkillGuard docs - install, scan, and runtime checks</title>
         <meta
             name="description"
-            content="Install Gandalf, run the first scan, configure MCP enforcement, and review runtime security findings."
+            content="Install SkillGuard, run the first scan, configure MCP enforcement, and review runtime security findings."
         />
-        <link rel="canonical" href="https://gandalf.sh/docs/" />
+        <link rel="canonical" href="https://skillguard.sh/docs/" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon-32x32.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -474,7 +474,7 @@
         <header class="nav">
             <div class="wrap nav-inner">
                 <div class="home-group">
-                    <a class="home-icon-link" href="/" aria-label="Gandalf home">
+                    <a class="home-icon-link" href="/" aria-label="SkillGuard home">
                         <img
                             class="home-icon"
                             src="/favicon-32x32.png"
@@ -517,11 +517,11 @@
         </header>
 
         <main id="main">
-            <section class="docs-hero" aria-label="Gandalf documentation overview">
+            <section class="docs-hero" aria-label="SkillGuard documentation overview">
                 <div class="wrap">
                     <p class="kicker">Docs</p>
                     <p class="lede">
-                        Gandalf scans agent skills and MCP servers before they
+                        SkillGuard scans agent skills and MCP servers before they
                         run. Use this page for the first install, the first
                         scan, review actions, and the policies that decide when
                         runtime calls are allowed or blocked.
@@ -543,10 +543,10 @@
                         then add the personal plugin entry.
                     </p>
                     <div class="command-stack" aria-label="Quick install commands">
-                        <code>/plugin marketplace add mannanj/gandalf</code>
-                        <code>/plugin install gandalf@gandalf</code>
+                        <code>/plugin marketplace add mannanj/skillguard</code>
+                        <code>/plugin install skillguard@skillguard</code>
                         <code>/reload-plugins</code>
-                        <code>codex plugin add gandalf@personal</code>
+                        <code>codex plugin add skillguard@personal</code>
                     </div>
                 </section>
 
@@ -554,14 +554,14 @@
                     <p class="kicker">First scan</p>
                     <h2>Build the first local verdict</h2>
                     <p>
-                        Run a local scan once after installation. Gandalf scans
+                        Run a local scan once after installation. SkillGuard scans
                         configured skills and MCP servers, records the result in
                         the local cache, and lets the hook read that verdict
                         quickly at runtime.
                     </p>
                     <div class="command-stack">
-                        <code>gandalf --target all --engines local</code>
-                        <code>gandalf --target all</code>
+                        <code>skillguard --target all --engines local</code>
+                        <code>skillguard --target all</code>
                     </div>
                 </section>
 
@@ -569,8 +569,8 @@
                     <p class="kicker">Claude Code</p>
                     <h2>Use the plugin skill</h2>
                     <p>
-                        In Claude Code, run <code>/gandalf:gandalf</code> or ask
-                        Claude to use Gandalf. The hook checks cached verdicts
+                        In Claude Code, run <code>/skillguard:skillguard</code> or ask
+                        Claude to use SkillGuard. The hook checks cached verdicts
                         on skill and MCP calls before the tool runs.
                     </p>
                     <p>
@@ -584,8 +584,8 @@
                     <h2>Use the Codex plugin</h2>
                     <p>
                         Start a new Codex session after installation, then pick
-                        Gandalf from <code>/skills</code>, type
-                        <code>$gandalf</code>, or ask Codex to use Gandalf to
+                        SkillGuard from <code>/skills</code>, type
+                        <code>$skillguard</code>, or ask Codex to use SkillGuard to
                         review cached findings.
                     </p>
                     <p>
@@ -606,27 +606,27 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td><code>gandalf --target all</code></td>
+                                <td><code>skillguard --target all</code></td>
                                 <td>Scan skills and MCP servers.</td>
                             </tr>
                             <tr>
-                                <td><code>gandalf --target all --engines local</code></td>
+                                <td><code>skillguard --target all --engines local</code></td>
                                 <td>Scan everything with the offline local engine.</td>
                             </tr>
                             <tr>
-                                <td><code>gandalf --agent-summary</code></td>
+                                <td><code>skillguard --agent-summary</code></td>
                                 <td>Print the cached high-risk launch summary.</td>
                             </tr>
                             <tr>
-                                <td><code>gandalf --review</code></td>
+                                <td><code>skillguard --review</code></td>
                                 <td>Review active findings and choose next actions.</td>
                             </tr>
                             <tr>
-                                <td><code>gandalf --activity</code></td>
+                                <td><code>skillguard --activity</code></td>
                                 <td>Show scan, override, and hook activity.</td>
                             </tr>
                             <tr>
-                                <td><code>gandalf --install-agent-adapters .</code></td>
+                                <td><code>skillguard --install-agent-adapters .</code></td>
                                 <td>
                                     Write repo adapters for the supported agent
                                     harnesses.
@@ -640,27 +640,27 @@
                     <p class="kicker">MCP checks</p>
                     <h2>MCP checks and enforcement modes</h2>
                     <p>
-                        Gandalf discovers configured MCP servers, materializes a
+                        SkillGuard discovers configured MCP servers, materializes a
                         redacted scan surface, and checks launch commands,
                         endpoint metadata, env/header names, and optional
                         model-facing tool descriptions.
                     </p>
                     <div class="note-grid">
                         <div class="note">
-                            <strong>Default: warn</strong>
+                            <strong>Default: enforce</strong>
                             <p>
-                                MCP policy defaults to <code>warn</code>. It
-                                nudges on unscanned servers and logs calls
-                                without blocking them.
+                                MCP policy defaults to <code>enforce</code>. It
+                                blocks unscanned servers and critical or
+                                high-risk verdicts.
                             </p>
                         </div>
                         <div class="note">
-                            <strong>Enforce when ready</strong>
+                            <strong>Relax when needed</strong>
                             <p>
                                 Use
-                                <code>gandalf --set-mcp-policy enforce</code>
-                                to block unscanned MCP servers and critical or
-                                high-risk verdicts.
+                                <code>skillguard --set-mcp-policy warn</code>
+                                when you want logging and warnings without
+                                runtime refusal.
                             </p>
                         </div>
                     </div>
@@ -670,7 +670,7 @@
                         to read tool descriptions:
                     </p>
                     <div class="command-stack">
-                        <code>gandalf --target mcps --mcp-introspect --engines local,skillaudit</code>
+                        <code>skillguard --target mcps --mcp-introspect --engines local,skillaudit</code>
                     </div>
                 </section>
 
@@ -678,7 +678,7 @@
                     <p class="kicker">Review flow</p>
                     <h2>Review, acknowledge, and mark false positives</h2>
                     <p>
-                        Use <code>gandalf --review</code> to walk active
+                        Use <code>skillguard --review</code> to walk active
                         findings from an agent session. Choose
                         <code>mark-fp</code> only after reviewing benign
                         documentation-like matches. Choose <code>ack</code> when
@@ -694,7 +694,7 @@
                     <p class="kicker">Cache</p>
                     <h2>Cache and rescan behavior</h2>
                     <p>
-                        Verdicts and history are stored under the local Gandalf
+                        Verdicts and history are stored under the local SkillGuard
                         cache. Missing, corrupted, unreadable, or stale cache
                         entries fail closed for skill calls.
                     </p>
@@ -725,7 +725,7 @@
                     <ul>
                         <li>
                             <strong>No cached scan:</strong> run
-                            <code>gandalf --target all --engines local</code>.
+                            <code>skillguard --target all --engines local</code>.
                         </li>
                         <li>
                             <strong>Changed since scan:</strong> rescan the
@@ -734,7 +734,7 @@
                         <li>
                             <strong>Expected MCP blocking:</strong> check
                             <code>SKILLGUARD_MCP_POLICY</code> or run
-                            <code>gandalf --set-mcp-policy enforce</code>.
+                            <code>skillguard --set-mcp-policy enforce</code>.
                         </li>
                         <li>
                             <strong>Review noise:</strong> inspect the file, then
@@ -748,7 +748,7 @@
                     <p class="kicker">Security</p>
                     <h2>Security and privacy notes</h2>
                     <p>
-                        Gandalf reads skill files and MCP configuration. Static
+                        SkillGuard reads skill files and MCP configuration. Static
                         scans do not execute skill code or launch MCP servers.
                         Secret values are read in memory for detection and are
                         not written to scan surfaces, findings, cache, or

@@ -1,4 +1,4 @@
-// Gandalf landing worker: static assets plus a couple of friendly routes.
+// SkillGuard landing worker: static assets plus a couple of friendly routes.
 const GITHUB_REPO_API = "https://api.github.com/repos/mannanj/skillguard";
 const GITHUB_REPO_CACHE_SECONDS = 60 * 60;
 
@@ -17,7 +17,7 @@ async function githubRepoResponse(request, ctx) {
     upstream = await fetch(GITHUB_REPO_API, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "gandalf.sh",
+        "User-Agent": "skillguard.sh",
       },
     });
   } catch (_error) {
@@ -65,7 +65,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // `curl -fsSL https://gandalf.sh/install | sh`
+    // `curl -fsSL https://skillguard.sh/install | sh`
     if (url.pathname === "/install" || url.pathname === "/install.sh") {
       return Response.redirect(
         "https://raw.githubusercontent.com/mannanj/skillguard/main/install.sh",
@@ -77,9 +77,14 @@ export default {
       return githubRepoResponse(request, ctx);
     }
 
-    // Canonical host: collapse www → apex
-    if (url.hostname === "www.gandalf.sh") {
-      url.hostname = "gandalf.sh";
+    // Canonical host: collapse www to apex.
+    if (url.hostname === "www.skillguard.sh") {
+      url.hostname = "skillguard.sh";
+      return Response.redirect(url.toString(), 301);
+    }
+
+    if (url.hostname === "gandalf.sh" || url.hostname === "www.gandalf.sh") {
+      url.hostname = "skillguard.sh";
       return Response.redirect(url.toString(), 301);
     }
 
