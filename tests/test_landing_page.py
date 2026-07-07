@@ -137,39 +137,45 @@ class LandingPageTests(unittest.TestCase):
         html = _gandalf_preview_html()
         compact_html = re.sub(r"\s+", " ", html)
 
-        self.assertIn("<title>Gandalf - runtime gate preview</title>", html)
+        self.assertIn("<title>Gandalf - Thou shall not pass.</title>", html)
         self.assertIn('href="/gandalf/"', html)
         self.assertIn('href="/">SkillGuard</a>', html)
-        self.assertIn('<h1 id="hero-heading">Thou shall not pass.</h1>', html)
-        self.assertIn("Gandalf checks skills and MCP servers before runtime", compact_html)
-        self.assertIn('class="hero-mascot"', html)
+        self.assertIn('<h1 id="hero-heading">Gandalf</h1>', html)
+        self.assertIn("Thou shall not pass.", compact_html)
+        self.assertIn(
+            "Check agent skills and MCPs on Claude, Codex, and other agent harnesses"
+            " before runtime",
+            compact_html,
+        )
+        self.assertIn('class="mascot"', html)
         self.assertIn('src="/gandalf-mascot.png"', html)
-        self.assertIn('src="/gandalf-mascot-v2.svg"', html)
-        self.assertIn('src="/gandalf-lockup.jpg"', html)
         self.assertIn('id="install"', html)
-        self.assertIn('id="how"', html)
         self.assertIn('id="faq"', html)
+        self.assertNotIn('id="how"', html)
 
-    def test_gandalf_preview_has_install_modes_and_threat_selector(self) -> None:
+    def test_gandalf_preview_has_install_modes_and_stays_short(self) -> None:
         html = _gandalf_preview_html()
 
-        self.assertIn("curl -fsSL https://gandalf.sh/install | sh", html)
         self.assertIn("gandalf --target all --engines local", html)
         self.assertIn("/plugin marketplace add mannanj/gandalf", html)
         self.assertIn("/plugin install gandalf@gandalf", html)
         self.assertIn("codex plugin add gandalf@personal", html)
         self.assertIn("gandalf --install-agent-adapters .", html)
-        self.assertIn('data-threat="credential"', html)
-        self.assertIn('data-threat="reverse"', html)
-        self.assertIn('data-threat="changed"', html)
-        self.assertIn('data-threat="mcp"', html)
-        self.assertIn("GANDALF: THOU SHALL NOT PASS", html)
-        self.assertIn("0 commands ran.", html)
-        self.assertIn("gandalf_preview_conversion", html)
+        self.assertIn('event: "gandalf_conversion"', html)
+        self.assertNotIn("data-threat=", html)
+        self.assertNotIn("GANDALF: THOU SHALL NOT PASS", html)
+        self.assertNotIn('class="hero-mascot"', html)
+        self.assertNotIn("gandalf-mascot-v2.svg", html)
+        self.assertNotIn("gandalf-lockup.jpg", html)
         self.assertNotIn('window.addEventListener("scroll"', html)
         self.assertNotIn("h-screen", html)
         self.assertNotIn("—", html)
         self.assertNotIn("–", html)
+        self.assertLess(
+            html.count("<section"),
+            4,
+            "gandalf preview should stay to hero/strip/faq, not regrow extra sections",
+        )
 
     def test_docs_page_is_skillguard_branded_and_holds_command_reference(self) -> None:
         html = _docs_html()
