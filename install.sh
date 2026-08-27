@@ -5,15 +5,16 @@
 #
 # What this script does (and nothing else):
 #   1. Copies the skillguard package to ~/.claude/skillguard/
-#   2. Registers the PreToolUse hook in ~/.claude/settings.json (atomic, via python3)
+#   2. Registers native PreToolUse hooks for Claude Code and Codex
 #   3. Adds a ~/.local/bin/skillguard shim for terminal use
 #   4. Adds a small zsh integration so `codex`/`claude` show cached findings first
-#   5. Backs up settings.json first
+#   5. Backs up existing hook settings first
 set -eu
 
 REPO="https://github.com/mannanj/skillguard"
 DEST="$HOME/.claude/skillguard"
 SETTINGS="$HOME/.claude/settings.json"
+CODEX_HOOKS="$HOME/.codex/hooks.json"
 
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required"; exit 1; }
 
@@ -131,11 +132,57 @@ tmp.replace(settings_path)
 print("  hook registered")
 PYEOF
 
+echo "→ Registering Codex MCP hook in $CODEX_HOOKS"
+python3 - "$CODEX_HOOKS" "$DEST" <<'PYEOF'
+import json, os, shutil, sys
+from pathlib import Path
+
+hooks_path = Path(sys.argv[1])
+hook_cmd = f"python3 {sys.argv[2]}/hook.py"
+
+config = {}
+if hooks_path.exists():
+    shutil.copy2(hooks_path, str(hooks_path) + ".skillguard-backup")
+    print(f"  backed up hooks to {hooks_path}.skillguard-backup")
+    config = json.loads(hooks_path.read_text())
+
+pre = config.setdefault("hooks", {}).setdefault("PreToolUse", [])
+
+def _is_ours(entry):
+    return any(
+        "skillguard" in hook.get("command", "") and "hook.py" in hook.get("command", "")
+        for hook in entry.get("hooks", [])
+    )
+
+# Codex exposes MCP calls to PreToolUse. Skill loading is not currently a tool
+# event, so skill-level runtime blocking remains a Claude Code capability.
+pre[:] = [entry for entry in pre if not _is_ours(entry)]
+pre.append({
+    "matcher": "^mcp__.*",
+    "hooks": [{
+        "type": "command",
+        "command": hook_cmd,
+        "timeout": 30,
+        "statusMessage": "Checking MCP call with SkillGuard",
+    }],
+})
+
+config.setdefault(
+    "description",
+    "SkillGuard checks MCP servers before Codex runs their tools.",
+)
+hooks_path.parent.mkdir(parents=True, exist_ok=True)
+tmp = hooks_path.with_suffix(f".tmp.{os.getpid()}")
+tmp.write_text(json.dumps(config, indent=2) + "\n")
+tmp.replace(hooks_path)
+print("  Codex MCP hook registered")
+PYEOF
+
 echo "→ Installing skillguard command and codex/claude launch summary integration"
 python3 "$DEST/cli.py" --install-shell-integration
 
 echo "→ Done. Scan your skills and MCPs now:"
 echo "    skillguard --target all --engines local"
 echo "  Claude Code: use /skillguard or /skillguard:skillguard."
-echo "  Codex: run 'codex plugin add skillguard@personal', start a new thread, then use /skills or \$skillguard."
-echo "  Unscanned skills will be blocked the next time Claude tries to use them."
+echo "  Codex: run 'codex plugin add skillguard@personal', restart, then trust the SkillGuard hook in /hooks."
+echo "  Claude Code gates skills and MCP tools; Codex gates MCP tools."

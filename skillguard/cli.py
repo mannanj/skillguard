@@ -92,7 +92,7 @@ from skillguard.triage import (
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 
 CACHE_DIR = config.default_cache_dir()
 

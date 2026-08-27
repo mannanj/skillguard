@@ -77,6 +77,7 @@ def test_install_creates_path_shim_and_agent_shell_integration(tmp_path):
     shim = tmp_path / ".local" / "bin" / "skillguard"
     shell = tmp_path / ".claude" / "skillguard" / "shell.sh"
     zshrc = tmp_path / ".zshrc"
+    codex_hooks = tmp_path / ".codex" / "hooks.json"
 
     assert shim.exists()
     assert os.access(shim, os.X_OK)
@@ -91,6 +92,15 @@ def test_install_creates_path_shim_and_agent_shell_integration(tmp_path):
     assert "codex()" in shell.read_text()
     assert 'source "$HOME/.claude/skillguard/shell.sh"' in zshrc.read_text()
 
+    hooks_config = json.loads(codex_hooks.read_text())
+    codex_pre = hooks_config["hooks"]["PreToolUse"]
+    assert len(codex_pre) == 1
+    assert codex_pre[0]["matcher"] == "^mcp__.*"
+    assert codex_pre[0]["hooks"][0]["command"].endswith(
+        "/.claude/skillguard/hook.py"
+    )
+    assert codex_pre[0]["hooks"][0]["timeout"] == 30
+
     version = subprocess.run(
         [str(shim), "--version"],
         env=env,
@@ -98,4 +108,50 @@ def test_install_creates_path_shim_and_agent_shell_integration(tmp_path):
         text=True,
     )
     assert version.returncode == 0, version.stderr
-    assert "skillguard 0.3.1" in version.stdout
+    assert "skillguard 0.3.2" in version.stdout
+
+
+def test_codex_hook_install_is_idempotent_and_preserves_other_hooks(tmp_path):
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks_path.parent.mkdir(parents=True)
+    hooks_path.write_text(
+        json.dumps(
+            {
+                "description": "Existing hooks",
+                "hooks": {
+                    "PreToolUse": [
+                        {
+                            "matcher": "^shell$",
+                            "hooks": [{"type": "command", "command": "check-shell"}],
+                        }
+                    ]
+                },
+            }
+        )
+    )
+
+    env = dict(os.environ)
+    env["HOME"] = str(tmp_path)
+    env["SKILLGUARD_SRC"] = str(ROOT)
+
+    for _ in range(2):
+        result = subprocess.run(
+            ["sh", str(ROOT / "install.sh")],
+            cwd=str(ROOT),
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+
+    config = json.loads(hooks_path.read_text())
+    pre = config["hooks"]["PreToolUse"]
+    assert config["description"] == "Existing hooks"
+    assert [entry["matcher"] for entry in pre] == ["^shell$", "^mcp__.*"]
+    skillguard_entries = [
+        entry
+        for entry in pre
+        if any("skillguard" in hook.get("command", "") for hook in entry["hooks"])
+    ]
+    assert len(skillguard_entries) == 1
+    assert hooks_path.with_name("hooks.json.skillguard-backup").exists()

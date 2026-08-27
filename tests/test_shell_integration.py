@@ -128,7 +128,7 @@ def test_install_shell_integration_writes_codex_plugin_command(tmp_path):
     assert manifest.exists()
     manifest_json = json.loads(manifest.read_text())
     assert manifest_json["name"] == "skillguard"
-    assert manifest_json["version"] == "0.3.1"
+    assert manifest_json["version"] == "0.3.2"
     assert manifest_json["skills"] == "./skills/"
     assert manifest_json["interface"]["displayName"] == "SkillGuard"
 

@@ -4,28 +4,28 @@
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-SkillGuard is a local-first security scanner and runtime gate for agent skills and MCP servers. It inspects code, configuration, and model-facing instructions with multiple detection engines, preserves the evidence locally, and blocks unknown or changed tools at the Claude Code PreToolUse boundary before execution.
+SkillGuard protects coding agents from malicious skills and MCP servers—the add-ons and tool connections that extend what agents can do. It checks them before use, shows you what it found, and blocks unsafe or unreviewed tools when your agent supports automatic protection.
 
 **[skillguard.sh](https://skillguard.sh)**
 
 ## Demo
 
-<img src="demo/demo.gif" alt="SkillGuard blocking a malicious skill at the Claude Code PreToolUse boundary" width="700">
+<img src="demo/demo.gif" alt="SkillGuard catching and blocking a malicious skill" width="700">
 
-SkillGuard finds a malicious skill, records its verdict, and blocks the invocation before Claude Code can run it.
+SkillGuard catches a malicious skill, explains the risk, and stops it before it can run.
 
 ## What It Does
 
-SkillGuard gives agent users one security workflow across skills and MCP servers:
+SkillGuard gives you one security workflow for the skills and MCP servers used by coding agents:
 
-- **Skill scanning** — walks each skill's Markdown, Python, shell, JavaScript, TypeScript, YAML, and JSON files without executing them
-- **MCP scanning** — discovers configured servers, redacts credential values, and analyzes launch commands, endpoints, package sources, permissions, and model-facing text
-- **Runtime enforcement** — Claude Code hooks allow, warn, or block based on the last recorded verdict and whether the target changed after scanning
-- **Multiple detection engines** — combines a zero-dependency local engine with MCP-specific structural checks and optional Cisco, SkillAudit, and Snyk scanners
-- **Durable evidence** — appends every scan and hook decision to a local SQLite history instead of overwriting the previous result
-- **Human review** — supports acknowledgements, explicit skips, false-positive triage, terse agent summaries, and an interactive review flow
+- **Checks before use** — scans skills and MCP servers before they become part of an agent workflow
+- **Catches dangerous behavior** — finds hidden instructions, credential theft, data leaks, unsafe downloads, and destructive commands
+- **Explains the evidence** — shows the file, location, severity, and reason behind each finding
+- **Stops unreviewed tools** — blocks risky, changed, or unscanned tools on supported runtime surfaces
+- **Remembers your decisions** — keeps scan history, acknowledgements, and false-positive reviews together
+- **Works across agent workflows** — provides native Claude Code and Codex integrations, a CLI, and repository adapters for 13 agent surfaces
 
-The local engine detects prompt injection, credential access, exfiltration endpoints, reverse shells, piped execution, obfuscation, persistence, dangerous file operations, and other high-risk behavior. Findings are evidence for review, not a guarantee that a target is safe or malicious.
+Findings help you make a security decision. They do not guarantee that a tool is safe or malicious.
 
 ## Architecture
 
@@ -50,15 +50,15 @@ Skills on disk                       MCP configuration
                          |
         +----------------+----------------+
         |                                 |
-Claude Code PreToolUse gate       Agent Skill / CLI review
+Automatic host protection         Agent Skill / CLI review
 allow / warn / block              summary / show / triage
 ```
 
-**Discovery** — SkillGuard searches global, project, and plugin skill locations and reads the MCP sources used by Claude Code, including global, project, and plugin configuration. Repository adapters can also give supported coding agents the same scan-and-review workflow.
+**Discovery** — SkillGuard finds global, project, and plugin skills plus configured MCP servers. Repository adapters bring the same scan-and-review workflow into supported coding-agent projects.
 
 **MCP materialization** — Static scans never launch a server. SkillGuard builds a redacted scan surface from its command, arguments, endpoint, environment-variable names, and header names. Secret values are used in memory only to identify unsafe inline credentials and are not written to findings, cache files, or history.
 
-**Runtime gate** — The Claude Code plugin registers PreToolUse matchers for skills and MCP tools. Missing, corrupted, or stale skill verdicts fail closed. MCP behavior follows the configured `off`, `warn`, or `enforce` policy. Codex uses the native SkillGuard Agent Skill and CLI review flow; the currently published integration does not claim an automatic skill-loading hook.
+**Automatic protection** — Claude Code can gate skills and MCP tools. Codex can gate MCP tool calls after you trust the installed hook; Codex does not currently expose skill loading as a hook event. Other integrations use SkillGuard's scan and review workflow unless their host provides an equivalent hook.
 
 **History and review** — JSON cache entries make hook decisions fast. SQLite preserves scan history and, when enabled, activity records. A review disposition is cleared when a new scan changes the evidence it covered.
 
@@ -72,8 +72,8 @@ See [SECURITY.md](SECURITY.md) for the complete threat model and documented boun
 | Package/build metadata | `pyproject.toml` + Hatchling |
 | Local detection | Compiled regular expressions and deterministic structural checks |
 | Persistence | SQLite history plus JSON verdict and triage files |
-| Runtime integration | Claude Code PreToolUse hook over JSON stdin/stdout |
-| Agent interfaces | Claude Agent Skill, Codex Agent Skill, CLI, and 13 repository adapters |
+| Runtime integration | Automatic skill/MCP checks in Claude Code and MCP checks in Codex |
+| Agent interfaces | Native Claude Code and Codex Agent Skills, CLI, and 13 repository adapters |
 | Optional scanners | Cisco AI Skill Scanner, SkillAudit, Snyk agent-scan |
 | Landing site | Static HTML/CSS/JavaScript on Cloudflare Workers |
 | License | AGPL-3.0-only or a separate commercial license |
@@ -90,7 +90,7 @@ skillguard/
 │   ├── discovery.py           # Skill discovery
 │   ├── scan.py                # Scan lifecycle and engine orchestration
 │   ├── patterns.py            # Local threat patterns and categories
-│   ├── hook.py                # Claude Code PreToolUse runtime gate
+│   ├── hook.py                # Automatic host protection for supported tool calls
 │   ├── cache.py               # Verdict cache reads and atomic writes
 │   ├── store.py               # SQLite scan history and activity store
 │   ├── triage.py              # Acknowledgement and false-positive state
@@ -114,7 +114,9 @@ skillguard/
 
 ## Quick Start
 
-For Claude Code, install the plugin:
+Choose the native integration for your coding agent.
+
+For Claude Code:
 
 ```text
 /plugin marketplace add mannanj/skillguard
@@ -122,26 +124,28 @@ For Claude Code, install the plugin:
 /reload-plugins
 ```
 
-For Codex and terminal use, install the local shim and native Agent Skill:
+For Codex and terminal use:
 
 ```bash
 curl -fsSL https://skillguard.sh/install | sh
 codex plugin add skillguard@personal
 ```
 
-Then scan every discovered skill and MCP server with the offline engine:
+Then run the first scan:
 
 ```bash
 skillguard --target all --engines local
 ```
 
-Claude Code users can run `/skillguard:skillguard` or ask Claude to use SkillGuard. Codex users can start a new session, choose SkillGuard from `/skills`, type `$skillguard`, or ask Codex to review with SkillGuard. Terminal users can run `skillguard` directly through the installed `~/.local/bin/skillguard` shim.
+In Claude Code, run `/skillguard:skillguard` or ask the agent to use SkillGuard. In Codex, restart after installation, open `/hooks`, trust the SkillGuard MCP hook, then choose SkillGuard from `/skills` or type `$skillguard`. Terminal users can run `skillguard` directly.
 
 > **First run:** The local engine is offline and has no required third-party dependencies. Network access, API tokens, and heavier packages are needed only when you select an optional engine.
 
 ## Run the Runtime Guard
 
-The Claude plugin registers the runtime hook automatically. After the first scan, each skill or MCP invocation is checked against its cached verdict before the tool proceeds.
+Automatic protection depends on what the host exposes. Claude Code checks skill and MCP tool calls. Codex checks MCP tool calls after you trust the installed SkillGuard hook; Codex skill loading is not currently available as a hook event.
+
+On supported runtime surfaces, SkillGuard compares each tool call with the latest scan before allowing it to continue.
 
 | Target state | Skill behavior | MCP behavior under `enforce` |
 |---|---|---|
@@ -167,7 +171,7 @@ The configured default is `enforce`. An environment variable can override it for
 export SKILLGUARD_MCP_POLICY=warn
 ```
 
-Codex and the repository adapters use the same scan, history, and review commands, but their runtime guarantees depend on the hooks exposed by the host. SkillGuard does not present instruction-only adapters as an OS sandbox.
+Repository adapters use the same scan, history, and review commands. They provide workflow guidance rather than automatic protection unless their host exposes an equivalent hook.
 
 ## Protect Your Agent Environment
 
@@ -202,15 +206,14 @@ Re-scan after installing, updating, or editing agent extensions. A prior verdict
 
 ## Interfaces
 
-| Interface | How to use it |
-|---|---|
-| **Claude Code plugin** | Run `/skillguard:skillguard`, ask Claude to use SkillGuard, or rely on the registered runtime hook |
-| **Codex plugin** | Choose SkillGuard from `/skills`, type `$skillguard`, or ask Codex to use it |
-| **Terminal CLI** | Run `skillguard`, `skillguard --review`, or any scan/history command |
-| **Automation** | Use `--format json`, `--format markdown`, or `--quiet` |
-| **Repository adapters** | Run `skillguard --install-agent-adapters .` for supported repository-level agent instructions |
+| Platform | SkillGuard experience | Automatic protection |
+|---|---|---|
+| **Claude Code** | Native Agent Skill, CLI, and review flow | Skills and MCP tools |
+| **Codex** | Native Agent Skill, CLI, and review flow | MCP tools after trusting the installed hook; skill loading is not exposed as a hook event |
+| **Cursor, Windsurf, Gemini CLI, GitHub Copilot coding agent, Jules, Aider, goose, opencode, Zed, Warp, and Junie** | Repository instructions and CLI review | Depends on host hook support; SkillGuard makes no universal enforcement claim |
+| **Terminal and automation** | CLI plus table, JSON, Markdown, and quiet output | Explicit commands rather than host-triggered enforcement |
 
-The adapter installer supports Claude Code, Codex, Cursor, Windsurf, Gemini CLI, GitHub Copilot coding agent, Jules, Aider, goose, opencode, Zed, Warp, and Junie. Adapters share the review workflow; they do not all provide the same native runtime hook surface.
+Install repository guidance for the supported adapter-based agents with `skillguard --install-agent-adapters .`.
 
 ## Scan Targets
 
@@ -244,7 +247,7 @@ Live introspection launches or connects to the server. Loopback, private, and li
 | Channel | Install | Result |
 |---|---|---|
 | **Claude Code plugin** | `/plugin marketplace add mannanj/skillguard`, then `/plugin install skillguard@skillguard` | Agent Skill plus automatic Claude runtime hooks |
-| **Codex plugin and local CLI** | `curl -fsSL https://skillguard.sh/install \| sh`, then `codex plugin add skillguard@personal` | Local scanner shim, launch review integration, and native Codex Agent Skill |
+| **Codex plugin and local CLI** | `curl -fsSL https://skillguard.sh/install \| sh`, then `codex plugin add skillguard@personal` | Native Codex Agent Skill, CLI, review flow, and MCP runtime hook |
 | **Editable Python install** | Clone the repository, then `pip install -e .` | `skillguard` and `skillguard-hook` entry points |
 | **Repository adapters** | `skillguard --install-agent-adapters .` | Agent instructions/configuration for 13 supported surfaces |
 | **Manual Claude hook** | Add [examples/settings-hook-snippet.json](examples/settings-hook-snippet.json) to `~/.claude/settings.json` | Explicit control over the local hook registration |
@@ -273,7 +276,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for version synchronization, pre-push che
 |---|---|---|
 | `SKILLGUARD_MCP_POLICY` | `enforce` | MCP hook policy: `off`, `warn`, or `enforce` |
 | `SKILLGUARD_ACTIVITY_LOG` | `on` | Enable or disable activity records; scan history is always preserved |
-| `SKILLGUARD_AGENT_SUMMARY` | `1` | Set to `0` to suppress the Codex/Claude launch summary |
+| `SKILLGUARD_AGENT_SUMMARY` | `1` | Set to `0` to suppress the coding-agent launch summary |
 | `SKILLGUARD_SKILLAUDIT_BASE` | `https://skillaudit.vercel.app` | Override the SkillAudit service endpoint |
 | `SKILLGUARD_SKILLAUDIT_DELAY` | `2.1` | Delay between SkillAudit calls to respect its request limit |
 | `SNYK_TOKEN` | — | Enable authenticated Snyk agent-scan use |
@@ -355,7 +358,7 @@ The test suite covers the scanner as a security boundary rather than only checki
 - Unicode obfuscation and output-spoofing defenses
 - cache corruption, staleness, acknowledgement, and triage behavior
 - MCP discovery, redaction, secret non-persistence, introspection, and policy enforcement
-- Claude plugin packaging and installer synchronization
+- Claude Code and Codex integration packaging and installer synchronization
 - Agent Skill generation, repository adapters, and review text
 - landing-page, branding, version-sync, and plugin-package hygiene
 

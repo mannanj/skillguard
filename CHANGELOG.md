@@ -8,6 +8,26 @@ All notable changes to SkillGuard are documented here. Format: [Keep a Changelog
 - Plugin-namespaced skill resolution for the TOCTOU mtime guard
 - Exact MCP tool-name prefix reconstruction for plugin-namespaced servers (hook enforce-mode matching is best-effort today)
 
+## [0.3.2] — 2026-08-27
+
+Extends automatic MCP protection to Codex and presents SkillGuard as a
+multi-agent security workflow.
+
+### Added
+- **Codex MCP runtime hook.** The local installer now writes an idempotent
+  `~/.codex/hooks.json` PreToolUse entry for `mcp__.*`, backs up an existing
+  hooks file, preserves unrelated hooks and descriptions, and asks the user to
+  trust SkillGuard once through `/hooks`. Codex does not expose skill loading as
+  a hook event, so automatic skill gating remains a Claude Code capability.
+
+### Changed
+- Reworked the README opening and product explanation around user outcomes,
+  moved implementation detail into the technical sections, and added an
+  explicit capability matrix for Claude Code, Codex, the CLI, and the 11 other
+  repository-adapter surfaces.
+- Updated the production homepage and docs with the Codex hook setup and its
+  skill-loading limitation.
+
 ## [0.3.0] — 2026-06-13
 
 Scans MCP servers as well as skills, and remembers everything it does.

@@ -538,14 +538,17 @@
                     <p class="kicker">Quick install</p>
                     <h2>Install the plugin or CLI</h2>
                     <p>
-                        Claude Code users should install the plugin from the
-                        marketplace. Codex users install the local CLI shim,
-                        then add the personal plugin entry.
+                        Choose your agent, then scan once.
                     </p>
-                    <div class="command-stack" aria-label="Quick install commands">
+                    <p><strong>Claude Code</strong></p>
+                    <div class="command-stack" aria-label="Claude Code install commands">
                         <code>/plugin marketplace add mannanj/skillguard</code>
                         <code>/plugin install skillguard@skillguard</code>
                         <code>/reload-plugins</code>
+                    </div>
+                    <p><strong>Codex</strong></p>
+                    <div class="command-stack" aria-label="Codex install commands">
+                        <code>curl -fsSL https://skillguard.sh/install | sh</code>
                         <code>codex plugin add skillguard@personal</code>
                     </div>
                 </section>
@@ -581,16 +584,16 @@
 
                 <section class="docs-section" id="codex-plugin">
                     <p class="kicker">Codex</p>
-                    <h2>Use the Codex plugin</h2>
+                    <h2>Install, trust once, and scan</h2>
                     <p>
-                        Start a new Codex session after installation, then pick
-                        SkillGuard from <code>/skills</code>, type
-                        <code>$skillguard</code>, or ask Codex to use SkillGuard to
-                        review cached findings.
+                        Run the Codex commands above, restart Codex, open
+                        <code>/hooks</code>, and trust the SkillGuard MCP hook.
+                        Then run the first local scan.
                     </p>
                     <p>
-                        Non-interactive runs can still use the CLI directly for
-                        summaries, review, and scan commands.
+                        Use <code>$skillguard</code> or choose SkillGuard from
+                        <code>/skills</code> to review findings. Codex can gate
+                        MCP calls; skill-loading hooks are not yet available.
                     </p>
                 </section>
 

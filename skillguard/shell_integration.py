@@ -81,7 +81,7 @@ def _project_version() -> str:
     try:
         text = pyproject.read_text()
     except OSError:
-        return "0.3.1"
+        return "0.3.2"
     in_project = False
     for line in text.splitlines():
         stripped = line.strip()
@@ -94,7 +94,7 @@ def _project_version() -> str:
             match = re.fullmatch(r'version\s*=\s*"([^"]+)"', stripped)
             if match:
                 return match.group(1)
-    return "0.3.1"
+    return "0.3.2"
 
 
 def codex_plugin_manifest() -> dict:
