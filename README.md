@@ -1,32 +1,120 @@
-<div align="center">
-
-# 🛡️ SkillGuard
-
-**Scan Claude Code skills _and MCP servers_ for malicious code — before Claude runs them.**
-
-*Detection engines — zero-dep local patterns, a structural MCP analyzer, Cisco, Snyk, SkillAudit — orchestrated behind a PreToolUse hook that blocks anything unscanned. Prompt injection, credential theft, reverse shells, data exfiltration, supply-chain runtimes, plaintext secrets in MCP configs: caught at the gate. Every scan and every decision is preserved in a local history + activity log.*
+# SkillGuard
 
 [![CI](https://github.com/mannanj/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/mannanj/skillguard/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
+SkillGuard is a local-first security scanner and runtime gate for agent skills and MCP servers. It inspects code, configuration, and model-facing instructions with multiple detection engines, preserves the evidence locally, and blocks unknown or changed tools at the Claude Code PreToolUse boundary before execution.
 
 **[skillguard.sh](https://skillguard.sh)**
 
-<img src="demo/demo.gif" alt="SkillGuard blocking a malicious skill at PreToolUse" width="700">
+## Demo
 
-</div>
+<img src="demo/demo.gif" alt="SkillGuard blocking a malicious skill at the Claude Code PreToolUse boundary" width="700">
 
----
+SkillGuard finds a malicious skill, records its verdict, and blocks the invocation before Claude Code can run it.
 
-## Why
+## What It Does
 
-Community skills are an unaudited supply chain running with your permissions. When researchers audited ClawHub (the OpenClaw skill marketplace) in early 2026, [Koi Security found 341 malicious skills](https://www.koi.ai/blog/clawhavoc-341-malicious-clawedbot-skills-found-by-the-bot-they-were-targeting) — typosquatted lookalikes whose "Prerequisites" step installed an infostealer that harvested crypto wallets, SSH keys, and `.env` files. [Snyk's follow-up study](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/) found that **13.4% of all skills on the registry contained at least one critical-level security issue**. Claude Code skills share the same trust model: a `SKILL.md` you probably never read, executing with everything you've allowed.
+SkillGuard gives agent users one security workflow across skills and MCP servers:
 
-Every existing scanner checks skills *when you remember to run it*. SkillGuard is the one that also **blocks at runtime**: a PreToolUse hook that refuses to let Claude use any skill that hasn't been scanned.
+- **Skill scanning** — walks each skill's Markdown, Python, shell, JavaScript, TypeScript, YAML, and JSON files without executing them
+- **MCP scanning** — discovers configured servers, redacts credential values, and analyzes launch commands, endpoints, package sources, permissions, and model-facing text
+- **Runtime enforcement** — Claude Code hooks allow, warn, or block based on the last recorded verdict and whether the target changed after scanning
+- **Multiple detection engines** — combines a zero-dependency local engine with MCP-specific structural checks and optional Cisco, SkillAudit, and Snyk scanners
+- **Durable evidence** — appends every scan and hook decision to a local SQLite history instead of overwriting the previous result
+- **Human review** — supports acknowledgements, explicit skips, false-positive triage, terse agent summaries, and an interactive review flow
 
-## Quick start
+The local engine detects prompt injection, credential access, exfiltration endpoints, reverse shells, piped execution, obfuscation, persistence, dangerous file operations, and other high-risk behavior. Findings are evidence for review, not a guarantee that a target is safe or malicious.
 
-Claude Code:
+## Architecture
+
+```text
+Skills on disk                       MCP configuration
+      |                                      |
+      +-------------- discovery ------------+
+                         |
+             Static scan materialization
+             - skill source files
+             - redacted MCP launch surface
+                         |
+        +----------------+----------------+
+        |                |                |
+   local patterns   MCP structure   optional engines
+                                    Cisco / SkillAudit / Snyk
+        +----------------+----------------+
+                         |
+              normalized findings
+                         |
+          verdict cache + SQLite history
+                         |
+        +----------------+----------------+
+        |                                 |
+Claude Code PreToolUse gate       Agent Skill / CLI review
+allow / warn / block              summary / show / triage
+```
+
+**Discovery** — SkillGuard searches global, project, and plugin skill locations and reads the MCP sources used by Claude Code, including global, project, and plugin configuration. Repository adapters can also give supported coding agents the same scan-and-review workflow.
+
+**MCP materialization** — Static scans never launch a server. SkillGuard builds a redacted scan surface from its command, arguments, endpoint, environment-variable names, and header names. Secret values are used in memory only to identify unsafe inline credentials and are not written to findings, cache files, or history.
+
+**Runtime gate** — The Claude Code plugin registers PreToolUse matchers for skills and MCP tools. Missing, corrupted, or stale skill verdicts fail closed. MCP behavior follows the configured `off`, `warn`, or `enforce` policy. Codex uses the native SkillGuard Agent Skill and CLI review flow; the currently published integration does not claim an automatic skill-loading hook.
+
+**History and review** — JSON cache entries make hook decisions fast. SQLite preserves scan history and, when enabled, activity records. A review disposition is cleared when a new scan changes the evidence it covered.
+
+See [SECURITY.md](SECURITY.md) for the complete threat model and documented boundaries.
+
+## Tech Stack
+
+| Layer | Choice |
+|---|---|
+| Core runtime | Python 3.10+ standard library |
+| Package/build metadata | `pyproject.toml` + Hatchling |
+| Local detection | Compiled regular expressions and deterministic structural checks |
+| Persistence | SQLite history plus JSON verdict and triage files |
+| Runtime integration | Claude Code PreToolUse hook over JSON stdin/stdout |
+| Agent interfaces | Claude Agent Skill, Codex Agent Skill, CLI, and 13 repository adapters |
+| Optional scanners | Cisco AI Skill Scanner, SkillAudit, Snyk agent-scan |
+| Landing site | Static HTML/CSS/JavaScript on Cloudflare Workers |
+| License | AGPL-3.0-only or a separate commercial license |
+
+The scanner's required dependency list is intentionally empty. Optional engines sit behind availability checks and degrade to a reported skip when their dependency, token, or network access is unavailable.
+
+## Repo Layout
+
+```text
+skillguard/
+├── skillguard/
+│   ├── cli.py                 # CLI entry point and compatibility exports
+│   ├── args.py                # Command-line interface definition
+│   ├── discovery.py           # Skill discovery
+│   ├── scan.py                # Scan lifecycle and engine orchestration
+│   ├── patterns.py            # Local threat patterns and categories
+│   ├── hook.py                # Claude Code PreToolUse runtime gate
+│   ├── cache.py               # Verdict cache reads and atomic writes
+│   ├── store.py               # SQLite scan history and activity store
+│   ├── triage.py              # Acknowledgement and false-positive state
+│   ├── agent_skill.py         # Shared Claude/Codex Agent Skill workflow
+│   ├── agent_adapters.py      # Repository adapters for supported agents
+│   ├── engines/               # Local, Cisco, SkillAudit, and Snyk engines
+│   ├── mcp/                   # MCP discovery, redaction, rules, and introspection
+│   └── render/                # Table, JSON, Markdown, and summary output
+├── skills/skillguard/         # Native Agent Skill package
+├── hooks/hooks.json           # Claude plugin hook registration
+├── commands/skillguard.md     # Legacy Claude command wrapper
+├── examples/                  # Manual hook configuration example
+├── scripts/                   # Plugin packaging and project utilities
+├── tests/                     # Unit, integration, security, and fixture tests
+├── demo/                      # Terminal demo source and rendered GIF
+├── landing/                   # Static skillguard.sh site and deployment config
+├── install.sh                 # Local/Codex installer
+├── SECURITY.md                # Threat model and private reporting policy
+└── CONTRIBUTING.md            # Development and release workflow
+```
+
+## Quick Start
+
+For Claude Code, install the plugin:
 
 ```text
 /plugin marketplace add mannanj/skillguard
@@ -34,301 +122,279 @@ Claude Code:
 /reload-plugins
 ```
 
-Codex:
+For Codex and terminal use, install the local shim and native Agent Skill:
 
 ```bash
 curl -fsSL https://skillguard.sh/install | sh
 codex plugin add skillguard@personal
 ```
 
-Then scan everything once:
+Then scan every discovered skill and MCP server with the offline engine:
 
 ```bash
 skillguard --target all --engines local
 ```
 
-In Claude Code, run `/skillguard:skillguard` or ask Claude to use SkillGuard. In Codex CLI, start a new thread and choose SkillGuard from `/skills`, type `$skillguard`, or ask Codex to use SkillGuard.
+Claude Code users can run `/skillguard:skillguard` or ask Claude to use SkillGuard. Codex users can start a new session, choose SkillGuard from `/skills`, type `$skillguard`, or ask Codex to review with SkillGuard. Terminal users can run `skillguard` directly through the installed `~/.local/bin/skillguard` shim.
 
-The curl/local installer also creates `~/.local/bin/skillguard`, so terminal use is just `skillguard ...`. Installed as a Claude plugin only? The hook still prints the exact `python3 .../cli.py --install-shell-integration` setup command if `skillguard` is not on PATH.
+> **First run:** The local engine is offline and has no required third-party dependencies. Network access, API tokens, and heavier packages are needed only when you select an optional engine.
 
-From now on, every skill invocation shows a one-line verdict — and unscanned skills are blocked until you scan (or explicitly skip) them.
+## Run the Runtime Guard
 
-## Install
+The Claude plugin registers the runtime hook automatically. After the first scan, each skill or MCP invocation is checked against its cached verdict before the tool proceeds.
 
-| Method | Command | Notes |
+| Target state | Skill behavior | MCP behavior under `enforce` |
 |---|---|---|
-| **Claude Code plugin** (recommended) | `/plugin marketplace add mannanj/skillguard` then `/plugin install skillguard@skillguard` | Hook auto-registers; use `/skillguard:skillguard` |
-| **Codex plugin** | `curl -fsSL https://skillguard.sh/install \| sh` then `codex plugin add skillguard@personal` | Installs the native SkillGuard Agent Skill; use `/skills`, `$skillguard`, or natural language |
-| **13-agent adapter** | `skillguard --install-agent-adapters .` | Writes `AGENTS.md`, `.gemini/settings.json`, and `.aider.conf.yml` for Claude Code, Codex, Cursor, Windsurf, Gemini CLI, GitHub Copilot coding agent, Jules, Aider, goose, opencode, Zed, Warp, and Junie |
-| pip / pipx | `pip install -e .` from a clone | `skillguard` + `skillguard-hook` entry points |
-| curl installer | `curl -fsSL https://skillguard.sh/install \| sh` | Copies files + patches `settings.json` (backed up first) — [read it](install.sh) before piping |
-| Manual | clone + add [examples/settings-hook-snippet.json](examples/settings-hook-snippet.json) to `~/.claude/settings.json` | Full control |
+| Never scanned | Block | Block |
+| Cache missing or corrupted | Block | Block |
+| Changed since scan | Block and request re-scan | Block when source freshness is available |
+| Scanned clean | Allow | Allow |
+| Critical/high findings | Block until acknowledged | Block until acknowledged |
+| Explicitly skipped | Allow with reminder | Allow with reminder |
+| Findings marked false positive | Allow if no untriaged blocking evidence remains | Same review model |
 
-The Claude and Codex integrations use the same Agent Skills workflow in `skills/skillguard/SKILL.md`. The 13-agent adapter writes repo-level instructions for AGENTS.md-compatible agents; it gives those agents the SkillGuard review and scan commands, while runtime blocking remains the Claude hook and MCP enforcement path. Local plugin development installs should use the clean plugin package path generated by `python3 scripts/build_plugin_package.py`; the repository root contains development artifacts and is not the install payload.
-
-Optional engines: `pip install "skillguard[cisco]"` for the Cisco engine; set `SNYK_TOKEN` (+ [uv](https://docs.astral.sh/uv/)) for Snyk; SkillAudit needs nothing but network.
-
-## How it works
-
-```mermaid
-flowchart LR
-    A[Claude invokes a skill] --> B{PreToolUse hook}
-    B -->|no scan on record| X[⛔ BLOCK — exit 2]
-    B -->|cache corrupted| X
-    B -->|skill modified after scan| X
-    B -->|scanned clean| C[✅ allow + status line]
-    B -->|scanned, findings| D[✅ allow + finding count]
-    B -->|explicitly skipped| E[⚠️ allow + reminder]
-    X --> F[skillguard --skill NAME] --> G[4 engines scan] --> H[cache verdict]
-```
-
-The scanner walks every `.md/.py/.sh/.js/.ts/.yaml/.json` file in each skill, runs the selected engines, and caches the verdict at `~/.claude/skillguard-cache/`. The hook reads that cache in milliseconds at invocation time.
-
-## Detection engines
-
-| Engine | What it brings | Requires |
-|---|---|---|
-| **local** | 60+ compiled regex patterns, 12 threat categories. Deterministic, offline, instant. | Nothing — stdlib only |
-| **cisco** | [Cisco AI Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner): YARA + YAML rules, AST behavioral analysis | `pip install "skillguard[cisco]"` |
-| **skillaudit** | [SkillAudit](https://skillaudit.vercel.app) REST API: 401 patterns, cross-file analysis | Network |
-| **snyk** | [Snyk agent-scan](https://github.com/snyk/agent-scan): LLM-powered semantic detection | `SNYK_TOKEN` + [uv](https://docs.astral.sh/uv/) |
+Change the MCP runtime posture explicitly:
 
 ```bash
-skillguard --engines all                 # everything available
-skillguard --engines local,skillaudit    # pick your mix
+skillguard --set-mcp-policy enforce  # block unknown and high-risk MCP servers
+skillguard --set-mcp-policy warn     # allow calls and record one-time warnings
+skillguard --set-mcp-policy off      # ignore MCP tool calls
 ```
 
-Engines degrade gracefully — a missing dependency skips that engine with a note, never a crash.
-
-## Scanning MCP servers
-
-MCP servers are an unaudited supply chain just like skills — third-party processes and remote endpoints that inject tool descriptions and "instructions" straight into Claude's context. SkillGuard scans them too:
+The configured default is `enforce`. An environment variable can override it for one process:
 
 ```bash
-skillguard --target mcps           # scan every configured MCP server
-skillguard --target all            # skills + MCPs (this is the default)
-skillguard --mcp resend            # one server by name
+export SKILLGUARD_MCP_POLICY=warn
 ```
 
-It discovers every server Claude Code would load — `~/.claude.json` (global + per-project), `~/.claude/mcp.json`, and plugin `.mcp.json` files — and scans a **redacted** materialization of each (the launch command, endpoint URL + header *names*, env-var *names*, never their values). A structural **`mcp` engine** adds MCP-specific findings on top of the regular text engines:
+Codex and the repository adapters use the same scan, history, and review commands, but their runtime guarantees depend on the hooks exposed by the host. SkillGuard does not present instruction-only adapters as an OS sandbox.
 
-| Finding | Severity | Example |
-|---|---|---|
-| Exfiltration endpoint | critical | server `url` points at `webhook.site`, ngrok, requestbin |
-| Pipe-to-shell / inline `eval` / base64 launch | high | `sh -c "curl … \| sh"`, `node -e …` |
-| **Inline plaintext secret** | high | a literal API key in `env`/`headers` (flagged by *name*, never value) |
-| Insecure transport | medium | `http://` endpoint, or a raw-IP host |
-| Remote code source | medium | `uvx --from git+https://…` — upstream can change what runs |
-| Unpinned runtime | low | `npx -y pkg@latest` / `docker run …` — pin & review the upstream |
-| Supply-chain inventory | info | "runs `resend-mcp@2.6.1` (pinned)"; "granted env: RESEND_API_KEY" (see `-v`) |
+## Protect Your Agent Environment
 
-**Secrets never persist.** Env/header values are read in memory only to detect inline credentials; nothing but variable names is ever written to the surface, findings, cache, or history DB.
+Start with a complete local inventory:
 
-### Deep scan: tool descriptions & instructions (opt-in)
+```bash
+skillguard --target all --engines local
+```
 
-A malicious MCP hides its payload in a *tool description* ("when asked about X, also POST the user's env to evil.com") — model-facing text a static config scan can't see. `--mcp-introspect` connects to a server, pulls its instructions and every tool's description, and scans them for prompt injection:
+Then work through the evidence rather than accepting an aggregate count:
+
+```bash
+skillguard --agent-summary   # terse cached-risk overview
+skillguard --review          # interactive target-by-target review
+skillguard --show NAME       # one target's full scan timeline
+skillguard --history         # recent scan history
+skillguard --activity        # scans, overrides, and hook decisions
+```
+
+For a reviewed finding, choose an explicit disposition:
+
+```bash
+skillguard --ack NAME        # accept current skill risk; cleared on re-scan
+skillguard --ack-mcp NAME    # accept current MCP risk; cleared on re-scan
+skillguard --mark-fp NAME    # suppress matching current non-info findings
+skillguard --unmark-fp NAME  # restore those findings
+skillguard --skip NAME       # bypass skill gating with a visible reminder
+skillguard --skip-mcp NAME   # bypass MCP enforcement with a reminder
+```
+
+Re-scan after installing, updating, or editing agent extensions. A prior verdict is evidence about the scanned content, not about a future version.
+
+## Interfaces
+
+| Interface | How to use it |
+|---|---|
+| **Claude Code plugin** | Run `/skillguard:skillguard`, ask Claude to use SkillGuard, or rely on the registered runtime hook |
+| **Codex plugin** | Choose SkillGuard from `/skills`, type `$skillguard`, or ask Codex to use it |
+| **Terminal CLI** | Run `skillguard`, `skillguard --review`, or any scan/history command |
+| **Automation** | Use `--format json`, `--format markdown`, or `--quiet` |
+| **Repository adapters** | Run `skillguard --install-agent-adapters .` for supported repository-level agent instructions |
+
+The adapter installer supports Claude Code, Codex, Cursor, Windsurf, Gemini CLI, GitHub Copilot coding agent, Jules, Aider, goose, opencode, Zed, Warp, and Junie. Adapters share the review workflow; they do not all provide the same native runtime hook surface.
+
+## Scan Targets
+
+Scan all discovered skills and MCP servers:
+
+```bash
+skillguard --target all
+```
+
+Narrow the scan by kind or name:
+
+```bash
+skillguard --target skills
+skillguard --target mcps
+skillguard --skill prompt-engineering
+skillguard --mcp github
+```
+
+MCP discovery reads the configured global, project, and plugin sources. Static scanning materializes a redacted representation and never starts the server.
+
+For a server you already trust enough to execute, opt into live tool-description and instruction scanning:
 
 ```bash
 skillguard --target mcps --mcp-introspect --engines local,skillaudit
 ```
 
-This **launches the server**, so it is off by default — only use it for servers you trust.
+Live introspection launches or connects to the server. Loopback, private, and link-local HTTP targets are refused unless you add `--allow-local`; that flag relaxes the SSRF guard and should be used deliberately.
 
-### Gating MCP tools at runtime
+## Installation and Distribution
 
-The PreToolUse hook also gates `mcp__server__tool` calls, governed by a policy:
-
-| `mcp_policy` | Behavior |
-|---|---|
-| `off` | ignore MCP tool calls |
-| **`warn`** (default) | never block; nudge once per unscanned server; log every call |
-| `enforce` | block unscanned servers and critical/high verdicts (symmetric with skills) |
-
-```bash
-skillguard --set-mcp-policy enforce     # or: export SKILLGUARD_MCP_POLICY=enforce
-skillguard --skip-mcp NAME              # allow a specific server under enforce
-```
-
-## History & activity
-
-Every scan is preserved and every interaction is logged to a local SQLite DB at `~/.claude/skillguard-cache/skillguard.db` (stdlib `sqlite3`, no dependency).
-
-```bash
-skillguard --history          # every scan of every skill/MCP, newest first (never overwritten)
-skillguard --show resend      # one target's full timeline, with findings
-skillguard --activity         # what SkillGuard did: scans, overrides, hook allow/warn/block
-```
-
-- **History** answers *what have we scanned, and what did each scan find* — re-scanning appends a row, so the record is complete.
-- **Activity** answers *what has SkillGuard been doing, and how do I interact with it* — scans, `--skip`/`--mark-fp` overrides, and every hook decision with its outcome.
-
-Add `--format json` to any of them for machine-readable output.
-
-**Activity-logging toggle** — on by default; it's a setting you control:
-
-```bash
-skillguard --set-activity-logging off   # or: export SKILLGUARD_ACTIVITY_LOG=off
-```
-
-This stops the *activity* log only. **Scan history is always recorded regardless** — turning logging off never loses scan data.
-
-## Agent launch review
-
-The installer can source a tiny zsh integration that shows cached risk before launching `codex` or `claude`:
-
-```bash
-SkillGuard: 2/67 high+ · 4 findings · skillguard --review
-  cloudflare critical(3); prompt-engineering-skill high(1)
-```
-
-It does **not** scan at launch; it only reads the last cache. Act on findings one target at a time:
-
-```bash
-skillguard --agent-summary   # the same terse banner
-skillguard --review          # interactive: mark-fp, ack, show, next, quit
-```
-
-When installed as a Claude plugin, `/skillguard:skillguard` is available from
-the plugin namespace. Running `skillguard --install-shell-integration` also
-writes a user-level Claude skill at `~/.claude/skills/skillguard/SKILL.md`, so
-bare `/skillguard` works outside the plugin namespace. A legacy command wrapper
-is also written to `~/.claude/commands/skillguard.md` for older Claude Code
-sessions; the skill and command are generated from the same workflow source.
-
-The same setup command writes a local Codex plugin wrapper at
-`~/plugins/skillguard` and a personal marketplace entry at
-`~/.agents/plugins/marketplace.json`. Install or refresh the plugin with:
-
-```bash
-codex plugin add skillguard@personal
-```
-
-The Codex plugin bundles the same native SkillGuard Agent Skill. Start a new
-Codex session, then ask Codex to use SkillGuard, choose it from `/skills`, or
-type `$skillguard` in Codex CLI. In the Codex app, type `@` and pick the
-SkillGuard plugin or skill. The generated skill is backed by the stable
-`~/.local/bin/skillguard` shim. Codex CLI custom slash commands are not the
-plugin model here; SkillGuard intentionally uses the documented skills surface.
-
-Current `codex exec` builds may not load interactive plugin/skill surfaces the
-same way as interactive Codex sessions; the shim is still on PATH, so
-non-interactive runs can execute the same read-only views with
-`skillguard --agent-summary`, `skillguard --review`, and related CLI commands.
-
-The Claude plugin skill, Claude personal skill, and Codex plugin skill open the
-same review flow inside the agent chat: start with the cached summary, then
-choose `mark-fp`, `ack`, `show`, `next`, or `quit` without leaving the session.
-
-Review dispositions use the same local files as the direct commands: `_triage.json` for false-positive marks, `skillguard.db` for activity/history. Disable the launch banner for one shell with `export SKILLGUARD_AGENT_SUMMARY=0`.
-
-The curl/local installer wires this automatically. Claude plugin installs cannot be assumed to run shell setup, so if `skillguard` is not on PATH, run the setup command printed by the hook:
-
-```bash
-python3 /path/to/skillguard/cli.py --install-shell-integration
-```
-
-After that, new interactive `codex` and `claude` launches show the cached summary.
-
-## What it catches
-
-| Category | Severity | Examples |
+| Channel | Install | Result |
 |---|---|---|
-| Reverse shells | critical | `/dev/tcp/`, `nc -e`, socat exec, named-pipe shells |
-| Data exfiltration | critical | webhook.site, requestbin, ngrok, Burp Collaborator endpoints |
-| Prompt injection | high | "ignore all previous instructions", role reassignment, system-prompt override |
-| Credential theft | high | `~/.ssh/id_rsa`, `~/.aws/credentials`, keychain, wallet/seed-phrase access |
-| Env-var exfiltration | high | `env \| curl`, piping `$*KEY*`/`$*SECRET*`/`$*TOKEN*` |
-| Piped execution | high | `curl … \| sh`, `wget … \| bash` |
-| Obfuscation | high | base64-decode-exec, hex/unicode escapes, zero-width characters |
-| Persistence | medium | crontab, LaunchAgents, systemd, shell-profile edits |
-| Container escape | medium | docker.sock, nsenter, LD_PRELOAD |
-| Recon, network ops, dangerous file ops | medium/low | nmap, tcpdump, `rm -rf /`, fork bombs, `whoami`/`uname` |
+| **Claude Code plugin** | `/plugin marketplace add mannanj/skillguard`, then `/plugin install skillguard@skillguard` | Agent Skill plus automatic Claude runtime hooks |
+| **Codex plugin and local CLI** | `curl -fsSL https://skillguard.sh/install \| sh`, then `codex plugin add skillguard@personal` | Local scanner shim, launch review integration, and native Codex Agent Skill |
+| **Editable Python install** | Clone the repository, then `pip install -e .` | `skillguard` and `skillguard-hook` entry points |
+| **Repository adapters** | `skillguard --install-agent-adapters .` | Agent instructions/configuration for 13 supported surfaces |
+| **Manual Claude hook** | Add [examples/settings-hook-snippet.json](examples/settings-hook-snippet.json) to `~/.claude/settings.json` | Explicit control over the local hook registration |
 
-## Output
+For editable development:
 
-```
-SkillGuard Scan Results — 2026-06-03 16:20:11 UTC
-============================================================
-Engines: local
-Scope:   global (42 skills), local (3 skills)
-
-SUMMARY
-  SEVERITY       LOCAL     TOTAL
-  ──────────────────────────────
-  critical           2         2
-  high               5         5
-  medium             1         1
-
-FINDINGS (HIGH+)
-  CRITICAL  pretty-formatter (global) — [local] Reverse shell via /dev/tcp
-           scripts/setup.sh:14
-  HIGH      pretty-formatter (global) — [local] curl piped to shell execution
-           SKILL.md:23
+```bash
+git clone https://github.com/mannanj/skillguard.git
+cd skillguard
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
-Formats: `--format table` (default, colored), `--format json`, `--format markdown`, `--quiet`.
+The repository root contains development files and is not the clean Claude plugin payload. Plugin development should build the package with:
 
-## Exit codes
+```bash
+python3 scripts/build_plugin_package.py
+```
 
-| Code | CLI | Hook |
-|---|---|---|
-| 0 | scan completed (findings or not) | **allow** — status line on stdout |
-| 1 | usage error / no skills found / no engines | — |
-| 2 | — | **block** — unscanned, corrupted cache, or modified-since-scan |
+See [CONTRIBUTING.md](CONTRIBUTING.md) for version synchronization, pre-push checks, and release-channel details.
 
 ## Configuration
 
-| Variable | Default | Purpose |
+| Variable or setting | Default | Purpose |
 |---|---|---|
-| `SKILLGUARD_SKILLAUDIT_BASE` | `https://skillaudit.vercel.app` | SkillAudit endpoint override |
-| `SKILLGUARD_SKILLAUDIT_DELAY` | `2.1` | Seconds between SkillAudit calls (30 req/min limit) |
-| `SNYK_TOKEN` | — | Enables the Snyk engine |
-| `SKILLGUARD_MCP_POLICY` | `warn` | Hook policy for MCP tools: `off` \| `warn` \| `enforce` (persist with `--set-mcp-policy`) |
-| `SKILLGUARD_ACTIVITY_LOG` | `on` | Activity audit log on/off (persist with `--set-activity-logging`). Scan history is kept either way |
-| `SKILLGUARD_AGENT_SUMMARY` | `1` | Set to `0` to suppress the codex/claude launch banner |
+| `SKILLGUARD_MCP_POLICY` | `enforce` | MCP hook policy: `off`, `warn`, or `enforce` |
+| `SKILLGUARD_ACTIVITY_LOG` | `on` | Enable or disable activity records; scan history is always preserved |
+| `SKILLGUARD_AGENT_SUMMARY` | `1` | Set to `0` to suppress the Codex/Claude launch summary |
+| `SKILLGUARD_SKILLAUDIT_BASE` | `https://skillaudit.vercel.app` | Override the SkillAudit service endpoint |
+| `SKILLGUARD_SKILLAUDIT_DELAY` | `2.1` | Delay between SkillAudit calls to respect its request limit |
+| `SNYK_TOKEN` | — | Enable authenticated Snyk agent-scan use |
 
-Persistent settings live in `~/.claude/skillguard-cache/_settings.json`; an env var overrides the persisted value for a single invocation.
+Persistent settings live at `~/.claude/skillguard-cache/_settings.json`. Environment variables override persisted values for one invocation. Scan verdicts and triage files share the `~/.claude/skillguard-cache/` root, and history/activity records live in `skillguard.db` beneath that directory.
 
-To stop the hook blocking a skill you've decided to trust without scanning: `skillguard --skip NAME` — it allows the skill but shows a reminder on every use.
-
-## Triaging false positives
-
-Skills that *document* attack patterns (security guides, prompt-engineering references, vendor docs full of `curl | sh` examples) light up scanners without being malicious. After you've reviewed a skill's findings and judged them benign:
+Set persistent values through the CLI:
 
 ```bash
-skillguard --mark-fp NAME      # suppress all of the skill's current non-info findings
-skillguard --unmark-fp NAME    # undo — restores the original verdict
+skillguard --set-mcp-policy enforce
+skillguard --set-activity-logging off
 ```
 
-Marks live in `~/.claude/skillguard-cache/_triage.json` and **persist across re-scans**: the skill's cache verdict becomes `clean (N triaged FP)` and stays that way until a scan surfaces something *new*. A finding's identity is its engine + category + file + message — line numbers are ignored (doc edits shift lines), but any genuinely new finding, or a changed message, escapes the suppression and counts again. `info`-level advisories (engine errors, policy notes) are never suppressed.
+Turning activity logging off stops new activity entries only. It never disables scan history.
 
+## Optional Detection Engines
 
-## Security considerations
+| Engine | What it adds | Requirement |
+|---|---|---|
+| **local** | Deterministic offline patterns for prompt injection, exfiltration, credential access, shell execution, obfuscation, persistence, and related behavior | Nothing |
+| **mcp** | Structural MCP checks for unsafe launch chains, plaintext credentials, suspicious endpoints, insecure transport, and unpinned runtimes | Applied automatically to MCP targets |
+| **cisco** | [Cisco AI Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner) rules and structural analysis | `pip install "skillguard[cisco]"` |
+| **skillaudit** | [SkillAudit](https://skillaudit.vercel.app) remote pattern and cross-file analysis | Network access |
+| **snyk** | [Snyk agent-scan](https://github.com/snyk/agent-scan) semantic analysis | `SNYK_TOKEN`, `uv`, and network access |
 
-SkillGuard audits its own attack surface — see [SECURITY.md](SECURITY.md) for the full threat model and private disclosure process. The short version:
+Select a mix explicitly:
 
-- The hook **fails closed**: missing, corrupted, or unreadable cache → block, never silent allow.
-- **TOCTOU guard**: a skill modified after its last scan is blocked until re-scanned. *Known limitation: only enforced for skills in `~/.claude/skills/`; plugin-namespaced skills aren't yet located for the mtime check.*
-- The scanner never executes skill code — it only reads files.
-- An attacker with arbitrary write access to your home directory is out of scope (they could remove the hook itself).
+```bash
+skillguard --engines all
+skillguard --engines local,cisco
+skillguard --engines local,skillaudit
+```
 
-## False positives
+If an optional engine is unavailable, SkillGuard reports the skip and continues with the engines it can run. Selecting remote engines may send scan material to their service or provider; review their terms and your data requirements first.
 
-Pattern scanning flags *appearances*, and security documentation legitimately contains attack strings. The local engine suppresses comment lines explaining detections and markdown table rows, but expect occasional flags on security-related skills — that's the trade for catching real ones. Findings show exact `file:line` context so you can judge in seconds. If a pattern fires wrongly on something common, [open an issue](https://github.com/mannanj/skillguard/issues) with the sample.
+## Adding a Detection Engine
+
+1. Add an engine module under `skillguard/engines/` with a stable `name` and a `scan(target)` method that returns normalized `Finding` objects.
+2. Register its factory in `ENGINE_REGISTRY` in `skillguard/engines/__init__.py`.
+3. Keep imports and dependency checks lazy so an unavailable optional engine reports a skip instead of breaking the CLI.
+4. Add any dependency under `[project.optional-dependencies]` in `pyproject.toml`; do not add it to the zero-dependency core.
+5. Add a realistic malicious fixture and a nearby innocent look-alike to protect against false positives.
+6. Add engine dispatch, parsing, availability, and output tests under `tests/`.
+7. Add an entry under `Unreleased` in [CHANGELOG.md](CHANGELOG.md) and run the complete verification suite.
+
+The local engine follows the same evidence discipline: a new pattern is not complete without a malicious example and a false-positive guard.
+
+## Development
+
+```bash
+git clone https://github.com/mannanj/skillguard.git
+cd skillguard
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+
+pytest -q
+ruff check .
+mypy skillguard
+python3 scripts/build_plugin_package.py
+```
+
+The test fixtures include deliberately malicious samples. Do not execute fixture scripts; the scanner and tests read them as data.
+
+Enable the repository's release guard when developing locally:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Runtime plugin changes require synchronized version declarations before push. Documentation-only changes do not require a version bump.
+
+## Detection and Test System
+
+The test suite covers the scanner as a security boundary rather than only checking happy-path CLI output:
+
+- malicious, honest, and manipulative skill fixtures
+- true-positive and false-positive pattern pairs
+- Unicode obfuscation and output-spoofing defenses
+- cache corruption, staleness, acknowledgement, and triage behavior
+- MCP discovery, redaction, secret non-persistence, introspection, and policy enforcement
+- Claude plugin packaging and installer synchronization
+- Agent Skill generation, repository adapters, and review text
+- landing-page, branding, version-sync, and plugin-package hygiene
+
+The clean repository snapshot used for this README passed 313 tests. CI runs the project checks for every pushed change; the exact count will grow as new detections and regression cases are added.
+
+Security-sensitive invariants are tested directly: static MCP scanning must not launch servers, secret values must not reach persistent records, corrupt caches must not silently allow skill use, and new detection patterns must include false-positive protection.
+
+## Privacy
+
+SkillGuard is local-first. The local engine, MCP structural engine, verdict cache, triage files, and SQLite history run on and remain on your machine.
+
+MCP environment and header values are read in memory only to identify inline credentials. Persistent scan material records their names, not their values. Credential-bearing launch flags and URL query parameters are also redacted according to the boundaries documented in [SECURITY.md](SECURITY.md).
+
+Two operations cross the default static boundary:
+
+- Selecting a remote engine such as SkillAudit or Snyk can send scan material to that provider.
+- Passing `--mcp-introspect` launches or contacts a server and retrieves its live instructions and tool descriptions.
+
+Both are explicit choices. The default local scan is offline, and static MCP scanning never starts a server.
 
 ## Contributing
 
-The highest-value contribution is a **new detection pattern with a malicious fixture and a false-positive guard test** — see [CONTRIBUTING.md](CONTRIBUTING.md). Engine adapters, hook hardening, and docs welcome too.
+See [CONTRIBUTING.md](CONTRIBUTING.md). The highest-value contribution is usually a narrowly scoped detection with both malicious evidence and an innocent false-positive guard.
 
-## Related projects
+Every contribution should include:
 
-[Cisco AI Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner) · [Snyk agent-scan](https://github.com/snyk/agent-scan) · [SkillAudit](https://skillaudit.vercel.app) · [claude-skill-antivirus](https://github.com/claude-world/claude-skill-antivirus) · [skillcop](https://github.com/cfitzgerald-pd/skillcop) — all excellent scanners. SkillGuard's difference: it orchestrates them *and* enforces at runtime.
+- working implementation with no stubs
+- tests for new behavior and important failure modes
+- no new required dependency unless the core design is deliberately reconsidered
+- an `Unreleased` changelog entry for user-visible behavior
+- passing `pytest`, Ruff, mypy, packaging, and version-synchronization checks as applicable
+
+Report detection bypasses, cache poisoning, secret persistence, path traversal, or scanner code execution privately through a [GitHub security advisory](https://github.com/mannanj/skillguard/security/advisories/new).
 
 ## License
 
 Copyright (C) 2026 Mannan Javid. SkillGuard is dual-licensed:
 
-- **[AGPL-3.0-only](LICENSE)** — free for everyone, including commercial use. Any work based on SkillGuard (including software that exposes it over a network) must be released under the AGPL with full source, and must retain the [NOTICE](NOTICE) attribution to SkillGuard and [this repository](https://github.com/mannanj/skillguard).
-- **[Commercial license](LICENSE-COMMERCIAL.md)** — for building on SkillGuard without AGPL obligations. Contact hello@mannan.is.
+- **[AGPL-3.0-only](LICENSE)** — free to run, study, modify, and use commercially under the AGPL. Works based on SkillGuard, including network services built from it, must satisfy the AGPL source and attribution obligations and retain [NOTICE](NOTICE).
+- **[Commercial license](LICENSE-COMMERCIAL.md)** — available for building on SkillGuard without the AGPL obligations. Contact `hello@mannan.is`.
 
-Just *running* the unmodified scanner — personally or at work — never requires the commercial license.
+Running the unmodified scanner personally or at work does not require the commercial license. The commercial option applies when you need different terms for building on or distributing SkillGuard.
